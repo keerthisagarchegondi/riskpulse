@@ -1,0 +1,51 @@
+# Kafka topic configuration
+topics:
+  txn.raw.events:
+    partitions: 12
+    replication_factor: 1  # 3 in production
+    retention_ms: 604800000  # 7 days
+    cleanup_policy: "delete"
+    key_serializer: "string"
+    value_serializer: "avro"
+
+  txn.validated:
+    partitions: 12
+    replication_factor: 1
+    retention_ms: 259200000  # 3 days
+    cleanup_policy: "delete"
+
+  txn.enriched:
+    partitions: 12
+    replication_factor: 1
+    retention_ms: 259200000  # 3 days
+    cleanup_policy: "delete"
+
+  txn.scored:
+    partitions: 6
+    replication_factor: 1
+    retention_ms: 604800000  # 7 days
+    cleanup_policy: "delete"
+
+  fraud.alerts:
+    partitions: 6
+    replication_factor: 1
+    retention_ms: 2592000000  # 30 days
+    cleanup_policy: "delete"
+
+  fraud.dlq:
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 2592000000  # 30 days
+    cleanup_policy: "compact"
+
+  system.metrics:
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 86400000  # 1 day
+    cleanup_policy: "delete"
+
+  audit.events:
+    partitions: 6
+    replication_factor: 1
+    retention_ms: 7776000000  # 90 days
+    cleanup_policy: "compact"

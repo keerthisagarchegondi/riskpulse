@@ -1,0 +1,24 @@
+[
+  {
+    "alert_id": "ALERT-TEST-001",
+    "transaction_id": "TXN-TEST-FRAUD-001",
+    "alert_type": "rule_based",
+    "rule_id": "RULE-HIGH-AMOUNT",
+    "risk_score": 0.92,
+    "severity": "high",
+    "status": "open",
+    "description": "Transaction amount exceeds 3x customer average",
+    "created_at": "2026-06-15T03:16:00Z"
+  },
+  {
+    "alert_id": "ALERT-TEST-002",
+    "transaction_id": "TXN-TEST-FRAUD-002",
+    "alert_type": "anomaly",
+    "rule_id": null,
+    "risk_score": 0.87,
+    "severity": "critical",
+    "status": "open",
+    "description": "Isolation Forest anomaly detected - unusual transaction pattern",
+    "created_at": "2026-06-15T03:20:00Z"
+  }
+]

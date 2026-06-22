@@ -1,0 +1,88 @@
+# =============================================================================
+# RiskPulse - Application Settings
+# =============================================================================
+
+app:
+  name: "RiskPulse"
+  version: "0.1.0"
+  description: "Fraud Analytics & Risk Intelligence Platform"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  rate_limit:
+    requests_per_minute: 100
+    burst_size: 20
+
+kafka:
+  topics:
+    raw_events: "txn.raw.events"
+    validated: "txn.validated"
+    enriched: "txn.enriched"
+    scored: "txn.scored"
+    fraud_alerts: "fraud.alerts"
+    dead_letter: "fraud.dlq"
+    metrics: "system.metrics"
+    audit: "audit.events"
+  consumer:
+    batch_size: 100
+    poll_timeout_ms: 1000
+    max_poll_records: 500
+  producer:
+    acks: "all"
+    retries: 3
+    batch_size: 16384
+    linger_ms: 10
+
+database:
+  pool_size: 20
+  max_overflow: 10
+  pool_timeout: 30
+  pool_recycle: 3600
+
+redis:
+  ttl:
+    customer_profile: 300  # 5 minutes
+    recent_transactions: 3600  # 1 hour
+    model_predictions: 60  # 1 minute
+
+fraud_detection:
+  scoring:
+    weights:
+      rule_based: 0.3
+      anomaly: 0.3
+      ml_model: 0.4
+    thresholds:
+      low: 0.3
+      medium: 0.5
+      high: 0.8
+      critical: 0.95
+  rules:
+    max_amount_multiplier: 3.0
+    rapid_transaction_window_minutes: 10
+    rapid_transaction_threshold: 5
+    impossible_travel_speed_mph: 500
+
+alerting:
+  deduplication_window_minutes: 60
+  escalation_timeout_minutes: 15
+  max_notifications_per_hour: 10
+  channels:
+    - email
+    - webhook
+    - dashboard
+
+monitoring:
+  metrics_interval_seconds: 60
+  health_check_interval_seconds: 30
+  log_level: "INFO"
+
+s3:
+  partitioning: "year/month/day/hour"
+  file_format: "parquet"
+  compression: "snappy"
+  lifecycle:
+    raw_to_glacier_days: 90
+    processed_to_glacier_days: 180
+    archive_to_deep_archive_days: 365

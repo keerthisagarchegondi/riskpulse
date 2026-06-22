@@ -1,0 +1,10 @@
+# Staging environment overrides
+app:
+  debug: false
+
+monitoring:
+  log_level: "INFO"
+
+database:
+  pool_size: 15
+  max_overflow: 10

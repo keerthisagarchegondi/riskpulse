@@ -1,0 +1,10 @@
+# Development environment overrides
+app:
+  debug: true
+
+monitoring:
+  log_level: "DEBUG"
+
+database:
+  pool_size: 5
+  max_overflow: 5
