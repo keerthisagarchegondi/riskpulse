@@ -1,0 +1,121 @@
+erDiagram
+    transactions ||--o{ fraud_alerts : "triggers"
+    transactions ||--o{ risk_scores : "scored_by"
+    transactions }o--|| customer_profiles : "belongs_to"
+    fraud_alerts ||--o{ audit_logs : "generates"
+    fraud_rules ||--o{ fraud_alerts : "matched_by"
+    model_registry ||--o{ risk_scores : "produced_by"
+
+    transactions {
+        uuid transaction_id PK
+        varchar external_transaction_id UK
+        varchar account_id
+        varchar customer_id
+        varchar merchant_id
+        varchar merchant_name
+        varchar merchant_category_code
+        decimal transaction_amount
+        varchar transaction_currency
+        varchar transaction_type
+        varchar channel
+        varchar card_type
+        varchar card_last_four
+        inet ip_address
+        varchar device_id
+        varchar device_type
+        decimal geo_latitude
+        decimal geo_longitude
+        varchar geo_country
+        varchar geo_city
+        boolean is_international
+        timestamptz transaction_timestamp
+        timestamptz processed_timestamp
+        varchar status
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    fraud_alerts {
+        uuid alert_id PK
+        uuid transaction_id FK
+        varchar alert_type
+        varchar rule_id
+        decimal risk_score
+        varchar severity
+        varchar status
+        text description
+        jsonb details
+        varchar assigned_to
+        timestamptz resolved_at
+        text resolution_notes
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    risk_scores {
+        uuid score_id PK
+        uuid transaction_id FK
+        varchar model_version
+        decimal overall_score
+        decimal rule_score
+        decimal anomaly_score
+        decimal ml_score
+        jsonb feature_contributions
+        timestamptz scoring_timestamp
+        integer latency_ms
+    }
+
+    fraud_rules {
+        varchar rule_id PK
+        varchar rule_name
+        varchar rule_category
+        text rule_expression
+        varchar severity
+        boolean is_active
+        decimal threshold
+        text description
+        varchar created_by
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    customer_profiles {
+        varchar customer_id PK
+        integer total_transactions_24h
+        decimal total_amount_24h
+        integer total_transactions_7d
+        decimal total_amount_7d
+        decimal avg_transaction_amount
+        decimal max_transaction_amount
+        integer unique_merchants_7d
+        integer unique_countries_7d
+        timestamptz last_transaction_timestamp
+        varchar risk_tier
+        timestamptz updated_at
+    }
+
+    audit_logs {
+        uuid log_id PK
+        varchar event_type
+        varchar entity_type
+        varchar entity_id
+        varchar action
+        varchar actor
+        jsonb details
+        inet ip_address
+        timestamptz created_at
+    }
+
+    model_registry {
+        uuid model_id PK
+        varchar model_name
+        varchar model_version
+        varchar model_type
+        varchar status
+        jsonb metrics
+        jsonb parameters
+        varchar artifact_path
+        timestamptz trained_at
+        timestamptz deployed_at
+        timestamptz created_at
+    }

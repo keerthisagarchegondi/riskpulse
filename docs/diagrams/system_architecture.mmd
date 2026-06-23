@@ -1,0 +1,132 @@
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#1a73e8' } } }%%
+graph TB
+    subgraph "External Data Sources"
+        EXT_API[External API Clients]
+        EXT_BATCH[Batch File Uploads<br/>CSV/JSON via S3]
+        EXT_STREAM[Real-Time Stream<br/>Kafka Producers]
+    end
+
+    subgraph "Ingestion Layer"
+        API_GW[FastAPI Gateway<br/>:8000]
+        KAFKA[Apache Kafka Cluster<br/>8 Topics / 12 Partitions]
+        SR[Schema Registry<br/>Avro Schemas]
+        S3_RAW[(S3 Raw Zone<br/>Parquet/Snappy)]
+    end
+
+    subgraph "Processing Layer"
+        VAL[Schema Validator<br/>+ Quarantine Handler]
+        CLEAN[Data Cleaner<br/>+ Normalizer]
+        FE[Feature Engineer<br/>25+ Features]
+        ENRICH[Enrichment Pipeline<br/>Geo / Device / Merchant / Velocity]
+    end
+
+    subgraph "Fraud Detection Engine"
+        RULES[Rule-Based Engine<br/>15+ Configurable Rules]
+        ANOMALY[Anomaly Detector<br/>Isolation Forest]
+        ML[ML Risk Scorer<br/>XGBoost / LightGBM]
+        ENSEMBLE[Ensemble Scorer<br/>Weighted Combination]
+        MODEL_REG[Model Registry<br/>Versioning + A/B Testing]
+    end
+
+    subgraph "Storage Layer"
+        PG[(PostgreSQL 16<br/>Operational Store)]
+        SF[(Snowflake<br/>Analytical Warehouse)]
+        S3_PROC[(S3 Processed Zone<br/>Enriched Data)]
+        REDIS[(Redis 7<br/>Hot Cache)]
+    end
+
+    subgraph "Orchestration"
+        AF[Apache Airflow 2.8<br/>12 DAGs]
+        AF_SCHED[Airflow Scheduler]
+        AF_WORKER[Airflow Workers]
+    end
+
+    subgraph "Alerting & Notifications"
+        ALERT_MGR[Alert Manager<br/>Dedup + Severity Routing]
+        NOTIF[Notification Service<br/>Email / SMS / Webhook]
+        ESCAL[Escalation Engine<br/>Time-Based Triggers]
+    end
+
+    subgraph "Presentation Layer"
+        STREAMLIT[Streamlit Dashboard<br/>:8501]
+        PBI[Power BI<br/>Executive Dashboards]
+        INV[Investigation Console]
+    end
+
+    subgraph "Monitoring & Security"
+        CW[AWS CloudWatch<br/>Logs + Metrics + Alarms]
+        IAM[AWS IAM<br/>Least-Privilege Roles]
+        SM[AWS Secrets Manager]
+        HC[Health Checker<br/>Liveness + Readiness]
+    end
+
+    subgraph "CI/CD & Infrastructure"
+        GH[GitHub Actions<br/>CI/CD Pipelines]
+        DOCKER[Docker Containers<br/>Multi-Stage Builds]
+        TF[Terraform<br/>Infrastructure as Code]
+    end
+
+    %% Ingestion flows
+    EXT_API --> API_GW
+    EXT_STREAM --> KAFKA
+    EXT_BATCH --> S3_RAW
+    API_GW --> KAFKA
+    KAFKA --> SR
+    KAFKA --> S3_RAW
+
+    %% Processing flows
+    KAFKA --> VAL
+    VAL --> CLEAN
+    CLEAN --> FE
+    FE --> ENRICH
+
+    %% Detection flows
+    ENRICH --> RULES
+    ENRICH --> ANOMALY
+    ENRICH --> ML
+    RULES --> ENSEMBLE
+    ANOMALY --> ENSEMBLE
+    ML --> ENSEMBLE
+    MODEL_REG --> ML
+    MODEL_REG --> ANOMALY
+
+    %% Storage flows
+    ENRICH --> PG
+    ENRICH --> S3_PROC
+    S3_PROC --> SF
+    ENRICH --> REDIS
+
+    %% Alert flows
+    ENSEMBLE --> ALERT_MGR
+    ALERT_MGR --> NOTIF
+    ALERT_MGR --> ESCAL
+    ALERT_MGR --> KAFKA
+
+    %% Presentation flows
+    PG --> STREAMLIT
+    PG --> INV
+    SF --> PBI
+    REDIS --> STREAMLIT
+
+    %% Orchestration
+    AF_SCHED --> AF_WORKER
+    AF --> VAL
+    AF --> CLEAN
+    AF --> FE
+    AF --> ENRICH
+    AF --> SF
+
+    %% Monitoring
+    API_GW --> CW
+    KAFKA --> CW
+    PG --> CW
+    ENSEMBLE --> CW
+    HC --> CW
+
+    %% Security
+    IAM --> API_GW
+    IAM --> S3_RAW
+    IAM --> SF
+    SM --> PG
+    SM --> SF
+    SM --> REDIS

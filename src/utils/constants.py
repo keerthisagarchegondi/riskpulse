@@ -66,5 +66,59 @@ DEFAULT_BURST_SIZE = 20
 # Supported Currencies
 SUPPORTED_CURRENCIES = ("USD", "EUR", "GBP", "CAD", "AUD", "JPY")
 
-# High-Risk Countries (ISO 3166-1 alpha-2)
-HIGH_RISK_COUNTRIES = ("NG", "RU", "UA", "VN", "PH", "ID", "BR", "MX")
+# High-Risk Countries (ISO 3166-1 alpha-3)
+HIGH_RISK_COUNTRIES = ("NGA", "RUS", "UKR", "VNM", "PHL", "IDN", "BRA", "MEX")
+
+# Merchant Category Codes (High-Risk)
+HIGH_RISK_MCC = (
+    "5967",  # Direct marketing — inbound teleservices
+    "5966",  # Direct marketing — outbound teleservices
+    "7995",  # Gambling/betting
+    "5912",  # Drug stores/pharmacies
+    "5962",  # Travel-related direct marketing
+    "4829",  # Money transfer
+    "6051",  # Non-financial institutions — foreign currency/crypto
+    "6012",  # Financial institutions — merchandise and services
+)
+
+# Pipeline Configuration
+BATCH_SIZE_DEFAULT = 100
+MAX_BATCH_SIZE = 1000
+POLL_TIMEOUT_MS = 1000
+MAX_RETRIES = 3
+
+# Velocity Thresholds (defaults)
+VELOCITY_TXN_COUNT_1H = 10
+VELOCITY_TXN_COUNT_24H = 50
+VELOCITY_AMOUNT_24H = 10000.0
+VELOCITY_UNIQUE_MERCHANTS_24H = 15
+VELOCITY_UNIQUE_COUNTRIES_7D = 5
+
+# Scoring Weights (defaults)
+SCORING_WEIGHT_RULES = 0.3
+SCORING_WEIGHT_ANOMALY = 0.3
+SCORING_WEIGHT_ML = 0.4
+
+# Time Windows (seconds)
+DEDUP_WINDOW_SECONDS = 3600  # 1 hour
+ALERT_DEDUP_WINDOW_SECONDS = 3600  # 1 hour
+ESCALATION_TIMEOUT_SECONDS = 900  # 15 minutes
+
+# Feature Engineering
+IMPOSSIBLE_TRAVEL_SPEED_MPH = 500
+RAPID_SUCCESSION_SECONDS = 60
+AMOUNT_ZSCORE_THRESHOLD = 3.0
+
+# Model Configuration
+MODEL_PREDICTION_TIMEOUT_MS = 50
+MODEL_CACHE_TTL_SECONDS = 60
+
+# API Configuration
+API_VERSION = "v1"
+API_PREFIX = f"/api/{API_VERSION}"
+MAX_PAGE_SIZE = 200
+DEFAULT_PAGE_SIZE = 50
+
+# Health Check
+HEALTH_CHECK_TIMEOUT_SECONDS = 5
+DEPENDENCY_CHECK_INTERVAL_SECONDS = 30

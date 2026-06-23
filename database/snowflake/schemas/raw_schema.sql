@@ -1,0 +1,54 @@
+-- =============================================================================
+-- Snowflake RAW Schema
+-- Landing zone for raw data from S3 external stages
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS RAW;
+
+-- Raw transactions loaded as VARIANT (semi-structured JSON)
+CREATE TABLE IF NOT EXISTS RAW.TRANSACTIONS (
+    RAW_DATA VARIANT NOT NULL,
+    SOURCE_FILE VARCHAR(500),
+    LOAD_TIMESTAMP TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP(),
+    BATCH_ID VARCHAR(50) NOT NULL
+);
+
+-- Raw fraud alerts
+CREATE TABLE IF NOT EXISTS RAW.FRAUD_ALERTS (
+    RAW_DATA VARIANT NOT NULL,
+    SOURCE_FILE VARCHAR(500),
+    LOAD_TIMESTAMP TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP(),
+    BATCH_ID VARCHAR(50) NOT NULL
+);
+
+-- Raw risk scores
+CREATE TABLE IF NOT EXISTS RAW.RISK_SCORES (
+    RAW_DATA VARIANT NOT NULL,
+    SOURCE_FILE VARCHAR(500),
+    LOAD_TIMESTAMP TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP(),
+    BATCH_ID VARCHAR(50) NOT NULL
+);
+
+-- External stage for S3 data loading
+-- CREATE OR REPLACE STAGE RAW.S3_STAGE
+--   URL = 's3://riskpulse-{env}-raw/'
+--   STORAGE_INTEGRATION = riskpulse_s3_integration
+--   FILE_FORMAT = (TYPE = 'PARQUET');
+
+-- File format definitions
+CREATE OR REPLACE FILE FORMAT RAW.PARQUET_FORMAT
+  TYPE = 'PARQUET'
+  COMPRESSION = 'SNAPPY';
+
+CREATE OR REPLACE FILE FORMAT RAW.JSON_FORMAT
+  TYPE = 'JSON'
+  COMPRESSION = 'GZIP'
+  STRIP_OUTER_ARRAY = TRUE;
+
+CREATE OR REPLACE FILE FORMAT RAW.CSV_FORMAT
+  TYPE = 'CSV'
+  COMPRESSION = 'GZIP'
+  FIELD_DELIMITER = ','
+  SKIP_HEADER = 1
+  FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+  NULL_IF = ('NULL', 'null', '');

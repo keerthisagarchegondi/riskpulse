@@ -1,0 +1,68 @@
+sequenceDiagram
+    participant Client
+    participant API as FastAPI Gateway
+    participant Kafka as Kafka Cluster
+    participant Validator as Schema Validator
+    participant Transformer as Data Transformer
+    participant Enricher as Enrichment Pipeline
+    participant RuleEngine as Rule Engine
+    participant AnomalyDet as Anomaly Detector
+    participant MLScorer as ML Risk Scorer
+    participant Ensemble as Ensemble Scorer
+    participant AlertMgr as Alert Manager
+    participant PG as PostgreSQL
+    participant Redis as Redis Cache
+    participant Notify as Notification Service
+
+    Client->>API: POST /api/v1/transactions
+    API->>API: Validate request (Pydantic)
+    API->>API: Authenticate (API Key / JWT)
+    API->>API: Rate limit check
+    API-->>Client: 202 Accepted
+
+    API->>Kafka: Publish to txn.raw.events
+    Kafka->>Validator: Consume batch (100 events)
+    Validator->>Validator: Schema + business rule checks
+    
+    alt Invalid Record
+        Validator->>Kafka: Route to fraud.dlq
+        Validator->>PG: Insert quarantine record
+    end
+
+    Validator->>Kafka: Publish to txn.validated
+    Kafka->>Transformer: Consume validated events
+    Transformer->>Transformer: Clean + Normalize
+    Transformer->>Transformer: Engineer 25+ features
+    
+    Transformer->>Enricher: Pass enrichment request
+    Enricher->>Redis: Lookup customer profile
+    Redis-->>Enricher: Profile (cache hit)
+    Enricher->>Enricher: Geo + Device + Merchant + Velocity
+    Enricher->>Kafka: Publish to txn.enriched
+
+    par Parallel Scoring
+        Kafka->>RuleEngine: Evaluate 15+ rules
+        Kafka->>AnomalyDet: Isolation Forest score
+        Kafka->>MLScorer: XGBoost/LightGBM score
+    end
+
+    RuleEngine-->>Ensemble: rule_score (0-1)
+    AnomalyDet-->>Ensemble: anomaly_score (0-1)
+    MLScorer-->>Ensemble: ml_score (0-1)
+
+    Ensemble->>Ensemble: Weighted combination<br/>(0.3R + 0.3A + 0.4ML)
+    Ensemble->>Ensemble: Classify risk level
+    Ensemble->>PG: Store risk_scores record
+    Ensemble->>Kafka: Publish to txn.scored
+
+    alt Risk Score >= HIGH threshold
+        Ensemble->>AlertMgr: Generate fraud alert
+        AlertMgr->>AlertMgr: Deduplication check
+        AlertMgr->>PG: Store fraud_alerts record
+        AlertMgr->>Kafka: Publish to fraud.alerts
+        AlertMgr->>Notify: Dispatch notification
+        Notify->>Notify: Route by severity<br/>(Email/SMS/Webhook)
+    end
+
+    Ensemble->>Redis: Update customer profile
+    Ensemble->>PG: Update transaction status

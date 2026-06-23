@@ -1,0 +1,50 @@
+%%{ init: { 'theme': 'base' } }%%
+flowchart LR
+    subgraph Ingestion
+        direction TB
+        A1[REST API<br/>POST /transactions] --> A2[Kafka Producer<br/>Avro Serialized]
+        A3[Batch Files<br/>S3 Upload] --> A4[S3 Raw Zone<br/>year/month/day/hour/]
+        A2 --> A5[txn.raw.events<br/>12 Partitions]
+    end
+
+    subgraph Validation
+        direction TB
+        B1[Schema Validator<br/>JSON Schema + Custom Rules] --> B2{Valid?}
+        B2 -->|Yes| B3[txn.validated]
+        B2 -->|No| B4[Quarantine Table<br/>+ DLQ]
+    end
+
+    subgraph Transformation
+        direction TB
+        C1[Data Cleaner<br/>Dedup / Null Handling] --> C2[Normalizer<br/>Currency / Codes / Strings]
+        C2 --> C3[Feature Engineer<br/>25+ Features Computed]
+    end
+
+    subgraph Enrichment
+        direction TB
+        D1[Geo Enricher<br/>IP → Location] --> D5[Enriched<br/>Transaction]
+        D2[Device Enricher<br/>Fingerprint Analysis] --> D5
+        D3[Merchant Enricher<br/>Category Risk] --> D5
+        D4[Velocity Calculator<br/>Profile Updates] --> D5
+    end
+
+    subgraph Storage
+        direction TB
+        E1[(PostgreSQL<br/>Operational)] 
+        E2[(Snowflake<br/>RAW → STG → ANALYTICS)]
+        E3[(S3 Processed<br/>Parquet Files)]
+        E4[(Redis Cache<br/>Hot Profiles)]
+    end
+
+    subgraph Presentation
+        direction TB
+        F1[Streamlit<br/>Real-Time Monitor]
+        F2[Investigation<br/>Console]
+        F3[Power BI<br/>Executive Reports]
+    end
+
+    Ingestion --> Validation
+    Validation --> Transformation
+    Transformation --> Enrichment
+    Enrichment --> Storage
+    Storage --> Presentation

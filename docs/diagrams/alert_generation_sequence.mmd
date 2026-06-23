@@ -1,0 +1,59 @@
+sequenceDiagram
+    participant Scorer as Ensemble Scorer
+    participant AlertMgr as Alert Manager
+    participant PG as PostgreSQL
+    participant Kafka as Kafka (fraud.alerts)
+    participant Dedup as Deduplication Engine
+    participant Template as Alert Templates
+    participant Notify as Notification Service
+    participant Escalation as Escalation Engine
+    participant Email as Email (SES)
+    participant SMS as SMS (SNS)
+    participant Webhook as Webhook (Slack/PagerDuty)
+    participant Dashboard as Streamlit Dashboard
+
+    Scorer->>AlertMgr: High/Critical risk detected
+    AlertMgr->>Dedup: Check dedup window (60 min)
+    
+    alt Duplicate Alert
+        Dedup-->>AlertMgr: Suppressed (existing alert open)
+        AlertMgr->>PG: Log suppression event
+    else New Alert
+        Dedup-->>AlertMgr: Allow alert generation
+        AlertMgr->>AlertMgr: Classify severity
+        AlertMgr->>AlertMgr: Enrich with context<br/>(customer history, recent txns)
+        AlertMgr->>PG: INSERT fraud_alerts (status=open)
+        AlertMgr->>Kafka: Publish alert event
+        AlertMgr->>Template: Render alert content
+
+        alt Critical Severity
+            Template->>Notify: Immediate notification
+            Notify->>SMS: Send SMS to on-call
+            Notify->>Webhook: PagerDuty incident
+            Notify->>Dashboard: WebSocket push
+        else High Severity
+            Template->>Notify: Standard notification
+            Notify->>Email: Send alert email
+            Notify->>Webhook: Slack channel post
+            Notify->>Dashboard: WebSocket push
+        else Medium Severity
+            Template->>Notify: Dashboard only
+            Notify->>Dashboard: WebSocket push
+        end
+
+        Notify->>PG: Log delivery status
+
+        Note over Escalation: Timer starts (15 min)
+        
+        alt Not Acknowledged within 15 min
+            Escalation->>Escalation: Escalation triggered
+            Escalation->>PG: Update alert severity (+1)
+            Escalation->>Notify: Re-notify at higher level
+        end
+    end
+
+    Dashboard->>PG: Analyst views alert
+    PG-->>Dashboard: Alert details + context
+    Dashboard->>PG: UPDATE status = investigating
+    Dashboard->>PG: UPDATE status = resolved<br/>resolution_notes = "..."
+    PG->>PG: Audit log entry

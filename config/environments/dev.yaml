@@ -4,7 +4,36 @@ app:
 
 monitoring:
   log_level: "DEBUG"
+  metrics_interval_seconds: 30
+  health_check_interval_seconds: 60
 
 database:
   pool_size: 5
   max_overflow: 5
+  pool_timeout: 10
+
+redis:
+  ttl:
+    customer_profile: 60  # shorter TTL for dev
+    recent_transactions: 300
+    model_predictions: 30
+
+kafka:
+  consumer:
+    batch_size: 10
+    max_poll_records: 50
+  producer:
+    retries: 1
+
+fraud_detection:
+  scoring:
+    thresholds:
+      low: 0.2       # lower thresholds for dev testing
+      medium: 0.4
+      high: 0.7
+      critical: 0.9
+
+alerting:
+  max_notifications_per_hour: 100  # higher limit for testing
+  channels:
+    - dashboard  # only dashboard notifications in dev
