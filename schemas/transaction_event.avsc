@@ -1,0 +1,167 @@
+{
+  "type": "record",
+  "name": "TransactionEvent",
+  "namespace": "com.riskpulse.events",
+  "doc": "Represents a financial transaction event ingested into the RiskPulse platform.",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "Unique identifier for this event (UUID v4)."
+    },
+    {
+      "name": "event_timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Timestamp when this event was produced (epoch millis)."
+    },
+    {
+      "name": "event_version",
+      "type": "string",
+      "default": "1.0.0",
+      "doc": "Schema version for forward/backward compatibility."
+    },
+    {
+      "name": "external_transaction_id",
+      "type": "string",
+      "doc": "Transaction ID from the source system."
+    },
+    {
+      "name": "account_id",
+      "type": "string",
+      "doc": "Account identifier used as Kafka partition key."
+    },
+    {
+      "name": "customer_id",
+      "type": "string",
+      "doc": "Customer identifier."
+    },
+    {
+      "name": "merchant_id",
+      "type": "string",
+      "doc": "Merchant identifier."
+    },
+    {
+      "name": "merchant_name",
+      "type": "string",
+      "doc": "Human-readable merchant name."
+    },
+    {
+      "name": "merchant_category_code",
+      "type": "string",
+      "doc": "MCC code classifying the merchant type."
+    },
+    {
+      "name": "transaction_amount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 12,
+        "scale": 2
+      },
+      "doc": "Transaction amount with 2 decimal precision."
+    },
+    {
+      "name": "transaction_currency",
+      "type": "string",
+      "default": "USD",
+      "doc": "ISO 4217 currency code."
+    },
+    {
+      "name": "transaction_type",
+      "type": {
+        "type": "enum",
+        "name": "TransactionType",
+        "symbols": ["purchase", "withdrawal", "transfer", "refund"]
+      },
+      "doc": "Type of financial transaction."
+    },
+    {
+      "name": "channel",
+      "type": {
+        "type": "enum",
+        "name": "Channel",
+        "symbols": ["online", "pos", "atm", "mobile"]
+      },
+      "doc": "Channel through which the transaction was initiated."
+    },
+    {
+      "name": "card_type",
+      "type": {
+        "type": "enum",
+        "name": "CardType",
+        "symbols": ["credit", "debit", "prepaid"]
+      },
+      "doc": "Type of payment card used."
+    },
+    {
+      "name": "card_last_four",
+      "type": "string",
+      "doc": "Last four digits of the card number."
+    },
+    {
+      "name": "ip_address",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "IP address of the transaction source."
+    },
+    {
+      "name": "device_id",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Device fingerprint identifier."
+    },
+    {
+      "name": "device_type",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Type of device (mobile, desktop, tablet, pos)."
+    },
+    {
+      "name": "geo_latitude",
+      "type": ["null", "double"],
+      "default": null,
+      "doc": "Latitude of transaction origin."
+    },
+    {
+      "name": "geo_longitude",
+      "type": ["null", "double"],
+      "default": null,
+      "doc": "Longitude of transaction origin."
+    },
+    {
+      "name": "geo_country",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "ISO 3166-1 alpha-2 country code."
+    },
+    {
+      "name": "geo_city",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "City name of transaction origin."
+    },
+    {
+      "name": "is_international",
+      "type": "boolean",
+      "default": false,
+      "doc": "Whether this is a cross-border transaction."
+    },
+    {
+      "name": "transaction_timestamp",
+      "type": "string",
+      "doc": "Original transaction timestamp in ISO 8601 format."
+    },
+    {
+      "name": "metadata",
+      "type": ["null", {
+        "type": "map",
+        "values": "string"
+      }],
+      "default": null,
+      "doc": "Optional key-value metadata for extensibility."
+    }
+  ]
+}
