@@ -1,0 +1,70 @@
+# --- Build Stage ---
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install system dependencies for building Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    librdkafka-dev \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --prefix=/install \
+    fastapi \
+    uvicorn[standard] \
+    pydantic \
+    structlog \
+    confluent-kafka \
+    asyncpg \
+    redis \
+    pyyaml \
+    python-jose[cryptography] \
+    cryptography
+
+# --- Runtime Stage ---
+FROM python:3.11-slim AS runtime
+
+# Security: run as non-root user
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
+WORKDIR /app
+
+# Install runtime system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    librdkafka1 \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed Python packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy application code
+COPY src/ ./src/
+COPY config/ ./config/
+COPY schemas/ ./schemas/
+
+# Set ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# Environment defaults
+ENV PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    RISKPULSE_ENV=production \
+    RISKPULSE_API_HOST=0.0.0.0 \
+    RISKPULSE_API_PORT=8000
+
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health/live || exit 1
+
+# Run with uvicorn
+CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--access-log"]
