@@ -1,0 +1,109 @@
+{
+  "Rules": [
+    {
+      "ID": "RawDataToInfrequentAccess",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "transactions/"
+      },
+      "Transitions": [
+        {
+          "Days": 30,
+          "StorageClass": "STANDARD_IA"
+        }
+      ]
+    },
+    {
+      "ID": "RawDataToGlacier",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "transactions/"
+      },
+      "Transitions": [
+        {
+          "Days": 90,
+          "StorageClass": "GLACIER"
+        }
+      ]
+    },
+    {
+      "ID": "RawDataToDeepArchive",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "transactions/"
+      },
+      "Transitions": [
+        {
+          "Days": 365,
+          "StorageClass": "DEEP_ARCHIVE"
+        }
+      ]
+    },
+    {
+      "ID": "RawDataExpiration",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "transactions/"
+      },
+      "Expiration": {
+        "Days": 2555
+      }
+    },
+    {
+      "ID": "ProcessedDataToIA",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "processed/"
+      },
+      "Transitions": [
+        {
+          "Days": 60,
+          "StorageClass": "STANDARD_IA"
+        }
+      ]
+    },
+    {
+      "ID": "ProcessedDataToGlacier",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "processed/"
+      },
+      "Transitions": [
+        {
+          "Days": 180,
+          "StorageClass": "GLACIER"
+        }
+      ]
+    },
+    {
+      "ID": "AbortIncompleteMultipartUploads",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    },
+    {
+      "ID": "DeleteOldVersions",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "NoncurrentVersionTransitions": [
+        {
+          "NoncurrentDays": 30,
+          "StorageClass": "STANDARD_IA"
+        },
+        {
+          "NoncurrentDays": 90,
+          "StorageClass": "GLACIER"
+        }
+      ],
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 365
+      }
+    }
+  ]
+}
