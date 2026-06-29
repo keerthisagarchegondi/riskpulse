@@ -1,0 +1,174 @@
+# Schema Validation Rules Configuration
+# Defines validation rules for incoming transaction events.
+# Changes to this file do NOT require code changes or restarts.
+
+# --- Required Fields ---
+required_fields:
+  - external_transaction_id
+  - account_id
+  - customer_id
+  - transaction_amount
+  - transaction_type
+  - channel
+  - transaction_timestamp
+
+# --- Field Type Validation ---
+field_types:
+  external_transaction_id:
+    type: string
+    min_length: 1
+    max_length: 64
+  account_id:
+    type: string
+    min_length: 1
+    max_length: 64
+  customer_id:
+    type: string
+    min_length: 1
+    max_length: 64
+  merchant_id:
+    type: string
+    max_length: 64
+    nullable: true
+  merchant_name:
+    type: string
+    max_length: 255
+    nullable: true
+  merchant_category_code:
+    type: string
+    max_length: 10
+    nullable: true
+  transaction_amount:
+    type: number
+    min_value: 0.01
+    max_value: 999999999.99
+  transaction_currency:
+    type: string
+    allowed_values: ["USD", "EUR", "GBP", "CAD", "AUD", "JPY"]
+    default: "USD"
+  transaction_type:
+    type: string
+    allowed_values: ["purchase", "withdrawal", "transfer", "refund"]
+  channel:
+    type: string
+    allowed_values: ["online", "pos", "atm", "mobile"]
+  card_type:
+    type: string
+    allowed_values: ["credit", "debit", "prepaid"]
+    nullable: true
+  card_last_four:
+    type: string
+    pattern: "^\\d{4}$"
+    nullable: true
+  ip_address:
+    type: string
+    format: ip_address
+    nullable: true
+  device_id:
+    type: string
+    max_length: 128
+    nullable: true
+  device_type:
+    type: string
+    max_length: 50
+    nullable: true
+  geo_latitude:
+    type: number
+    min_value: -90.0
+    max_value: 90.0
+    nullable: true
+  geo_longitude:
+    type: number
+    min_value: -180.0
+    max_value: 180.0
+    nullable: true
+  geo_country:
+    type: string
+    max_length: 3
+    nullable: true
+  geo_city:
+    type: string
+    max_length: 100
+    nullable: true
+  is_international:
+    type: boolean
+    default: false
+  transaction_timestamp:
+    type: string
+    format: iso8601
+
+# --- Cross-Field Validation Rules ---
+cross_field_rules:
+  - name: international_flag_matches_country
+    description: "is_international must be true when geo_country differs from domestic country"
+    condition: "geo_country is not None and geo_country != domestic_country and is_international is False"
+    severity: warning
+    domestic_country: "USA"
+
+  - name: card_last_four_required_for_card_transactions
+    description: "card_last_four should be present when card_type is provided"
+    condition: "card_type is not None and card_last_four is None"
+    severity: warning
+
+  - name: ip_required_for_online
+    description: "ip_address is required for online channel transactions"
+    condition: "channel == 'online' and ip_address is None"
+    severity: warning
+
+  - name: geo_coordinates_paired
+    description: "geo_latitude and geo_longitude must both be present or both absent"
+    condition: "(geo_latitude is None) != (geo_longitude is None)"
+    severity: error
+
+  - name: pos_requires_merchant
+    description: "POS transactions must have merchant_id"
+    condition: "channel == 'pos' and merchant_id is None"
+    severity: warning
+
+  - name: atm_no_merchant_category
+    description: "ATM withdrawals should have withdrawal transaction_type"
+    condition: "channel == 'atm' and transaction_type != 'withdrawal'"
+    severity: warning
+
+  - name: refund_amount_limit
+    description: "Refund amounts should not exceed 50000"
+    condition: "transaction_type == 'refund' and transaction_amount > 50000"
+    severity: error
+
+  - name: future_timestamp_check
+    description: "Transaction timestamp must not be in the future beyond a tolerance"
+    condition: "transaction_timestamp_is_future"
+    severity: error
+    future_tolerance_seconds: 300
+
+  - name: stale_timestamp_check
+    description: "Transaction timestamp must not be older than 90 days"
+    condition: "transaction_timestamp_is_stale"
+    severity: error
+    max_age_days: 90
+
+# --- Custom Business Rules ---
+custom_rules:
+  - name: suspicious_round_amount
+    description: "Flag round amounts above threshold as warning"
+    field: transaction_amount
+    condition: "amount_is_round and amount > threshold"
+    threshold: 1000
+    severity: warning
+
+  - name: high_value_transaction
+    description: "Flag very high value transactions"
+    field: transaction_amount
+    condition: "amount > threshold"
+    threshold: 50000
+    severity: warning
+
+# --- Quarantine Configuration ---
+quarantine:
+  enabled: true
+  table_name: quarantined_records
+  max_retry_attempts: 3
+  retention_days: 30
+  severity_levels:
+    error: quarantine    # Hard failures → quarantine immediately
+    warning: pass        # Soft warnings → pass through with flags
