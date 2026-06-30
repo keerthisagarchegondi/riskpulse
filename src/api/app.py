@@ -142,9 +142,11 @@ def create_app() -> FastAPI:
 
     from src.api.routes.health import router as health_router
     from src.api.routes.transactions import router as transactions_router
+    from src.api.routes.rules import router as rules_router
 
     app.include_router(health_router)
     app.include_router(transactions_router)
+    app.include_router(rules_router)
 
     # Root endpoint
     @app.get("/", include_in_schema=False)

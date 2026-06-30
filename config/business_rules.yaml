@@ -1,0 +1,552 @@
+# Business Rules Configuration for RiskPulse Rules Engine
+# Changes to this file are hot-reloaded — no restart required.
+#
+# Rule Format:
+#   id: unique rule identifier
+#   name: human-readable name
+#   description: what the rule checks
+#   version: rule version (semver)
+#   priority: execution order (lower = higher priority, evaluated first)
+#   enabled: whether rule is active
+#   severity: low | medium | high | critical
+#   category: grouping for management
+#   condition: evaluation logic
+#   schedule: optional time-based activation
+#   tags: optional labels for filtering
+
+metadata:
+  schema_version: "1.0.0"
+  last_updated: "2026-06-30"
+  description: "Business validation rules for transaction fraud detection"
+
+# --- Amount Limit Rules ---
+rules:
+
+  # Rule 1: Maximum single transaction amount
+  - id: "RULE-AMT-001"
+    name: "Max Transaction Amount"
+    description: "Block transactions exceeding maximum single transaction limit"
+    version: "1.0.0"
+    priority: 10
+    enabled: true
+    severity: "high"
+    category: "amount_limits"
+    condition:
+      field: "transaction_amount"
+      operator: "greater_than"
+      value: 50000.00
+    action: "block"
+    tags: ["amount", "limit"]
+
+  # Rule 2: Minimum transaction amount
+  - id: "RULE-AMT-002"
+    name: "Min Transaction Amount"
+    description: "Flag micro-transactions that may indicate card testing"
+    version: "1.0.0"
+    priority: 11
+    enabled: true
+    severity: "medium"
+    category: "amount_limits"
+    condition:
+      field: "transaction_amount"
+      operator: "less_than"
+      value: 0.50
+    action: "flag"
+    tags: ["amount", "card_testing"]
+
+  # Rule 3: Purchase amount limit
+  - id: "RULE-AMT-003"
+    name: "Purchase Amount Limit"
+    description: "Block purchases exceeding per-transaction-type limit"
+    version: "1.0.0"
+    priority: 12
+    enabled: true
+    severity: "high"
+    category: "amount_limits"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "transaction_type"
+          operator: "equals"
+          value: "purchase"
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 25000.00
+    action: "block"
+    tags: ["amount", "purchase"]
+
+  # Rule 4: ATM withdrawal limit
+  - id: "RULE-AMT-004"
+    name: "ATM Withdrawal Limit"
+    description: "Block ATM withdrawals exceeding daily limit"
+    version: "1.0.0"
+    priority: 13
+    enabled: true
+    severity: "high"
+    category: "amount_limits"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "transaction_type"
+          operator: "equals"
+          value: "withdrawal"
+        - field: "channel"
+          operator: "equals"
+          value: "atm"
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 5000.00
+    action: "block"
+    tags: ["amount", "atm", "withdrawal"]
+
+  # Rule 5: Transfer amount limit
+  - id: "RULE-AMT-005"
+    name: "Transfer Amount Limit"
+    description: "Flag transfers exceeding standard limit"
+    version: "1.0.0"
+    priority: 14
+    enabled: true
+    severity: "medium"
+    category: "amount_limits"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "transaction_type"
+          operator: "equals"
+          value: "transfer"
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 10000.00
+    action: "flag"
+    tags: ["amount", "transfer"]
+
+  # Rule 6: Round amount detection
+  - id: "RULE-AMT-006"
+    name: "Suspicious Round Amount"
+    description: "Flag large round-number transactions that may indicate money laundering"
+    version: "1.0.0"
+    priority: 50
+    enabled: true
+    severity: "low"
+    category: "amount_limits"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 5000.00
+        - field: "transaction_amount"
+          operator: "modulo_equals"
+          modulo: 1000
+          value: 0
+    action: "flag"
+    tags: ["amount", "money_laundering"]
+
+  # --- Velocity Rules ---
+
+  # Rule 7: High-frequency transactions
+  - id: "RULE-VEL-001"
+    name: "High Transaction Velocity"
+    description: "Flag accounts with too many transactions in a short time window"
+    version: "1.0.0"
+    priority: 20
+    enabled: true
+    severity: "high"
+    category: "velocity"
+    condition:
+      type: "velocity"
+      field: "account_id"
+      max_count: 10
+      time_window_seconds: 300  # 5 minutes
+    action: "flag"
+    tags: ["velocity", "frequency"]
+
+  # Rule 8: Daily transaction count limit
+  - id: "RULE-VEL-002"
+    name: "Daily Transaction Count Limit"
+    description: "Block accounts exceeding daily transaction count"
+    version: "1.0.0"
+    priority: 21
+    enabled: true
+    severity: "high"
+    category: "velocity"
+    condition:
+      type: "velocity"
+      field: "account_id"
+      max_count: 50
+      time_window_seconds: 86400  # 24 hours
+    action: "block"
+    tags: ["velocity", "daily_limit"]
+
+  # Rule 9: Rapid small transactions (card testing pattern)
+  - id: "RULE-VEL-003"
+    name: "Card Testing Pattern"
+    description: "Detect rapid small transactions indicating card testing"
+    version: "1.0.0"
+    priority: 22
+    enabled: true
+    severity: "critical"
+    category: "velocity"
+    condition:
+      type: "velocity"
+      field: "account_id"
+      max_count: 5
+      time_window_seconds: 60  # 1 minute
+      amount_threshold: 5.00  # only count transactions below this amount
+    action: "block"
+    tags: ["velocity", "card_testing"]
+
+  # Rule 10: Cumulative amount velocity
+  - id: "RULE-VEL-004"
+    name: "Cumulative Amount Velocity"
+    description: "Flag when cumulative amount in time window exceeds threshold"
+    version: "1.0.0"
+    priority: 23
+    enabled: true
+    severity: "high"
+    category: "velocity"
+    condition:
+      type: "cumulative_amount"
+      field: "account_id"
+      max_amount: 100000.00
+      time_window_seconds: 86400  # 24 hours
+    action: "flag"
+    tags: ["velocity", "cumulative"]
+
+  # --- Geo-Restriction Rules ---
+
+  # Rule 11: High-risk country
+  - id: "RULE-GEO-001"
+    name: "High-Risk Country"
+    description: "Flag transactions from high-risk countries"
+    version: "1.0.0"
+    priority: 30
+    enabled: true
+    severity: "high"
+    category: "geo_restriction"
+    condition:
+      field: "geo_country"
+      operator: "in"
+      value: ["NG", "RU", "UA", "VN", "PH", "ID", "BR", "MX", "KP", "IR"]
+    action: "flag"
+    tags: ["geo", "high_risk"]
+
+  # Rule 12: Blocked countries (sanctions)
+  - id: "RULE-GEO-002"
+    name: "Sanctioned Country Block"
+    description: "Block transactions from OFAC-sanctioned countries"
+    version: "1.0.0"
+    priority: 5
+    enabled: true
+    severity: "critical"
+    category: "geo_restriction"
+    condition:
+      field: "geo_country"
+      operator: "in"
+      value: ["KP", "IR", "SY", "CU", "SD"]
+    action: "block"
+    tags: ["geo", "sanctions", "ofac"]
+
+  # Rule 13: International transaction flag
+  - id: "RULE-GEO-003"
+    name: "International High Amount"
+    description: "Flag international transactions over threshold"
+    version: "1.0.0"
+    priority: 31
+    enabled: true
+    severity: "medium"
+    category: "geo_restriction"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "is_international"
+          operator: "equals"
+          value: true
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 5000.00
+    action: "flag"
+    tags: ["geo", "international"]
+
+  # Rule 14: Impossible travel detection
+  - id: "RULE-GEO-004"
+    name: "Impossible Travel"
+    description: "Flag when geo-location changes faster than physically possible"
+    version: "1.0.0"
+    priority: 25
+    enabled: true
+    severity: "critical"
+    category: "geo_restriction"
+    condition:
+      type: "geo_velocity"
+      max_speed_kmh: 900  # Slightly above max commercial aircraft speed
+      time_window_seconds: 3600
+    action: "flag"
+    tags: ["geo", "impossible_travel"]
+
+  # --- Merchant Category Restrictions ---
+
+  # Rule 15: High-risk merchant categories
+  - id: "RULE-MCC-001"
+    name: "High-Risk MCC"
+    description: "Flag transactions at high-risk merchant category codes"
+    version: "1.0.0"
+    priority: 35
+    enabled: true
+    severity: "medium"
+    category: "merchant_restriction"
+    condition:
+      field: "merchant_category_code"
+      operator: "in"
+      value: ["7995", "7801", "7802", "5933", "5912", "6051", "6211"]
+      # 7995=Gambling, 7801/7802=Casino, 5933=Pawn, 5912=Drug Store, 6051=Crypto, 6211=Securities
+    action: "flag"
+    tags: ["merchant", "high_risk_mcc"]
+
+  # Rule 16: Blocked merchant categories
+  - id: "RULE-MCC-002"
+    name: "Blocked MCC"
+    description: "Block transactions at prohibited merchant categories"
+    version: "1.0.0"
+    priority: 6
+    enabled: true
+    severity: "critical"
+    category: "merchant_restriction"
+    condition:
+      field: "merchant_category_code"
+      operator: "in"
+      value: ["5966", "5967"]
+      # 5966=Direct marketing outbound telemarketing, 5967=Inbound teleservices
+    action: "block"
+    tags: ["merchant", "blocked_mcc"]
+
+  # Rule 17: Unknown merchant with high amount
+  - id: "RULE-MCC-003"
+    name: "Unknown Merchant High Amount"
+    description: "Flag high-value transactions with unknown/missing merchant info"
+    version: "1.0.0"
+    priority: 36
+    enabled: true
+    severity: "medium"
+    category: "merchant_restriction"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "merchant_name"
+          operator: "is_null"
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 1000.00
+    action: "flag"
+    tags: ["merchant", "unknown"]
+
+  # --- Account Status Rules ---
+
+  # Rule 18: New account high transaction
+  - id: "RULE-ACC-001"
+    name: "New Account High Transaction"
+    description: "Flag high-value transactions from newly created accounts"
+    version: "1.0.0"
+    priority: 40
+    enabled: true
+    severity: "high"
+    category: "account_status"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "account_age_days"
+          operator: "less_than"
+          value: 30
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 2000.00
+    action: "flag"
+    tags: ["account", "new_account"]
+
+  # Rule 19: Dormant account activity
+  - id: "RULE-ACC-002"
+    name: "Dormant Account Activity"
+    description: "Flag transactions on accounts dormant for 90+ days"
+    version: "1.0.0"
+    priority: 41
+    enabled: true
+    severity: "high"
+    category: "account_status"
+    condition:
+      field: "days_since_last_transaction"
+      operator: "greater_than"
+      value: 90
+    action: "flag"
+    tags: ["account", "dormant"]
+
+  # Rule 20: Suspended account transaction attempt
+  - id: "RULE-ACC-003"
+    name: "Suspended Account Transaction"
+    description: "Block transactions on suspended accounts"
+    version: "1.0.0"
+    priority: 1
+    enabled: true
+    severity: "critical"
+    category: "account_status"
+    condition:
+      field: "account_status"
+      operator: "equals"
+      value: "suspended"
+    action: "block"
+    tags: ["account", "suspended"]
+
+  # --- Channel & Device Rules ---
+
+  # Rule 21: Online transaction without device info
+  - id: "RULE-CHN-001"
+    name: "Missing Device Info Online"
+    description: "Flag online transactions without device identification"
+    version: "1.0.0"
+    priority: 45
+    enabled: true
+    severity: "low"
+    category: "channel"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "channel"
+          operator: "equals"
+          value: "online"
+        - field: "device_id"
+          operator: "is_null"
+    action: "flag"
+    tags: ["channel", "device"]
+
+  # Rule 22: Multiple cards same device
+  - id: "RULE-CHN-002"
+    name: "Multiple Cards Same Device"
+    description: "Flag when multiple card numbers are used from the same device"
+    version: "1.0.0"
+    priority: 24
+    enabled: true
+    severity: "high"
+    category: "channel"
+    condition:
+      type: "cardinality"
+      group_by: "device_id"
+      count_field: "card_last_four"
+      max_distinct: 3
+      time_window_seconds: 3600
+    action: "flag"
+    tags: ["channel", "multi_card"]
+
+  # --- Time-Based Rules ---
+
+  # Rule 23: Off-hours large transaction
+  - id: "RULE-TIME-001"
+    name: "Off-Hours Large Transaction"
+    description: "Flag large transactions outside business hours"
+    version: "1.0.0"
+    priority: 46
+    enabled: true
+    severity: "medium"
+    category: "time_based"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 10000.00
+        - type: "time_window"
+          outside_hours:
+            start: "09:00"
+            end: "17:00"
+          timezone: "America/New_York"
+    action: "flag"
+    schedule:
+      active_days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    tags: ["time", "off_hours"]
+
+  # Rule 24: Weekend high-risk
+  - id: "RULE-TIME-002"
+    name: "Weekend High-Risk Activity"
+    description: "Apply stricter limits on weekends"
+    version: "1.0.0"
+    priority: 47
+    enabled: true
+    severity: "medium"
+    category: "time_based"
+    condition:
+      operator: "and"
+      conditions:
+        - type: "time_window"
+          active_days: ["saturday", "sunday"]
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 15000.00
+    action: "flag"
+    schedule:
+      active_days: ["saturday", "sunday"]
+    tags: ["time", "weekend"]
+
+  # --- Currency Rules ---
+
+  # Rule 25: Cross-currency high amount
+  - id: "RULE-CUR-001"
+    name: "Cross-Currency High Amount"
+    description: "Flag cross-currency transactions above threshold"
+    version: "1.0.0"
+    priority: 48
+    enabled: true
+    severity: "medium"
+    category: "currency"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "transaction_currency"
+          operator: "not_equals"
+          value: "USD"
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 10000.00
+    action: "flag"
+    tags: ["currency", "cross_currency"]
+
+  # --- Composite / Advanced Rules ---
+
+  # Rule 26: Structuring detection (smurfing)
+  - id: "RULE-ADV-001"
+    name: "Structuring Detection"
+    description: "Detect potential structuring (amounts just below reporting threshold)"
+    version: "1.0.0"
+    priority: 15
+    enabled: true
+    severity: "critical"
+    category: "advanced"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 9000.00
+        - field: "transaction_amount"
+          operator: "less_than"
+          value: 10000.00
+    action: "flag"
+    tags: ["advanced", "structuring", "bsa"]
+
+  # Rule 27: Refund abuse
+  - id: "RULE-ADV-002"
+    name: "Refund Exceeds Purchase"
+    description: "Flag refunds that exceed typical purchase patterns"
+    version: "1.0.0"
+    priority: 37
+    enabled: true
+    severity: "medium"
+    category: "advanced"
+    condition:
+      operator: "and"
+      conditions:
+        - field: "transaction_type"
+          operator: "equals"
+          value: "refund"
+        - field: "transaction_amount"
+          operator: "greater_than"
+          value: 5000.00
+    action: "flag"
+    tags: ["advanced", "refund_abuse"]
