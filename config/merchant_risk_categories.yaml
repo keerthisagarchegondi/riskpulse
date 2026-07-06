@@ -1,0 +1,278 @@
+# =============================================================================
+# Merchant Risk Categories by MCC (Merchant Category Code)
+# =============================================================================
+# Risk scores: 0.0 (no risk) to 1.0 (highest risk)
+# Based on industry fraud statistics and chargeback rates.
+# MCC codes follow ISO 18245 standard.
+
+mcc_categories:
+  # --- High Risk MCCs (0.7 - 1.0) ---
+  # Gambling & Gaming
+  "7995":
+    category_name: "Gambling - Betting/Casino"
+    risk_score: 0.9
+    risk_level: "high"
+    description: "Betting, casino chips, off-track betting"
+  "7994":
+    category_name: "Video Game Arcades"
+    risk_score: 0.5
+    risk_level: "medium"
+    description: "Video game arcades/establishments"
+  "7993":
+    category_name: "Video Game Supplies"
+    risk_score: 0.3
+    risk_level: "low"
+    description: "Video game machine supplies"
+
+  # Wire Transfers & Money Orders
+  "4829":
+    category_name: "Wire Transfer/Money Orders"
+    risk_score: 0.85
+    risk_level: "high"
+    description: "Wire transfer, money orders"
+  "6051":
+    category_name: "Non-Financial Institutions - Foreign Currency/Money Orders"
+    risk_score: 0.85
+    risk_level: "high"
+    description: "Quasi-cash, money orders, foreign currency"
+  "6012":
+    category_name: "Financial Institutions - Merchandise/Services"
+    risk_score: 0.7
+    risk_level: "high"
+    description: "Financial institution merchandise and services"
+
+  # Cryptocurrency & Digital Assets
+  "6211":
+    category_name: "Securities - Brokers/Dealers"
+    risk_score: 0.7
+    risk_level: "high"
+    description: "Security brokers, cryptocurrency exchanges"
+
+  # Adult Entertainment
+  "5967":
+    category_name: "Direct Marketing - Inbound Teleservices"
+    risk_score: 0.75
+    risk_level: "high"
+    description: "Inbound telemarketing merchants"
+  "7273":
+    category_name: "Dating/Escort Services"
+    risk_score: 0.8
+    risk_level: "high"
+    description: "Dating and escort services"
+
+  # Telemarketing
+  "5966":
+    category_name: "Direct Marketing - Outbound Telemarketing"
+    risk_score: 0.75
+    risk_level: "high"
+    description: "Outbound telemarketing"
+
+  # --- Medium-High Risk MCCs (0.5 - 0.69) ---
+  # Travel & Hospitality (high chargeback)
+  "4511":
+    category_name: "Airlines"
+    risk_score: 0.5
+    risk_level: "medium"
+    description: "Airlines, air carriers"
+  "3000":
+    category_name: "Airlines (specific)"
+    risk_score: 0.5
+    risk_level: "medium"
+    description: "United Airlines"
+  "7011":
+    category_name: "Lodging - Hotels/Motels"
+    risk_score: 0.4
+    risk_level: "medium"
+    description: "Hotels, motels, resorts"
+  "7512":
+    category_name: "Car Rental"
+    risk_score: 0.4
+    risk_level: "medium"
+    description: "Automobile rental"
+
+  # Electronics & High-Value Goods (resale fraud)
+  "5732":
+    category_name: "Electronics Stores"
+    risk_score: 0.55
+    risk_level: "medium_high"
+    description: "Electronics stores"
+  "5944":
+    category_name: "Jewelry Stores"
+    risk_score: 0.6
+    risk_level: "medium_high"
+    description: "Jewelry, watches, clocks"
+  "5094":
+    category_name: "Precious Stones/Metals"
+    risk_score: 0.65
+    risk_level: "medium_high"
+    description: "Precious stones and metals"
+
+  # Digital Goods (CNP fraud)
+  "5815":
+    category_name: "Digital Goods - Media"
+    risk_score: 0.5
+    risk_level: "medium"
+    description: "Digital media, books, movies, music"
+  "5816":
+    category_name: "Digital Goods - Games"
+    risk_score: 0.55
+    risk_level: "medium_high"
+    description: "Digital goods, game accounts"
+  "5818":
+    category_name: "Digital Goods - Large Merchant"
+    risk_score: 0.45
+    risk_level: "medium"
+    description: "Large digital goods merchant"
+
+  # Subscription Services
+  "5968":
+    category_name: "Subscription Services"
+    risk_score: 0.5
+    risk_level: "medium"
+    description: "Continuity/subscription merchants"
+
+  # --- Medium Risk MCCs (0.3 - 0.49) ---
+  # Fuel
+  "5541":
+    category_name: "Service Stations"
+    risk_score: 0.4
+    risk_level: "medium"
+    description: "Service stations, gas stations"
+  "5542":
+    category_name: "Automated Fuel Dispensers"
+    risk_score: 0.45
+    risk_level: "medium"
+    description: "Automated fuel dispensers"
+
+  # Restaurants & Food
+  "5812":
+    category_name: "Eating Places/Restaurants"
+    risk_score: 0.2
+    risk_level: "low"
+    description: "Restaurants, eating places"
+  "5814":
+    category_name: "Fast Food"
+    risk_score: 0.15
+    risk_level: "low"
+    description: "Fast food restaurants"
+  "5811":
+    category_name: "Caterers"
+    risk_score: 0.25
+    risk_level: "low"
+    description: "Caterers"
+
+  # --- Low Risk MCCs (0.0 - 0.29) ---
+  # Grocery
+  "5411":
+    category_name: "Grocery Stores/Supermarkets"
+    risk_score: 0.1
+    risk_level: "low"
+    description: "Grocery stores, supermarkets"
+  "5422":
+    category_name: "Meat Provisioners/Freezer"
+    risk_score: 0.1
+    risk_level: "low"
+    description: "Freezer and locker meat provisioners"
+
+  # Utilities
+  "4900":
+    category_name: "Utilities"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Electric, gas, water, sanitary"
+  "4814":
+    category_name: "Telecom Services"
+    risk_score: 0.15
+    risk_level: "low"
+    description: "Telecommunication services"
+
+  # Healthcare
+  "8011":
+    category_name: "Doctors"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Doctors, physicians"
+  "8021":
+    category_name: "Dentists"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Dentists, orthodontists"
+  "8062":
+    category_name: "Hospitals"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Hospitals"
+  "5912":
+    category_name: "Pharmacies"
+    risk_score: 0.1
+    risk_level: "low"
+    description: "Drug stores and pharmacies"
+
+  # Education
+  "8220":
+    category_name: "Colleges/Universities"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Colleges, universities"
+  "8211":
+    category_name: "Schools"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Elementary and secondary schools"
+
+  # Government
+  "9211":
+    category_name: "Court Costs"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Court costs, fines"
+  "9222":
+    category_name: "Government Fines"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Fines"
+  "9311":
+    category_name: "Tax Payments"
+    risk_score: 0.05
+    risk_level: "low"
+    description: "Tax payments"
+
+  # General Retail
+  "5311":
+    category_name: "Department Stores"
+    risk_score: 0.15
+    risk_level: "low"
+    description: "Department stores"
+  "5331":
+    category_name: "Variety Stores"
+    risk_score: 0.15
+    risk_level: "low"
+    description: "Variety stores"
+  "5651":
+    category_name: "Clothing Stores"
+    risk_score: 0.2
+    risk_level: "low"
+    description: "Family clothing stores"
+
+  # --- Prefix-based MCC Ranges ---
+  # xx-prefix catches MCCs not individually listed
+  "59xx":
+    category_name: "Retail Stores"
+    risk_score: 0.2
+    risk_level: "low"
+    description: "Miscellaneous retail"
+  "58xx":
+    category_name: "Restaurants/Bars"
+    risk_score: 0.2
+    risk_level: "low"
+    description: "Eating/drinking places"
+  "80xx":
+    category_name: "Professional Services"
+    risk_score: 0.1
+    risk_level: "low"
+    description: "Professional services"
+  "74xx":
+    category_name: "Service Providers"
+    risk_score: 0.25
+    risk_level: "low"
+    description: "Miscellaneous services"

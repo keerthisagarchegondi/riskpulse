@@ -1,0 +1,218 @@
+# =============================================================================
+# Geo Risk Countries Configuration
+# =============================================================================
+# Risk scores: 0.0 (no risk) to 1.0 (highest risk)
+# Based on FATF high-risk and monitored jurisdictions, fraud statistics,
+# and sanctions lists. Updated quarterly.
+
+countries:
+  # --- Critical Risk (0.9 - 1.0) ---
+  KP:
+    country_name: "North Korea"
+    risk_score: 1.0
+    risk_level: "critical"
+    reason: "FATF blacklist, sanctioned"
+  IR:
+    country_name: "Iran"
+    risk_score: 0.95
+    risk_level: "critical"
+    reason: "FATF blacklist, sanctioned"
+  MM:
+    country_name: "Myanmar"
+    risk_score: 0.9
+    risk_level: "critical"
+    reason: "FATF blacklist"
+
+  # --- High Risk (0.7 - 0.89) ---
+  AF:
+    country_name: "Afghanistan"
+    risk_score: 0.85
+    risk_level: "high"
+    reason: "FATF grey list, conflict zone"
+  SY:
+    country_name: "Syria"
+    risk_score: 0.85
+    risk_level: "high"
+    reason: "Sanctioned, conflict zone"
+  YE:
+    country_name: "Yemen"
+    risk_score: 0.8
+    risk_level: "high"
+    reason: "Conflict zone, weak AML"
+  SO:
+    country_name: "Somalia"
+    risk_score: 0.8
+    risk_level: "high"
+    reason: "Weak governance, terrorism financing"
+  SD:
+    country_name: "Sudan"
+    risk_score: 0.8
+    risk_level: "high"
+    reason: "Weak AML framework"
+  LY:
+    country_name: "Libya"
+    risk_score: 0.75
+    risk_level: "high"
+    reason: "Conflict zone, weak AML"
+  IQ:
+    country_name: "Iraq"
+    risk_score: 0.75
+    risk_level: "high"
+    reason: "Conflict zone, terrorism financing"
+  SS:
+    country_name: "South Sudan"
+    risk_score: 0.75
+    risk_level: "high"
+    reason: "Conflict zone"
+  VE:
+    country_name: "Venezuela"
+    risk_score: 0.7
+    risk_level: "high"
+    reason: "Sanctioned officials, weak AML"
+  CU:
+    country_name: "Cuba"
+    risk_score: 0.7
+    risk_level: "high"
+    reason: "Sanctioned"
+
+  # --- Medium-High Risk (0.5 - 0.69) ---
+  NG:
+    country_name: "Nigeria"
+    risk_score: 0.65
+    risk_level: "medium_high"
+    reason: "High fraud rate, FATF grey list"
+  PK:
+    country_name: "Pakistan"
+    risk_score: 0.6
+    risk_level: "medium_high"
+    reason: "FATF grey list monitoring"
+  RU:
+    country_name: "Russia"
+    risk_score: 0.65
+    risk_level: "medium_high"
+    reason: "Sanctioned, cybercrime origin"
+  BY:
+    country_name: "Belarus"
+    risk_score: 0.6
+    risk_level: "medium_high"
+    reason: "Sanctioned"
+  UA:
+    country_name: "Ukraine"
+    risk_score: 0.5
+    risk_level: "medium_high"
+    reason: "Conflict zone, elevated fraud"
+  CM:
+    country_name: "Cameroon"
+    risk_score: 0.55
+    risk_level: "medium_high"
+    reason: "Weak AML framework"
+  GH:
+    country_name: "Ghana"
+    risk_score: 0.55
+    risk_level: "medium_high"
+    reason: "Elevated fraud rate"
+  KE:
+    country_name: "Kenya"
+    risk_score: 0.5
+    risk_level: "medium_high"
+    reason: "Elevated fraud, terrorism financing"
+  PH:
+    country_name: "Philippines"
+    risk_score: 0.5
+    risk_level: "medium_high"
+    reason: "FATF monitoring"
+  VN:
+    country_name: "Vietnam"
+    risk_score: 0.5
+    risk_level: "medium_high"
+    reason: "Elevated cybercrime"
+
+  # --- Medium Risk (0.3 - 0.49) ---
+  CN:
+    country_name: "China"
+    risk_score: 0.4
+    risk_level: "medium"
+    reason: "Complex regulatory, elevated fraud"
+  IN:
+    country_name: "India"
+    risk_score: 0.35
+    risk_level: "medium"
+    reason: "Elevated card fraud"
+  BR:
+    country_name: "Brazil"
+    risk_score: 0.4
+    risk_level: "medium"
+    reason: "Elevated fraud rate"
+  MX:
+    country_name: "Mexico"
+    risk_score: 0.4
+    risk_level: "medium"
+    reason: "Money laundering risk"
+  CO:
+    country_name: "Colombia"
+    risk_score: 0.4
+    risk_level: "medium"
+    reason: "Narcotics-related laundering"
+  ZA:
+    country_name: "South Africa"
+    risk_score: 0.35
+    risk_level: "medium"
+    reason: "FATF grey list"
+  TR:
+    country_name: "Turkey"
+    risk_score: 0.35
+    risk_level: "medium"
+    reason: "FATF monitoring"
+  ID:
+    country_name: "Indonesia"
+    risk_score: 0.3
+    risk_level: "medium"
+    reason: "Moderate fraud rate"
+
+  # --- Low Risk (0.0 - 0.29) ---
+  # Countries not listed default to 0.1 (low risk)
+  US:
+    country_name: "United States"
+    risk_score: 0.1
+    risk_level: "low"
+    reason: "Strong AML framework"
+  GB:
+    country_name: "United Kingdom"
+    risk_score: 0.1
+    risk_level: "low"
+    reason: "Strong AML framework"
+  CA:
+    country_name: "Canada"
+    risk_score: 0.1
+    risk_level: "low"
+    reason: "Strong AML framework"
+  AU:
+    country_name: "Australia"
+    risk_score: 0.1
+    risk_level: "low"
+    reason: "Strong AML framework"
+  DE:
+    country_name: "Germany"
+    risk_score: 0.1
+    risk_level: "low"
+    reason: "Strong AML framework"
+  FR:
+    country_name: "France"
+    risk_score: 0.1
+    risk_level: "low"
+    reason: "Strong AML framework"
+  JP:
+    country_name: "Japan"
+    risk_score: 0.1
+    risk_level: "low"
+    reason: "Strong AML framework"
+  SG:
+    country_name: "Singapore"
+    risk_score: 0.05
+    risk_level: "low"
+    reason: "Strong financial hub"
+  CH:
+    country_name: "Switzerland"
+    risk_score: 0.1
+    risk_level: "low"
+    reason: "Strong AML, banking hub"
