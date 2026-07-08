@@ -1,5 +1,23 @@
 """Storage module - PostgreSQL, Snowflake, S3, and Redis handlers."""
 
+from src.storage.models import (
+    AuditLog,
+    Base,
+    CustomerProfile,
+    FraudAlert,
+    RiskScore,
+    Transaction,
+)
+from src.storage.postgres_handler import (
+    BulkOperationError,
+    ConnectionError,
+    PostgresHandler,
+    PostgresHandlerError,
+    PoolStats,
+    QueryError,
+    QueryMetrics,
+    create_postgres_handler,
+)
 from src.storage.s3_handler import (
     S3Handler,
     S3HandlerError,
@@ -16,6 +34,23 @@ from src.storage.s3_handler import (
 )
 
 __all__ = [
+    # PostgreSQL
+    "PostgresHandler",
+    "PostgresHandlerError",
+    "ConnectionError",
+    "QueryError",
+    "BulkOperationError",
+    "PoolStats",
+    "QueryMetrics",
+    "create_postgres_handler",
+    # ORM Models
+    "Base",
+    "Transaction",
+    "FraudAlert",
+    "RiskScore",
+    "CustomerProfile",
+    "AuditLog",
+    # S3
     "S3Handler",
     "S3HandlerError",
     "S3UploadError",
