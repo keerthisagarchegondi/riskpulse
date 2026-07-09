@@ -76,6 +76,165 @@ END;
 $$;
 
 -- =============================================================================
+-- Procedure: Load Fraud Alerts from RAW to STAGING
+-- =============================================================================
+
+CREATE OR REPLACE PROCEDURE STAGING.LOAD_FRAUD_ALERTS(BATCH_ID VARCHAR)
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+BEGIN
+    INSERT INTO STAGING.STG_FRAUD_ALERTS (
+        ALERT_ID,
+        TRANSACTION_ID,
+        ALERT_TYPE,
+        RULE_ID,
+        RISK_SCORE,
+        SEVERITY,
+        STATUS,
+        DESCRIPTION,
+        DETAILS,
+        ASSIGNED_TO,
+        RESOLVED_AT,
+        RESOLUTION_NOTES,
+        CREATED_AT,
+        BATCH_ID
+    )
+    SELECT
+        RAW_DATA:alert_id::VARCHAR,
+        RAW_DATA:transaction_id::VARCHAR,
+        RAW_DATA:alert_type::VARCHAR,
+        RAW_DATA:rule_id::VARCHAR,
+        RAW_DATA:risk_score::NUMBER(5, 4),
+        RAW_DATA:severity::VARCHAR,
+        COALESCE(RAW_DATA:status::VARCHAR, 'open'),
+        RAW_DATA:description::VARCHAR,
+        RAW_DATA:details::VARIANT,
+        RAW_DATA:assigned_to::VARCHAR,
+        RAW_DATA:resolved_at::TIMESTAMPTZ,
+        RAW_DATA:resolution_notes::VARCHAR,
+        RAW_DATA:created_at::TIMESTAMPTZ,
+        :BATCH_ID
+    FROM RAW.FRAUD_ALERTS
+    WHERE BATCH_ID = :BATCH_ID
+      AND RAW_DATA:alert_id IS NOT NULL
+      AND RAW_DATA:transaction_id IS NOT NULL;
+
+    LET rows_loaded := SQLROWCOUNT;
+
+    RETURN 'Successfully loaded ' || :rows_loaded || ' fraud alerts for batch ' || :BATCH_ID;
+END;
+$$;
+
+-- =============================================================================
+-- Procedure: Load Risk Scores from RAW to STAGING
+-- =============================================================================
+
+CREATE OR REPLACE PROCEDURE STAGING.LOAD_RISK_SCORES(BATCH_ID VARCHAR)
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+BEGIN
+    INSERT INTO STAGING.STG_RISK_SCORES (
+        SCORE_ID,
+        TRANSACTION_ID,
+        MODEL_VERSION,
+        OVERALL_SCORE,
+        RULE_SCORE,
+        ANOMALY_SCORE,
+        ML_SCORE,
+        FEATURE_CONTRIBUTIONS,
+        SCORING_TIMESTAMP,
+        LATENCY_MS,
+        BATCH_ID
+    )
+    SELECT
+        RAW_DATA:score_id::VARCHAR,
+        RAW_DATA:transaction_id::VARCHAR,
+        RAW_DATA:model_version::VARCHAR,
+        RAW_DATA:overall_score::NUMBER(5, 4),
+        RAW_DATA:rule_score::NUMBER(5, 4),
+        RAW_DATA:anomaly_score::NUMBER(5, 4),
+        RAW_DATA:ml_score::NUMBER(5, 4),
+        RAW_DATA:feature_contributions::VARIANT,
+        RAW_DATA:scoring_timestamp::TIMESTAMPTZ,
+        RAW_DATA:latency_ms::NUMBER,
+        :BATCH_ID
+    FROM RAW.RISK_SCORES
+    WHERE BATCH_ID = :BATCH_ID
+      AND RAW_DATA:score_id IS NOT NULL
+      AND RAW_DATA:transaction_id IS NOT NULL;
+
+    LET rows_loaded := SQLROWCOUNT;
+
+    RETURN 'Successfully loaded ' || :rows_loaded || ' risk scores for batch ' || :BATCH_ID;
+END;
+$$;
+
+-- =============================================================================
+-- Procedure: Load Customer Profiles from RAW to STAGING
+-- =============================================================================
+
+CREATE OR REPLACE PROCEDURE STAGING.LOAD_CUSTOMER_PROFILES(BATCH_ID VARCHAR)
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+BEGIN
+    MERGE INTO STAGING.STG_CUSTOMER_PROFILES tgt
+    USING (
+        SELECT
+            RAW_DATA:customer_id::VARCHAR AS CUSTOMER_ID,
+            RAW_DATA:total_transactions_24h::NUMBER AS TOTAL_TRANSACTIONS_24H,
+            RAW_DATA:total_amount_24h::NUMBER(15, 2) AS TOTAL_AMOUNT_24H,
+            RAW_DATA:total_transactions_7d::NUMBER AS TOTAL_TRANSACTIONS_7D,
+            RAW_DATA:total_amount_7d::NUMBER(15, 2) AS TOTAL_AMOUNT_7D,
+            RAW_DATA:avg_transaction_amount::NUMBER(15, 2) AS AVG_TRANSACTION_AMOUNT,
+            RAW_DATA:max_transaction_amount::NUMBER(15, 2) AS MAX_TRANSACTION_AMOUNT,
+            RAW_DATA:unique_merchants_7d::NUMBER AS UNIQUE_MERCHANTS_7D,
+            RAW_DATA:unique_countries_7d::NUMBER AS UNIQUE_COUNTRIES_7D,
+            RAW_DATA:last_transaction_timestamp::TIMESTAMPTZ AS LAST_TRANSACTION_TIMESTAMP,
+            RAW_DATA:risk_tier::VARCHAR AS RISK_TIER,
+            :BATCH_ID AS BATCH_ID
+        FROM RAW.TRANSACTIONS
+        WHERE BATCH_ID = :BATCH_ID
+          AND RAW_DATA:customer_id IS NOT NULL
+    ) src
+    ON tgt.CUSTOMER_ID = src.CUSTOMER_ID
+    WHEN MATCHED THEN UPDATE SET
+        tgt.TOTAL_TRANSACTIONS_24H = src.TOTAL_TRANSACTIONS_24H,
+        tgt.TOTAL_AMOUNT_24H = src.TOTAL_AMOUNT_24H,
+        tgt.TOTAL_TRANSACTIONS_7D = src.TOTAL_TRANSACTIONS_7D,
+        tgt.TOTAL_AMOUNT_7D = src.TOTAL_AMOUNT_7D,
+        tgt.AVG_TRANSACTION_AMOUNT = src.AVG_TRANSACTION_AMOUNT,
+        tgt.MAX_TRANSACTION_AMOUNT = src.MAX_TRANSACTION_AMOUNT,
+        tgt.UNIQUE_MERCHANTS_7D = src.UNIQUE_MERCHANTS_7D,
+        tgt.UNIQUE_COUNTRIES_7D = src.UNIQUE_COUNTRIES_7D,
+        tgt.LAST_TRANSACTION_TIMESTAMP = src.LAST_TRANSACTION_TIMESTAMP,
+        tgt.RISK_TIER = src.RISK_TIER,
+        tgt.BATCH_ID = src.BATCH_ID,
+        tgt.LOADED_AT = CURRENT_TIMESTAMP()
+    WHEN NOT MATCHED THEN INSERT (
+        CUSTOMER_ID, TOTAL_TRANSACTIONS_24H, TOTAL_AMOUNT_24H,
+        TOTAL_TRANSACTIONS_7D, TOTAL_AMOUNT_7D, AVG_TRANSACTION_AMOUNT,
+        MAX_TRANSACTION_AMOUNT, UNIQUE_MERCHANTS_7D, UNIQUE_COUNTRIES_7D,
+        LAST_TRANSACTION_TIMESTAMP, RISK_TIER, BATCH_ID
+    ) VALUES (
+        src.CUSTOMER_ID, src.TOTAL_TRANSACTIONS_24H, src.TOTAL_AMOUNT_24H,
+        src.TOTAL_TRANSACTIONS_7D, src.TOTAL_AMOUNT_7D, src.AVG_TRANSACTION_AMOUNT,
+        src.MAX_TRANSACTION_AMOUNT, src.UNIQUE_MERCHANTS_7D, src.UNIQUE_COUNTRIES_7D,
+        src.LAST_TRANSACTION_TIMESTAMP, src.RISK_TIER, src.BATCH_ID
+    );
+
+    LET rows_loaded := SQLROWCOUNT;
+
+    RETURN 'Successfully loaded ' || :rows_loaded || ' customer profiles for batch ' || :BATCH_ID;
+END;
+$$;
+
+-- =============================================================================
 -- Procedure: Transform STAGING to ANALYTICS fact table
 -- =============================================================================
 

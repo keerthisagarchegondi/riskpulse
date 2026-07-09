@@ -32,6 +32,25 @@ from src.storage.s3_handler import (
     S3_BUCKET_MODELS,
     S3_BUCKET_ARCHIVE,
 )
+from src.storage.snowflake_handler import (
+    SnowflakeHandler,
+    SnowflakeHandlerError,
+    SnowflakeConnectionError,
+    SnowflakeQueryError,
+    SnowflakeLoadError,
+    SnowflakeSchemaError,
+    SnowflakeMetrics,
+    LoadMetrics,
+    LoadStrategy,
+    FileFormat,
+    QueryResult,
+    WatermarkState,
+    create_snowflake_handler,
+    SCHEMA_RAW,
+    SCHEMA_STAGING,
+    SCHEMA_ANALYTICS,
+    SCHEMA_REPORTING,
+)
 
 __all__ = [
     # PostgreSQL
@@ -63,4 +82,22 @@ __all__ = [
     "S3_BUCKET_PROCESSED",
     "S3_BUCKET_MODELS",
     "S3_BUCKET_ARCHIVE",
+    # Snowflake
+    "SnowflakeHandler",
+    "SnowflakeHandlerError",
+    "SnowflakeConnectionError",
+    "SnowflakeQueryError",
+    "SnowflakeLoadError",
+    "SnowflakeSchemaError",
+    "SnowflakeMetrics",
+    "LoadMetrics",
+    "LoadStrategy",
+    "FileFormat",
+    "QueryResult",
+    "WatermarkState",
+    "create_snowflake_handler",
+    "SCHEMA_RAW",
+    "SCHEMA_STAGING",
+    "SCHEMA_ANALYTICS",
+    "SCHEMA_REPORTING",
 ]
