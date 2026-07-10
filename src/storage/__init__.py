@@ -1,4 +1,4 @@
-"""Storage module - PostgreSQL, Snowflake, S3, and Redis handlers."""
+"""Storage module - PostgreSQL, Snowflake, S3, Redis, and unified orchestrator."""
 
 from src.storage.models import (
     AuditLog,
@@ -51,6 +51,24 @@ from src.storage.snowflake_handler import (
     SCHEMA_ANALYTICS,
     SCHEMA_REPORTING,
 )
+from src.storage.cache_handler import (
+    CacheHandler,
+    CacheHandlerError,
+    CacheConnectionError,
+    CacheOperationError,
+    CacheMetrics,
+    CacheStrategy,
+    create_cache_handler,
+)
+from src.storage.storage_orchestrator import (
+    StorageOrchestrator,
+    StorageBackend,
+    StorageState,
+    BackendHealth,
+    WriteResult,
+    OrchestratedWriteResult,
+    create_storage_orchestrator,
+)
 
 __all__ = [
     # PostgreSQL
@@ -100,4 +118,20 @@ __all__ = [
     "SCHEMA_STAGING",
     "SCHEMA_ANALYTICS",
     "SCHEMA_REPORTING",
+    # Redis Cache
+    "CacheHandler",
+    "CacheHandlerError",
+    "CacheConnectionError",
+    "CacheOperationError",
+    "CacheMetrics",
+    "CacheStrategy",
+    "create_cache_handler",
+    # Storage Orchestrator
+    "StorageOrchestrator",
+    "StorageBackend",
+    "StorageState",
+    "BackendHealth",
+    "WriteResult",
+    "OrchestratedWriteResult",
+    "create_storage_orchestrator",
 ]
