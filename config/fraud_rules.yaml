@@ -1,0 +1,271 @@
+# Fraud Detection Rules Configuration
+# Production rules evaluated by the RiskPulse Rule Engine.
+#
+# Rule schema:
+#   id         – unique identifier (FRAUD-<CATEGORY>-NNN)
+#   name       – human-readable label
+#   description – what the rule detects
+#   category   – amount | velocity | geo | pattern | temporal
+#   priority   – evaluation order (lower = evaluated first)
+#   enabled    – toggle without deletion
+#   severity   – low | medium | high | critical  (base severity)
+#   confidence – 0.0-1.0  base confidence when rule fires
+#   parameters – rule-specific thresholds (hot-reloadable)
+#   tags       – labels for filtering / reporting
+
+metadata:
+  schema_version: "1.0.0"
+  last_updated: "2026-07-13"
+  description: "Production fraud detection rules for real-time transaction scoring"
+
+# Severity escalation: when multiple rules fire, the combined severity
+# is promoted one tier for every 2 additional triggers above 1.
+# Example: 1 rule → base severity; 3 rules → +1 tier; 5 rules → +2 tiers.
+severity_escalation:
+  enabled: true
+  rules_per_tier: 2
+  max_severity: "critical"
+
+rules:
+
+  # ── Amount Rules ───────────────────────────────────────────────────
+
+  - id: "FRAUD-AMT-001"
+    name: "High Amount vs Customer Average"
+    description: "Transaction amount exceeds 3x the customer's historical average"
+    category: "amount"
+    priority: 10
+    enabled: true
+    severity: "high"
+    confidence: 0.75
+    parameters:
+      multiplier: 3.0
+      min_history_count: 5
+      fallback_average: 500.00
+    tags: ["amount", "behavioral"]
+
+  - id: "FRAUD-AMT-002"
+    name: "Amount Just Below Reporting Threshold"
+    description: "Transaction structured just below the $10,000 BSA/CTR threshold"
+    category: "amount"
+    priority: 5
+    enabled: true
+    severity: "critical"
+    confidence: 0.85
+    parameters:
+      threshold: 10000.00
+      lower_bound: 9000.00
+    tags: ["amount", "structuring", "bsa"]
+
+  - id: "FRAUD-AMT-003"
+    name: "Round Amount Transaction"
+    description: "Large round-dollar amount suggesting potential structuring"
+    category: "amount"
+    priority: 50
+    enabled: true
+    severity: "medium"
+    confidence: 0.55
+    parameters:
+      min_amount: 5000.00
+      modulo: 1000
+    tags: ["amount", "structuring"]
+
+  # ── Velocity Rules ─────────────────────────────────────────────────
+
+  - id: "FRAUD-VEL-001"
+    name: "Rapid Successive Transactions"
+    description: "More than N transactions within a short time window"
+    category: "velocity"
+    priority: 15
+    enabled: true
+    severity: "high"
+    confidence: 0.80
+    parameters:
+      max_count: 5
+      window_minutes: 10
+    tags: ["velocity", "rapid"]
+
+  - id: "FRAUD-VEL-002"
+    name: "Multiple Declined Then Approved"
+    description: "Series of declined transactions followed by an approved one"
+    category: "velocity"
+    priority: 12
+    enabled: true
+    severity: "high"
+    confidence: 0.85
+    parameters:
+      min_declines: 3
+      window_minutes: 30
+    tags: ["velocity", "card_testing"]
+
+  - id: "FRAUD-VEL-003"
+    name: "Escalating Amount Pattern"
+    description: "Successive transactions with rapidly increasing amounts"
+    category: "velocity"
+    priority: 40
+    enabled: true
+    severity: "medium"
+    confidence: 0.60
+    parameters:
+      min_transactions: 3
+      escalation_factor: 2.0
+      window_minutes: 60
+    tags: ["velocity", "escalation"]
+
+  # ── Geo Rules ──────────────────────────────────────────────────────
+
+  - id: "FRAUD-GEO-001"
+    name: "Impossible Travel"
+    description: "Transaction from a different country within a timeframe that is physically impossible"
+    category: "geo"
+    priority: 8
+    enabled: true
+    severity: "critical"
+    confidence: 0.90
+    parameters:
+      max_speed_mph: 500
+      min_distance_miles: 100
+    tags: ["geo", "impossible_travel"]
+
+  - id: "FRAUD-GEO-002"
+    name: "International From Domestic-Only Account"
+    description: "International transaction on an account with no prior international activity"
+    category: "geo"
+    priority: 20
+    enabled: true
+    severity: "high"
+    confidence: 0.70
+    parameters:
+      min_domestic_transactions: 10
+    tags: ["geo", "international"]
+
+  - id: "FRAUD-GEO-003"
+    name: "High-Risk Country Transaction"
+    description: "Transaction originated from a known high-risk country"
+    category: "geo"
+    priority: 25
+    enabled: true
+    severity: "high"
+    confidence: 0.65
+    parameters:
+      high_risk_countries:
+        - "NG"
+        - "RU"
+        - "UA"
+        - "VN"
+        - "PH"
+        - "ID"
+        - "BR"
+        - "KP"
+        - "IR"
+        - "SY"
+    tags: ["geo", "high_risk_country"]
+
+  # ── Pattern Rules ──────────────────────────────────────────────────
+
+  - id: "FRAUD-PAT-001"
+    name: "New Device High Amount"
+    description: "High-value transaction from a device not previously seen for this customer"
+    category: "pattern"
+    priority: 18
+    enabled: true
+    severity: "high"
+    confidence: 0.75
+    parameters:
+      amount_threshold: 1000.00
+      device_age_days: 1
+    tags: ["pattern", "new_device"]
+
+  - id: "FRAUD-PAT-002"
+    name: "Merchant Category Mismatch"
+    description: "Transaction in a merchant category unusual for the customer's history"
+    category: "pattern"
+    priority: 35
+    enabled: true
+    severity: "medium"
+    confidence: 0.55
+    parameters:
+      min_history_count: 10
+      max_category_pct: 0.05
+    tags: ["pattern", "merchant_mismatch"]
+
+  - id: "FRAUD-PAT-003"
+    name: "Card Testing Pattern"
+    description: "Multiple small transactions followed by a large one (card testing)"
+    category: "pattern"
+    priority: 11
+    enabled: true
+    severity: "critical"
+    confidence: 0.90
+    parameters:
+      small_amount_threshold: 5.00
+      min_small_count: 3
+      large_amount_threshold: 500.00
+      window_minutes: 30
+    tags: ["pattern", "card_testing"]
+
+  - id: "FRAUD-PAT-004"
+    name: "Multi-Account Device"
+    description: "Single device used across multiple accounts"
+    category: "pattern"
+    priority: 22
+    enabled: true
+    severity: "high"
+    confidence: 0.80
+    parameters:
+      max_accounts: 2
+    tags: ["pattern", "multi_account"]
+
+  - id: "FRAUD-PAT-005"
+    name: "Channel Anomaly"
+    description: "Transaction via a channel never used by this customer before"
+    category: "pattern"
+    priority: 45
+    enabled: true
+    severity: "low"
+    confidence: 0.45
+    parameters:
+      min_history_count: 10
+    tags: ["pattern", "channel_anomaly"]
+
+  # ── Temporal Rules ─────────────────────────────────────────────────
+
+  - id: "FRAUD-TMP-001"
+    name: "Late Night High Value"
+    description: "High-value transaction during late-night hours (00:00-05:00 local)"
+    category: "temporal"
+    priority: 30
+    enabled: true
+    severity: "medium"
+    confidence: 0.60
+    parameters:
+      start_hour: 0
+      end_hour: 5
+      amount_threshold: 2000.00
+    tags: ["temporal", "late_night"]
+
+  - id: "FRAUD-TMP-002"
+    name: "Dormant Account Reactivation"
+    description: "Transaction on an account with no activity for 90+ days"
+    category: "temporal"
+    priority: 28
+    enabled: true
+    severity: "high"
+    confidence: 0.70
+    parameters:
+      dormant_days: 90
+    tags: ["temporal", "dormant"]
+
+  - id: "FRAUD-TMP-003"
+    name: "Burst After Silence"
+    description: "Sudden burst of activity after extended silence"
+    category: "temporal"
+    priority: 32
+    enabled: true
+    severity: "medium"
+    confidence: 0.65
+    parameters:
+      silence_hours: 48
+      burst_count: 5
+      burst_window_minutes: 30
+    tags: ["temporal", "burst"]
