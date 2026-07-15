@@ -1,0 +1,137 @@
+# Risk Scorer Model Configuration
+# Gradient Boosted Tree (XGBoost/LightGBM) for fraud risk scoring
+
+model:
+  algorithm: "xgboost"
+  version: "1.0.0"
+  description: "Gradient boosted tree fraud risk scoring model"
+
+hyperparameters:
+  n_estimators: 500
+  max_depth: 6
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 5
+  gamma: 0.1
+  reg_alpha: 0.1
+  reg_lambda: 1.0
+  random_state: 42
+  n_jobs: -1
+  tree_method: "hist"
+  objective: "binary:logistic"
+  eval_metric: "auc"
+
+class_imbalance:
+  strategy: "balanced"  # balanced, smote, none
+  scale_pos_weight: null  # auto-computed if null
+
+calibration:
+  method: "isotonic"  # isotonic or sigmoid (Platt scaling)
+  cv: "prefit"
+
+scoring:
+  thresholds:
+    low: 0.3
+    medium: 0.5
+    high: 0.8
+    critical: 0.95
+  ensemble_weight: 0.4  # weight in unified scoring pipeline
+
+shap:
+  enabled: true
+  max_features: 10
+  background_samples: 100
+
+features:
+  # Transaction features
+  - transaction_amount
+  - amount_zscore
+  - amount_to_avg_ratio
+  - amount_percentile
+  - amount_log
+  # Temporal features
+  - hour_of_day
+  - day_of_week
+  - is_weekend
+  - is_holiday
+  - time_since_last_transaction
+  - minutes_since_midnight
+  # Velocity features (1h)
+  - txn_count_1h
+  - txn_amount_sum_1h
+  - txn_amount_avg_1h
+  - txn_amount_max_1h
+  # Velocity features (24h)
+  - txn_count_24h
+  - txn_amount_sum_24h
+  - txn_amount_avg_24h
+  - txn_amount_max_24h
+  - txn_amount_std_24h
+  # Velocity features (7d)
+  - txn_count_7d
+  - txn_amount_sum_7d
+  - txn_amount_avg_7d
+  # Merchant features
+  - unique_merchants_24h
+  - unique_merchants_7d
+  - new_merchant_flag
+  - merchant_risk_score
+  - merchant_txn_count_30d
+  - merchant_fraud_rate
+  # Geographic features
+  - unique_countries_24h
+  - is_international
+  - country_risk_score
+  - distance_from_last_location_km
+  - impossible_travel_flag
+  # Device features
+  - known_device_flag
+  - device_age_days
+  - device_txn_count
+  - multiple_accounts_on_device
+  # Behavioral features
+  - unusual_hour_flag
+  - channel_switch_flag
+  - amount_deviation_from_mean
+  - amount_deviation_from_median
+  - txn_frequency_deviation
+  # Sequence features
+  - consecutive_declined_count
+  - rapid_succession_flag
+  - time_since_last_decline
+  - decline_rate_24h
+  # Account features
+  - account_age_days
+  - account_total_txn_count
+  - account_avg_amount
+  - account_std_amount
+  - account_max_amount
+  # Cross features
+  - amount_x_velocity
+  - amount_x_hour_risk
+  - international_x_new_merchant
+  - high_amount_x_unusual_hour
+
+training:
+  data:
+    n_samples: 50000
+    fraud_ratio: 0.02
+    train_ratio: 0.7
+    val_ratio: 0.15
+  hyperparameter_tuning:
+    enabled: true
+    n_trials: 100
+    timeout_seconds: 3600
+    use_cv: false
+
+performance:
+  latency_sla_ms: 20.0
+  min_auc_roc: 0.92
+  max_false_positive_rate: 0.05
+
+serving:
+  hot_reload: true
+  batch_size: 100
+  cache_predictions: true
+  cache_ttl_seconds: 60

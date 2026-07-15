@@ -1,0 +1,47 @@
+{
+  "test_metrics": {
+    "precision": 0.975609756097561,
+    "recall": 1.0,
+    "f1": 0.9876543209876543,
+    "auc_roc": 1.0,
+    "false_positive_rate": 0.0038461538461538464
+  },
+  "cv_metrics": {
+    "precision": {
+      "mean": 0.0,
+      "std": 0.0
+    },
+    "recall": {
+      "mean": 0.0,
+      "std": 0.0
+    },
+    "f1": {
+      "mean": 0.0,
+      "std": 0.0
+    },
+    "auc_roc": {
+      "mean": NaN,
+      "std": NaN
+    }
+  },
+  "best_params": {
+    "n_estimators": 200,
+    "max_samples": "auto",
+    "contamination": 0.02,
+    "max_features": 0.8
+  },
+  "latency": {
+    "avg_ms": 183.66045000000003,
+    "p99_ms": 641.3972500000006
+  },
+  "data": {
+    "total_samples": 2000,
+    "train_samples": 1400,
+    "val_samples": 300,
+    "test_samples": 300,
+    "fraud_ratio": 0.02
+  },
+  "model_version": "fca41764b155",
+  "random_state": 42,
+  "training_time_seconds": 24.4863862991333
+}
