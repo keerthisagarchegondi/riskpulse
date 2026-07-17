@@ -1,1 +1,1 @@
-"""Fraud detection module - Rule engine, anomaly detection, and risk scoring."""
+"""Fraud detection module - Rule engine, anomaly detection, risk scoring, and unified pipeline."""

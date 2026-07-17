@@ -1,0 +1,72 @@
+# Unified Fraud Scoring Pipeline Configuration
+# Controls ensemble weights, thresholds, and scoring behavior.
+
+scoring:
+  # Ensemble weights (must sum to 1.0)
+  weights:
+    rule_score: 0.3
+    anomaly_score: 0.3
+    ml_score: 0.4
+
+  # Risk classification thresholds
+  thresholds:
+    low: 0.0        # score >= 0.0 and < medium
+    medium: 0.3     # score >= 0.3 and < high
+    high: 0.6       # score >= 0.6 and < critical
+    critical: 0.85  # score >= 0.85
+
+  # Score caching configuration
+  cache:
+    enabled: true
+    ttl_seconds: 300        # Cache TTL for scored transactions
+    max_entries: 100000     # Maximum cache entries before eviction
+
+  # Scoring pipeline behavior
+  pipeline:
+    parallel_execution: true
+    timeout_ms: 100           # Maximum allowed latency per scoring request
+    fallback_on_timeout: true # Use partial scores if a method times out
+    min_methods_required: 2   # Minimum scoring methods that must succeed
+
+  # Individual method configuration
+  methods:
+    rule_engine:
+      enabled: true
+      timeout_ms: 30
+      # Score normalization: maps rule severity to score contribution
+      severity_weights:
+        low: 0.2
+        medium: 0.4
+        high: 0.7
+        critical: 1.0
+      # Multi-rule escalation factor (applied when N rules trigger)
+      escalation_factor: 0.1  # Added per additional rule beyond first
+
+    anomaly_detector:
+      enabled: true
+      timeout_ms: 30
+      # Normalization: Isolation Forest scores [-1, 1] mapped to [0, 1]
+      # -1 = most anomalous → 1.0, +1 = most normal → 0.0
+      score_inversion: true
+
+    ml_model:
+      enabled: true
+      timeout_ms: 40
+      # Calibration: model outputs are already calibrated probabilities
+      calibrated: true
+      # Confidence threshold: below this, reduce weight
+      min_confidence: 0.5
+      confidence_penalty: 0.5  # Multiply weight by this when below min_confidence
+
+  # Alert generation thresholds
+  alerts:
+    generate_alert_above: 0.6      # Generate alert when final score >= this
+    auto_block_above: 0.9          # Auto-block transaction when score >= this
+    require_review_above: 0.7      # Require manual review above this
+    suppress_below: 0.3            # Suppress alert generation below this
+
+  # Batch scoring configuration
+  batch:
+    max_batch_size: 1000
+    chunk_size: 100              # Process in chunks for memory efficiency
+    concurrent_workers: 4        # Parallel workers for batch processing
