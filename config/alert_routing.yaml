@@ -1,0 +1,115 @@
+# =============================================================================
+# RiskPulse - Alert Routing Configuration
+# =============================================================================
+# Defines how alerts are routed based on severity, type, and context.
+
+routing:
+  severity_channels:
+    low:
+      channels:
+        - email
+      delay_seconds: 300
+      batch_enabled: true
+      batch_window_minutes: 30
+    medium:
+      channels:
+        - email
+        - dashboard
+      delay_seconds: 60
+      batch_enabled: true
+      batch_window_minutes: 10
+    high:
+      channels:
+        - email
+        - dashboard
+        - sms
+      delay_seconds: 0
+      batch_enabled: false
+    critical:
+      channels:
+        - email
+        - dashboard
+        - sms
+        - webhook
+      delay_seconds: 0
+      batch_enabled: false
+      escalation_enabled: true
+      escalation_timeout_minutes: 15
+
+deduplication:
+  enabled: true
+  window_minutes: 60
+  key_fields:
+    - account_id
+    - rule_id
+    - alert_type
+  max_suppressed_per_window: 100
+
+suppression:
+  enabled: true
+  suppress_on_status:
+    - investigating
+    - resolved
+  suppress_window_hours: 24
+  cooldown_after_resolution_minutes: 120
+
+throttling:
+  enabled: true
+  max_alerts_per_account_per_hour: 5
+  max_alerts_per_rule_per_hour: 50
+  max_total_alerts_per_minute: 100
+  storm_detection:
+    enabled: true
+    threshold_per_minute: 200
+    cooldown_minutes: 5
+    notify_ops: true
+
+lifecycle:
+  default_status: open
+  transitions:
+    open:
+      - investigating
+      - resolved
+      - false_positive
+    investigating:
+      - resolved
+      - false_positive
+      - open
+    resolved: []
+    false_positive: []
+  auto_resolve:
+    enabled: true
+    after_hours: 168
+    status: resolved
+    resolution_notes: "Auto-resolved after 7 days without investigation"
+
+escalation:
+  rules:
+    - severity: critical
+      if_not_acknowledged_minutes: 15
+      escalate_to: "on-call-team"
+      channel: webhook
+    - severity: high
+      if_not_acknowledged_minutes: 60
+      escalate_to: "fraud-team-lead"
+      channel: email
+
+enrichment:
+  include_customer_history: true
+  include_recent_transactions: true
+  recent_transactions_count: 10
+  include_account_risk_profile: true
+  include_similar_alerts: true
+  similar_alerts_lookback_days: 30
+
+kafka:
+  topic: "fraud.alerts"
+  partition_key: "account_id"
+  headers:
+    source: "riskpulse-alerting"
+    version: "1.0.0"
+
+storage:
+  table: "fraud_alerts"
+  retention_days: 365
+  archive_after_days: 90
