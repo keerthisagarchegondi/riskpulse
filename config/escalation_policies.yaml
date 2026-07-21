@@ -1,0 +1,182 @@
+# =============================================================================
+# RiskPulse - Escalation Policies Configuration
+# =============================================================================
+# Defines escalation chains, timeouts, and on-call schedules.
+
+policies:
+  - policy_id: critical_fraud
+    name: Critical Fraud Escalation
+    description: Immediate escalation for critical fraud alerts
+    enabled: true
+    applies_to_severities:
+      - critical
+    levels:
+      - level: 1
+        timeout_minutes: 5
+        recipients:
+          - fraud-analysts-oncall
+        actions:
+          - notify
+          - page
+        notify_channels:
+          - email
+          - sms
+          - in_app
+        auto_assign: true
+      - level: 2
+        timeout_minutes: 15
+        recipients:
+          - fraud-team-lead
+        actions:
+          - notify
+          - reassign
+          - page
+        notify_channels:
+          - email
+          - sms
+          - webhook
+        auto_assign: true
+      - level: 3
+        timeout_minutes: 30
+        recipients:
+          - fraud-manager
+          - security-director
+        actions:
+          - page
+          - conference
+          - reassign
+        notify_channels:
+          - email
+          - sms
+          - webhook
+        auto_assign: true
+      - level: 4
+        timeout_minutes: 60
+        recipients:
+          - vp-risk
+          - cto
+        actions:
+          - page
+          - conference
+        notify_channels:
+          - email
+          - sms
+          - webhook
+        auto_assign: false
+
+  - policy_id: high_severity
+    name: High Severity Escalation
+    description: Standard escalation for high-severity alerts
+    enabled: true
+    applies_to_severities:
+      - high
+    levels:
+      - level: 1
+        timeout_minutes: 15
+        recipients:
+          - fraud-analysts-oncall
+        actions:
+          - notify
+        notify_channels:
+          - email
+          - in_app
+        auto_assign: true
+      - level: 2
+        timeout_minutes: 30
+        recipients:
+          - fraud-team-lead
+        actions:
+          - notify
+          - reassign
+        notify_channels:
+          - email
+          - sms
+          - in_app
+        auto_assign: true
+      - level: 3
+        timeout_minutes: 60
+        recipients:
+          - fraud-manager
+        actions:
+          - notify
+          - page
+          - reassign
+        notify_channels:
+          - email
+          - sms
+          - webhook
+        auto_assign: true
+
+  - policy_id: medium_severity
+    name: Medium Severity Escalation
+    description: Escalation for medium alerts during business hours
+    enabled: true
+    applies_to_severities:
+      - medium
+    levels:
+      - level: 1
+        timeout_minutes: 60
+        recipients:
+          - fraud-analysts
+        actions:
+          - notify
+        notify_channels:
+          - email
+          - in_app
+        auto_assign: true
+      - level: 2
+        timeout_minutes: 120
+        recipients:
+          - fraud-team-lead
+        actions:
+          - notify
+          - reassign
+        notify_channels:
+          - email
+          - in_app
+        auto_assign: true
+
+# On-call schedules define who is responsible at any given time
+oncall_schedules:
+  - team_id: fraud-analysts-oncall
+    team_name: Fraud Analysis On-Call
+    rotations:
+      - rotation_id: primary
+        members:
+          - analyst-1@riskpulse.io
+          - analyst-2@riskpulse.io
+          - analyst-3@riskpulse.io
+          - analyst-4@riskpulse.io
+        rotation_interval_hours: 168  # Weekly rotation
+
+  - team_id: fraud-team-lead
+    team_name: Fraud Team Leadership
+    rotations:
+      - rotation_id: lead-primary
+        members:
+          - lead-1@riskpulse.io
+          - lead-2@riskpulse.io
+        rotation_interval_hours: 168
+
+  - team_id: fraud-manager
+    team_name: Fraud Management
+    rotations:
+      - rotation_id: manager-primary
+        members:
+          - manager@riskpulse.io
+        rotation_interval_hours: 720  # Monthly
+
+# Severity-to-policy mapping for auto-selection
+severity_routing:
+  critical: critical_fraud
+  high: high_severity
+  medium: medium_severity
+  low: null  # No escalation for low-severity alerts
+
+# Global escalation settings
+settings:
+  check_interval_seconds: 60
+  max_active_escalations: 1000
+  audit_retention_days: 90
+  notify_on_max_level: true
+  auto_resolve_on_alert_close: true

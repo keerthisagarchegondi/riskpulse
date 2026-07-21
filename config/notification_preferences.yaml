@@ -1,0 +1,134 @@
+# =============================================================================
+# RiskPulse - Notification Preferences Configuration
+# =============================================================================
+# Per-user/team notification delivery preferences and rate limits.
+
+# Default settings applied to all users unless overridden
+defaults:
+  rate_limit_per_hour: 10
+  digest_mode: false
+  digest_interval_minutes: 30
+  min_severity_email: low
+  min_severity_sms: high
+  min_severity_webhook: medium
+
+# User-level preferences
+users:
+  - id: analyst-1@riskpulse.io
+    email_enabled: true
+    sms_enabled: true
+    webhook_enabled: true
+    in_app_enabled: true
+    quiet_hours_start: 22
+    quiet_hours_end: 7
+    min_severity_email: low
+    min_severity_sms: high
+    min_severity_webhook: medium
+    rate_limit_per_hour: 15
+
+  - id: analyst-2@riskpulse.io
+    email_enabled: true
+    sms_enabled: true
+    webhook_enabled: true
+    in_app_enabled: true
+    quiet_hours_start: 23
+    quiet_hours_end: 6
+    min_severity_email: medium
+    min_severity_sms: high
+    min_severity_webhook: medium
+    rate_limit_per_hour: 10
+
+  - id: lead-1@riskpulse.io
+    email_enabled: true
+    sms_enabled: true
+    webhook_enabled: true
+    in_app_enabled: true
+    min_severity_email: medium
+    min_severity_sms: critical
+    min_severity_webhook: high
+    rate_limit_per_hour: 20
+    digest_mode: true
+    digest_interval_minutes: 15
+
+  - id: manager@riskpulse.io
+    email_enabled: true
+    sms_enabled: true
+    webhook_enabled: true
+    in_app_enabled: true
+    min_severity_email: high
+    min_severity_sms: critical
+    min_severity_webhook: critical
+    rate_limit_per_hour: 5
+    digest_mode: true
+    digest_interval_minutes: 60
+
+# Team-level preferences (applied to all team members by default)
+teams:
+  - id: fraud-analysts
+    email_enabled: true
+    sms_enabled: true
+    webhook_enabled: true
+    in_app_enabled: true
+    min_severity_email: low
+    min_severity_sms: high
+    min_severity_webhook: medium
+    rate_limit_per_hour: 10
+
+  - id: security-ops
+    email_enabled: true
+    sms_enabled: true
+    webhook_enabled: true
+    in_app_enabled: true
+    min_severity_email: medium
+    min_severity_sms: high
+    min_severity_webhook: high
+    rate_limit_per_hour: 20
+
+# Webhook endpoint configurations
+webhooks:
+  slack-fraud-channel:
+    type: slack
+    url: ${RISKPULSE_SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/placeholder}
+    headers: null
+
+  teams-fraud-channel:
+    type: teams
+    url: ${RISKPULSE_TEAMS_WEBHOOK_URL:-https://outlook.office.com/webhook/placeholder}
+    headers: null
+
+  pagerduty-fraud:
+    type: pagerduty
+    url: https://events.pagerduty.com/v2/enqueue
+    routing_key: ${RISKPULSE_PAGERDUTY_ROUTING_KEY:-placeholder}
+    headers:
+      Content-Type: application/json
+
+  custom-siem:
+    type: custom
+    url: ${RISKPULSE_SIEM_WEBHOOK_URL:-https://siem.internal/api/alerts}
+    headers:
+      Content-Type: application/json
+      X-API-Key: ${RISKPULSE_SIEM_API_KEY:-placeholder}
+
+# Channel-specific settings
+channels:
+  email:
+    sender: alerts@riskpulse.io
+    reply_to: fraud-team@riskpulse.io
+    aws_region: us-east-1
+    max_retries: 3
+    retry_delay_seconds: 5
+
+  sms:
+    aws_region: us-east-1
+    max_message_length: 160
+    max_retries: 2
+
+  webhook:
+    timeout_seconds: 10
+    max_retries: 3
+    retry_backoff_factor: 2
+
+  in_app:
+    max_queue_size: 100
+    offline_ttl_hours: 24
