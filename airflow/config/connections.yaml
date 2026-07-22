@@ -1,0 +1,87 @@
+# =============================================================================
+# RiskPulse — Airflow Connection Definitions
+# =============================================================================
+# Import into Airflow via:
+#   airflow connections import airflow/config/connections.yaml
+#
+# Sensitive values (passwords, keys) MUST be injected via environment
+# variables or a secrets backend (AWS Secrets Manager / HashiCorp Vault).
+# The placeholders below use Airflow's {{ var.value.<key> }} syntax or
+# environment-variable references where applicable.
+# =============================================================================
+
+connections:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — Operational Database
+  # ---------------------------------------------------------------------------
+  riskpulse_postgres:
+    conn_type: postgres
+    description: "RiskPulse operational PostgreSQL database"
+    host: "${RISKPULSE_DB_HOST:-localhost}"
+    port: 5432
+    schema: riskpulse
+    login: "${RISKPULSE_DB_USER:-riskpulse}"
+    password: "${RISKPULSE_DB_PASSWORD}"
+    extra:
+      sslmode: prefer
+      connect_timeout: 10
+      options: "-c statement_timeout=300000"
+
+  # ---------------------------------------------------------------------------
+  # Amazon S3 — Raw & Processed Data Lake
+  # ---------------------------------------------------------------------------
+  riskpulse_s3:
+    conn_type: aws
+    description: "RiskPulse S3 data lake (raw, processed, models, archive)"
+    login: "${AWS_ACCESS_KEY_ID}"
+    password: "${AWS_SECRET_ACCESS_KEY}"
+    extra:
+      region_name: "${AWS_DEFAULT_REGION:-us-east-1}"
+      role_arn: "${RISKPULSE_S3_ROLE_ARN:-}"
+
+  # ---------------------------------------------------------------------------
+  # Snowflake — Analytics Data Warehouse
+  # ---------------------------------------------------------------------------
+  riskpulse_snowflake:
+    conn_type: snowflake
+    description: "RiskPulse Snowflake analytics warehouse"
+    host: "${RISKPULSE_SNOWFLAKE_ACCOUNT}.snowflakecomputing.com"
+    schema: analytics
+    login: "${RISKPULSE_SNOWFLAKE_USER}"
+    password: "${RISKPULSE_SNOWFLAKE_PASSWORD}"
+    extra:
+      account: "${RISKPULSE_SNOWFLAKE_ACCOUNT}"
+      database: RISKPULSE
+      warehouse: RISKPULSE_WH
+      role: RISKPULSE_ROLE
+      authenticator: snowflake
+      session_parameters:
+        QUERY_TAG: "airflow"
+        STATEMENT_TIMEOUT_IN_SECONDS: 600
+
+  # ---------------------------------------------------------------------------
+  # Kafka — Streaming Platform
+  # ---------------------------------------------------------------------------
+  riskpulse_kafka:
+    conn_type: kafka
+    description: "RiskPulse Kafka cluster"
+    host: "${RISKPULSE_KAFKA_BOOTSTRAP:-localhost}"
+    port: 9092
+    extra:
+      security_protocol: "${RISKPULSE_KAFKA_SECURITY_PROTOCOL:-PLAINTEXT}"
+      sasl_mechanism: "${RISKPULSE_KAFKA_SASL_MECHANISM:-}"
+      sasl_username: "${RISKPULSE_KAFKA_SASL_USERNAME:-}"
+      sasl_password: "${RISKPULSE_KAFKA_SASL_PASSWORD:-}"
+
+  # ---------------------------------------------------------------------------
+  # Redis — Caching Layer
+  # ---------------------------------------------------------------------------
+  riskpulse_redis:
+    conn_type: redis
+    description: "RiskPulse Redis cache"
+    host: "${RISKPULSE_REDIS_HOST:-localhost}"
+    port: 6379
+    password: "${RISKPULSE_REDIS_PASSWORD:-}"
+    extra:
+      db: 0
