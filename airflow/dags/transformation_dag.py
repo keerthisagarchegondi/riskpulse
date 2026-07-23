@@ -15,6 +15,7 @@ from typing import Any
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sensors.python import PythonSensor
 
 from src.storage.s3_handler import S3Handler, StorageLayer
@@ -349,4 +350,11 @@ with DAG(
         python_callable=_write_processed_data,
     )
 
-    sensor >> clean >> normalize >> features >> write
+    trigger_enrichment = TriggerDagRunOperator(
+        task_id="trigger_enrichment",
+        trigger_dag_id="enrichment_pipeline",
+        conf={"triggered_by": "transformation_pipeline"},
+        wait_for_completion=False,
+    )
+
+    sensor >> clean >> normalize >> features >> write >> trigger_enrichment
