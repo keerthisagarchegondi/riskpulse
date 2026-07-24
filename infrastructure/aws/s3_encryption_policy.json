@@ -1,0 +1,215 @@
+{
+  "Description": "RiskPulse S3 Data Lake encryption policies per bucket zone",
+  "RawBucket": {
+    "Encryption": "SSE-S3",
+    "Algorithm": "AES256",
+    "BucketKeyEnabled": false,
+    "Policy": {
+      "Version": "2012-10-17",
+      "Id": "RiskPulseRawBucketEncryptionPolicy",
+      "Statement": [
+        {
+          "Sid": "DenyUnencryptedObjectUploads",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:PutObject",
+          "Resource": "arn:aws:s3:::riskpulse-${env}-raw/*",
+          "Condition": {
+            "StringNotEquals": {
+              "s3:x-amz-server-side-encryption": "AES256"
+            }
+          }
+        },
+        {
+          "Sid": "DenyInsecureTransport",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:*",
+          "Resource": [
+            "arn:aws:s3:::riskpulse-${env}-raw",
+            "arn:aws:s3:::riskpulse-${env}-raw/*"
+          ],
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "ProcessedBucket": {
+    "Encryption": "SSE-KMS",
+    "Algorithm": "aws:kms",
+    "BucketKeyEnabled": true,
+    "KMSMasterKeyAlias": "alias/riskpulse-${env}-s3",
+    "Policy": {
+      "Version": "2012-10-17",
+      "Id": "RiskPulseProcessedBucketEncryptionPolicy",
+      "Statement": [
+        {
+          "Sid": "DenyUnencryptedObjectUploads",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:PutObject",
+          "Resource": "arn:aws:s3:::riskpulse-${env}-processed/*",
+          "Condition": {
+            "StringNotEquals": {
+              "s3:x-amz-server-side-encryption": "aws:kms"
+            }
+          }
+        },
+        {
+          "Sid": "DenyWrongKMSKey",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:PutObject",
+          "Resource": "arn:aws:s3:::riskpulse-${env}-processed/*",
+          "Condition": {
+            "StringNotEquals": {
+              "s3:x-amz-server-side-encryption-aws-kms-key-id": "${kms_key_arn}"
+            }
+          }
+        },
+        {
+          "Sid": "DenyInsecureTransport",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:*",
+          "Resource": [
+            "arn:aws:s3:::riskpulse-${env}-processed",
+            "arn:aws:s3:::riskpulse-${env}-processed/*"
+          ],
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "ModelsBucket": {
+    "Encryption": "SSE-KMS",
+    "Algorithm": "aws:kms",
+    "BucketKeyEnabled": true,
+    "KMSMasterKeyAlias": "alias/riskpulse-${env}-s3",
+    "Policy": {
+      "Version": "2012-10-17",
+      "Id": "RiskPulseModelsBucketEncryptionPolicy",
+      "Statement": [
+        {
+          "Sid": "DenyUnencryptedObjectUploads",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:PutObject",
+          "Resource": "arn:aws:s3:::riskpulse-${env}-models/*",
+          "Condition": {
+            "StringNotEquals": {
+              "s3:x-amz-server-side-encryption": "aws:kms"
+            }
+          }
+        },
+        {
+          "Sid": "DenyInsecureTransport",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:*",
+          "Resource": [
+            "arn:aws:s3:::riskpulse-${env}-models",
+            "arn:aws:s3:::riskpulse-${env}-models/*"
+          ],
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "ArchiveBucket": {
+    "Encryption": "SSE-KMS",
+    "Algorithm": "aws:kms",
+    "BucketKeyEnabled": true,
+    "KMSMasterKeyAlias": "alias/riskpulse-${env}-s3",
+    "Policy": {
+      "Version": "2012-10-17",
+      "Id": "RiskPulseArchiveBucketEncryptionPolicy",
+      "Statement": [
+        {
+          "Sid": "DenyUnencryptedObjectUploads",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:PutObject",
+          "Resource": "arn:aws:s3:::riskpulse-${env}-archive/*",
+          "Condition": {
+            "StringNotEquals": {
+              "s3:x-amz-server-side-encryption": "aws:kms"
+            }
+          }
+        },
+        {
+          "Sid": "DenyInsecureTransport",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:*",
+          "Resource": [
+            "arn:aws:s3:::riskpulse-${env}-archive",
+            "arn:aws:s3:::riskpulse-${env}-archive/*"
+          ],
+          "Condition": {
+            "Bool": {
+              "aws:SecureTransport": "false"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "KMSKeyPolicy": {
+    "Version": "2012-10-17",
+    "Id": "RiskPulseS3KMSKeyPolicy",
+    "Statement": [
+      {
+        "Sid": "EnableRootAccountAccess",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "arn:aws:iam::${account_id}:root"
+        },
+        "Action": "kms:*",
+        "Resource": "*"
+      },
+      {
+        "Sid": "AllowS3ServiceUsage",
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "s3.amazonaws.com"
+        },
+        "Action": [
+          "kms:Decrypt",
+          "kms:GenerateDataKey",
+          "kms:GenerateDataKeyWithoutPlaintext"
+        ],
+        "Resource": "*"
+      },
+      {
+        "Sid": "AllowRiskPulseServicesEncryptDecrypt",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": [
+            "arn:aws:iam::${account_id}:role/riskpulse-${env}-api-role",
+            "arn:aws:iam::${account_id}:role/riskpulse-${env}-worker-role",
+            "arn:aws:iam::${account_id}:role/riskpulse-${env}-airflow-role"
+          ]
+        },
+        "Action": [
+          "kms:Decrypt",
+          "kms:GenerateDataKey",
+          "kms:DescribeKey"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+}

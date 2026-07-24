@@ -1,109 +1,190 @@
 {
-  "Rules": [
-    {
-      "ID": "RawDataToInfrequentAccess",
-      "Status": "Enabled",
-      "Filter": {
-        "Prefix": "transactions/"
-      },
-      "Transitions": [
-        {
-          "Days": 30,
-          "StorageClass": "STANDARD_IA"
-        }
-      ]
-    },
-    {
-      "ID": "RawDataToGlacier",
-      "Status": "Enabled",
-      "Filter": {
-        "Prefix": "transactions/"
-      },
-      "Transitions": [
-        {
-          "Days": 90,
-          "StorageClass": "GLACIER"
-        }
-      ]
-    },
-    {
-      "ID": "RawDataToDeepArchive",
-      "Status": "Enabled",
-      "Filter": {
-        "Prefix": "transactions/"
-      },
-      "Transitions": [
-        {
-          "Days": 365,
-          "StorageClass": "DEEP_ARCHIVE"
-        }
-      ]
-    },
-    {
-      "ID": "RawDataExpiration",
-      "Status": "Enabled",
-      "Filter": {
-        "Prefix": "transactions/"
-      },
-      "Expiration": {
-        "Days": 2555
-      }
-    },
-    {
-      "ID": "ProcessedDataToIA",
-      "Status": "Enabled",
-      "Filter": {
-        "Prefix": "processed/"
-      },
-      "Transitions": [
-        {
-          "Days": 60,
-          "StorageClass": "STANDARD_IA"
-        }
-      ]
-    },
-    {
-      "ID": "ProcessedDataToGlacier",
-      "Status": "Enabled",
-      "Filter": {
-        "Prefix": "processed/"
-      },
-      "Transitions": [
-        {
-          "Days": 180,
-          "StorageClass": "GLACIER"
-        }
-      ]
-    },
-    {
-      "ID": "AbortIncompleteMultipartUploads",
-      "Status": "Enabled",
-      "Filter": {
-        "Prefix": ""
-      },
-      "AbortIncompleteMultipartUpload": {
-        "DaysAfterInitiation": 7
-      }
-    },
-    {
-      "ID": "DeleteOldVersions",
-      "Status": "Enabled",
-      "Filter": {
-        "Prefix": ""
-      },
-      "NoncurrentVersionTransitions": [
-        {
-          "NoncurrentDays": 30,
-          "StorageClass": "STANDARD_IA"
+  "Description": "RiskPulse S3 Data Lake lifecycle policies per bucket zone",
+  "RawBucket": {
+    "Rules": [
+      {
+        "ID": "RawDataToInfrequentAccess",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
         },
-        {
-          "NoncurrentDays": 90,
-          "StorageClass": "GLACIER"
+        "Transitions": [
+          {
+            "Days": 30,
+            "StorageClass": "STANDARD_IA"
+          }
+        ]
+      },
+      {
+        "ID": "RawDataToGlacier",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "Transitions": [
+          {
+            "Days": 90,
+            "StorageClass": "GLACIER"
+          }
+        ]
+      },
+      {
+        "ID": "RawNoncurrentVersionCleanup",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "NoncurrentVersionTransitions": [
+          {
+            "NoncurrentDays": 30,
+            "StorageClass": "STANDARD_IA"
+          },
+          {
+            "NoncurrentDays": 90,
+            "StorageClass": "GLACIER"
+          }
+        ],
+        "NoncurrentVersionExpiration": {
+          "NoncurrentDays": 365
         }
-      ],
-      "NoncurrentVersionExpiration": {
-        "NoncurrentDays": 365
+      },
+      {
+        "ID": "RawAbortIncompleteMultipartUploads",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "AbortIncompleteMultipartUpload": {
+          "DaysAfterInitiation": 7
+        }
       }
-    }
-  ]
+    ]
+  },
+  "ProcessedBucket": {
+    "Rules": [
+      {
+        "ID": "ProcessedDataToInfrequentAccess",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "Transitions": [
+          {
+            "Days": 60,
+            "StorageClass": "STANDARD_IA"
+          }
+        ]
+      },
+      {
+        "ID": "ProcessedDataToGlacier",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "Transitions": [
+          {
+            "Days": 180,
+            "StorageClass": "GLACIER"
+          }
+        ]
+      },
+      {
+        "ID": "ProcessedNoncurrentVersionCleanup",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "NoncurrentVersionTransitions": [
+          {
+            "NoncurrentDays": 60,
+            "StorageClass": "STANDARD_IA"
+          },
+          {
+            "NoncurrentDays": 120,
+            "StorageClass": "GLACIER"
+          }
+        ],
+        "NoncurrentVersionExpiration": {
+          "NoncurrentDays": 365
+        }
+      },
+      {
+        "ID": "ProcessedAbortIncompleteMultipartUploads",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "AbortIncompleteMultipartUpload": {
+          "DaysAfterInitiation": 7
+        }
+      }
+    ]
+  },
+  "ArchiveBucket": {
+    "Rules": [
+      {
+        "ID": "ArchiveDataToDeepArchive",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "Transitions": [
+          {
+            "Days": 365,
+            "StorageClass": "DEEP_ARCHIVE"
+          }
+        ]
+      },
+      {
+        "ID": "ArchiveNoncurrentVersionExpiration",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "NoncurrentVersionExpiration": {
+          "NoncurrentDays": 730
+        }
+      },
+      {
+        "ID": "ArchiveAbortIncompleteMultipartUploads",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "AbortIncompleteMultipartUpload": {
+          "DaysAfterInitiation": 7
+        }
+      }
+    ]
+  },
+  "ModelsBucket": {
+    "Rules": [
+      {
+        "ID": "ModelsNoncurrentVersionCleanup",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "NoncurrentVersionTransitions": [
+          {
+            "NoncurrentDays": 90,
+            "StorageClass": "STANDARD_IA"
+          }
+        ],
+        "NoncurrentVersionExpiration": {
+          "NoncurrentDays": 365
+        }
+      },
+      {
+        "ID": "ModelsAbortIncompleteMultipartUploads",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": ""
+        },
+        "AbortIncompleteMultipartUpload": {
+          "DaysAfterInitiation": 7
+        }
+      }
+    ]
+  }
 }
