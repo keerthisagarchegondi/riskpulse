@@ -1,0 +1,53 @@
+# --- Build Stage ---
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --prefix=/install \
+    streamlit \
+    plotly \
+    psycopg2-binary \
+    sqlalchemy \
+    pandas \
+    pyyaml
+
+# --- Runtime Stage ---
+FROM python:3.11-slim AS runtime
+
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /install /usr/local
+
+COPY dashboards/streamlit/ ./dashboards/streamlit/
+COPY src/utils/ ./src/utils/
+COPY config/ ./config/
+
+RUN mkdir -p /app/.streamlit \
+    && printf '[server]\nheadless = true\nport = 8501\nenableCORS = false\nenableXsrfProtection = true\nmaxUploadSize = 5\n\n[browser]\ngatherUsageStats = false\n\n[theme]\nbase = "dark"\nprimaryColor = "#3498db"\nbackgroundColor = "#0f0c29"\nsecondaryBackgroundColor = "#1a1a2e"\ntextColor = "#ecf0f1"\n' > /app/.streamlit/config.toml
+
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8501
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+ENTRYPOINT ["streamlit", "run", "dashboards/streamlit/app.py", \
+    "--server.address=0.0.0.0", \
+    "--server.port=8501"]
