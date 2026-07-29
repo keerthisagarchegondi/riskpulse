@@ -28,7 +28,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from dashboards.streamlit.pages import real_time_monitor  # noqa: E402
+from dashboards.streamlit.pages import investigation_console, real_time_monitor, trend_analysis  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -150,6 +150,8 @@ def _db_healthy(engine: Engine) -> bool:
 # ---------------------------------------------------------------------------
 _PAGES: dict[str, str] = {
     "📡 Real-Time Monitor": "real_time_monitor",
+    "🕵️ Investigation Console": "investigation_console",
+    "📈 Trend Analysis": "trend_analysis",
 }
 
 
@@ -221,6 +223,10 @@ def main() -> None:
 
     if page_key == "real_time_monitor":
         real_time_monitor.render(engine)
+    elif page_key == "investigation_console":
+        investigation_console.render(engine)
+    elif page_key == "trend_analysis":
+        trend_analysis.render(engine)
     else:
         st.error(f"Unknown page: {page_key}")
 
