@@ -28,7 +28,14 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from dashboards.streamlit.pages import investigation_console, real_time_monitor, trend_analysis  # noqa: E402
+from dashboards.streamlit.auth.roles import can_access_page, role_for_user, visible_pages_for_role  # noqa: E402
+from dashboards.streamlit.pages import (  # noqa: E402
+    alert_management,
+    investigation_console,
+    model_performance,
+    real_time_monitor,
+    trend_analysis,
+)
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -73,6 +80,10 @@ _USERS: dict[str, str] = {
         os.environ.get("DASHBOARD_ANALYST_PASSWORD", "analyst2024!")
     ),
 }
+if os.environ.get("DASHBOARD_VIEWER_USER"):
+    _USERS[os.environ["DASHBOARD_VIEWER_USER"]] = _hash_password(
+        os.environ.get("DASHBOARD_VIEWER_PASSWORD", "viewer2024!")
+    )
 
 
 def _check_credentials(username: str, password: str) -> bool:
@@ -106,6 +117,7 @@ def _login_form() -> bool:
             if _check_credentials(username, password):
                 st.session_state["authenticated"] = True
                 st.session_state["username"] = username
+                st.session_state["role"] = role_for_user(username).value
                 st.rerun()
             else:
                 st.error("Invalid username or password.")
@@ -152,6 +164,8 @@ _PAGES: dict[str, str] = {
     "📡 Real-Time Monitor": "real_time_monitor",
     "🕵️ Investigation Console": "investigation_console",
     "📈 Trend Analysis": "trend_analysis",
+    "Model Performance": "model_performance",
+    "Alert Management": "alert_management",
 }
 
 
@@ -163,10 +177,18 @@ def _render_sidebar(engine: Engine) -> str:
     )
     st.sidebar.title("RiskPulse")
     st.sidebar.caption(f"Logged in as **{st.session_state.get('username', '')}**")
+    role = role_for_user(str(st.session_state.get("username") or ""))
+    st.session_state["role"] = role.value
+    st.sidebar.caption(f"Role: **{role.value}**")
+
+    visible_pages = visible_pages_for_role(role, _PAGES)
+    if not visible_pages:
+        st.sidebar.warning("No dashboard pages are available for this role.")
+        return ""
 
     selected = st.sidebar.radio(
         "Navigation",
-        options=list(_PAGES.keys()),
+        options=list(visible_pages.keys()),
         label_visibility="collapsed",
     )
 
@@ -182,7 +204,7 @@ def _render_sidebar(engine: Engine) -> str:
         st.session_state.clear()
         st.rerun()
 
-    return _PAGES[selected]
+    return visible_pages[selected]
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +242,15 @@ def main() -> None:
     engine = _get_engine()
     page_key = _render_sidebar(engine)
     _setup_auto_refresh(interval_seconds=30)
+    role = role_for_user(str(st.session_state.get("username") or ""))
+
+    if not page_key:
+        st.error("Your role does not have access to any dashboard pages.")
+        return
+
+    if not can_access_page(role, page_key):
+        st.error("You do not have access to this dashboard page.")
+        return
 
     if page_key == "real_time_monitor":
         real_time_monitor.render(engine)
@@ -227,6 +258,10 @@ def main() -> None:
         investigation_console.render(engine)
     elif page_key == "trend_analysis":
         trend_analysis.render(engine)
+    elif page_key == "model_performance":
+        model_performance.render(engine)
+    elif page_key == "alert_management":
+        alert_management.render(engine)
     else:
         st.error(f"Unknown page: {page_key}")
 
