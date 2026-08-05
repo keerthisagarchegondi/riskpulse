@@ -1,0 +1,60 @@
+RiskPulse Power BI Deployment Guide
+
+Scope
+This guide covers deployment of the RiskPulse executive Power BI dashboards from the source-controlled artifacts under dashboards/powerbi. No PBIX binary is committed because PBIX generation requires Power BI Desktop or a Power BI build agent.
+
+Prerequisites
+1. Power BI Desktop installed on a Windows workstation.
+2. Power BI Pro or Premium workspace access.
+3. Snowflake account with REPORTING and SECURITY schema access.
+4. Snowflake role RISKPULSE_POWERBI_ROLE or equivalent read-only role.
+5. Network access from Power BI Service to Snowflake, either public endpoint allowlist or configured data gateway.
+
+Snowflake Setup
+1. Run dashboards/powerbi/data_connections/snowflake_rls_setup.sql in Snowflake.
+2. Grant the Power BI Snowflake role SELECT on REPORTING tables:
+   GRANT USAGE ON DATABASE RISKPULSE TO ROLE RISKPULSE_POWERBI_ROLE;
+   GRANT USAGE ON SCHEMA RISKPULSE.REPORTING TO ROLE RISKPULSE_POWERBI_ROLE;
+   GRANT USAGE ON SCHEMA RISKPULSE.SECURITY TO ROLE RISKPULSE_POWERBI_ROLE;
+   GRANT SELECT ON ALL TABLES IN SCHEMA RISKPULSE.REPORTING TO ROLE RISKPULSE_POWERBI_ROLE;
+   GRANT SELECT ON FUTURE TABLES IN SCHEMA RISKPULSE.REPORTING TO ROLE RISKPULSE_POWERBI_ROLE;
+   GRANT SELECT ON SECURITY.POWERBI_USER_TENANT_ACCESS TO ROLE RISKPULSE_POWERBI_ROLE;
+3. Load SECURITY.POWERBI_USER_TENANT_ACCESS with production user principal names and tenant identifiers.
+
+Power BI Desktop Build
+1. Create a new Power BI report.
+2. Add parameters:
+   SnowflakeAccount
+   SnowflakeWarehouse
+   SnowflakeDatabase
+   LookbackDays
+3. Use the Power Query definitions from dashboards/powerbi/models/snowflake_queries.pq.
+4. Create relationships from TenantAccess[TENANT_ID] to each reporting table TENANT_ID column.
+5. Create measures from dashboards/powerbi/models/measures.dax.
+6. Build pages according to dashboards/powerbi/executive_dashboard.layout.json:
+   Executive Summary
+   Fraud Trends
+   Operational Metrics
+7. Configure row-level security using dashboards/powerbi/models/rls_roles.json.
+8. Validate RLS with View As for at least one tenant-restricted user and one executive admin.
+
+Refresh Configuration
+1. Publish the report to the executive analytics workspace.
+2. Set dataset credentials to Snowflake OAuth, SSO, key pair auth, or service account credentials according to security policy.
+3. Configure scheduled refresh from dashboards/powerbi/refresh_schedule.json:
+   Daily at 06:00, 12:00, and 18:00 Eastern Time.
+4. Configure incremental refresh:
+   Store 730 days.
+   Refresh last 14 days.
+5. Confirm REPORTING.REFRESH_ALL completes before the first Power BI refresh window.
+
+Validation Checklist
+1. Executive Summary shows Total Fraud Prevented, Fraud Rate, ROI, and System Uptime.
+2. Fraud Trends map renders countries from FraudByGeography[COUNTRY_CODE].
+3. Merchant category and channel visuals reconcile to DailyFraudSummary totals.
+4. Operational Metrics shows alert resolution, model AUC/F1, pipeline throughput, and uptime.
+5. Tenant-restricted users cannot see rows outside their TenantAccess mappings.
+6. Dataset refresh succeeds in Power BI Service and sends failure notifications.
+
+Operational Notes
+PBIX files should be exported from Power BI Desktop after validation and stored in the approved artifact repository if binary report files are part of the release process. This source package remains the auditable definition for queries, DAX, RLS, refresh, and page layout.

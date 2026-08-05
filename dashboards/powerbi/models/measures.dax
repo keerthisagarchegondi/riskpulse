@@ -1,0 +1,116 @@
+Total Transactions =
+SUM ( DailyFraudSummary[TOTAL_TRANSACTIONS] )
+
+Total Transaction Amount =
+SUM ( DailyFraudSummary[TOTAL_AMOUNT] )
+
+Fraud Transactions =
+SUM ( DailyFraudSummary[FRAUD_TRANSACTIONS] )
+
+Fraud Amount =
+SUM ( DailyFraudSummary[FRAUD_AMOUNT] )
+
+Fraud Prevented =
+SUM ( ExecutiveSummary[FRAUD_PREVENTED_AMOUNT] )
+
+Fraud Prevention Count =
+SUM ( ExecutiveSummary[FRAUD_PREVENTED_COUNT] )
+
+Fraud Rate =
+DIVIDE ( [Fraud Transactions], [Total Transactions], 0 )
+
+Fraud Rate MoM =
+VAR CurrentFraudRate = [Fraud Rate]
+VAR PriorFraudRate =
+    CALCULATE (
+        [Fraud Rate],
+        DATEADD ( DailyFraudSummary[SUMMARY_DATE], -1, MONTH )
+    )
+RETURN
+    CurrentFraudRate - PriorFraudRate
+
+Fraud Rate YoY =
+VAR CurrentFraudRate = [Fraud Rate]
+VAR PriorFraudRate =
+    CALCULATE (
+        [Fraud Rate],
+        DATEADD ( DailyFraudSummary[SUMMARY_DATE], -1, YEAR )
+    )
+RETURN
+    CurrentFraudRate - PriorFraudRate
+
+Platform ROI =
+VAR EstimatedOperatingCost =
+    SUM ( ExecutiveSummary[ALERTS_TOTAL] ) * 12.5
+        + SUM ( OperationalMetrics[TOTAL_TRANSACTIONS] ) * 0.002
+RETURN
+    DIVIDE ( [Fraud Prevented] - EstimatedOperatingCost, EstimatedOperatingCost, 0 )
+
+Model Accuracy =
+AVERAGE ( ExecutiveSummary[MODEL_ACCURACY] )
+
+Latest Model AUC =
+VAR LatestDate =
+    MAX ( ModelPerformance[SUMMARY_DATE] )
+RETURN
+    CALCULATE (
+        AVERAGE ( ModelPerformance[AUC_ROC] ),
+        ModelPerformance[SUMMARY_DATE] = LatestDate
+    )
+
+Average Alert Resolution Minutes =
+AVERAGE ( AlertResolution[AVG_RESOLUTION_TIME_MINUTES] )
+
+P95 Alert Resolution Minutes =
+AVERAGE ( AlertResolution[P95_RESOLUTION_TIME_MINUTES] )
+
+SLA Compliance Rate =
+AVERAGE ( AlertResolution[SLA_COMPLIANCE_RATE] )
+
+False Positive Rate =
+DIVIDE (
+    SUM ( AlertResolution[FALSE_POSITIVES] ),
+    SUM ( AlertResolution[ALERTS_RESOLVED] ),
+    0
+)
+
+Pipeline Throughput Per Hour =
+AVERAGE ( OperationalMetrics[TOTAL_TRANSACTIONS] )
+
+System Uptime =
+AVERAGE ( ExecutiveSummary[SYSTEM_UPTIME_PCT] ) / 100
+
+High Risk Indicator Count =
+SUM ( DailyFraudSummary[HIGH_RISK_COUNT] )
+    + SUM ( DailyFraudSummary[CRITICAL_RISK_COUNT] )
+
+Fraud Amount YoY =
+VAR PriorFraudAmount =
+    CALCULATE (
+        [Fraud Amount],
+        DATEADD ( DailyFraudSummary[SUMMARY_DATE], -1, YEAR )
+    )
+RETURN
+    [Fraud Amount] - PriorFraudAmount
+
+Merchant Category Fraud Rate =
+DIVIDE (
+    SUM ( FraudByMerchantCategory[FRAUD_TRANSACTIONS] ),
+    SUM ( FraudByMerchantCategory[TOTAL_TRANSACTIONS] ),
+    0
+)
+
+Channel Fraud Rate =
+DIVIDE (
+    SUM ( FraudByChannel[FRAUD_TRANSACTIONS] ),
+    SUM ( FraudByChannel[TOTAL_TRANSACTIONS] ),
+    0
+)
+
+Geography Fraud Rate =
+DIVIDE (
+    SUM ( FraudByGeography[FRAUD_TRANSACTIONS] ),
+    SUM ( FraudByGeography[TOTAL_TRANSACTIONS] ),
+    0
+)
+

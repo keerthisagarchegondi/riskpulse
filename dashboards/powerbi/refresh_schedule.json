@@ -1,0 +1,33 @@
+{
+  "datasetName": "RiskPulse Executive Fraud Analytics",
+  "mode": "Import",
+  "gatewayRequired": false,
+  "incrementalRefresh": {
+    "enabled": true,
+    "dateColumn": "SUMMARY_DATE",
+    "storeRowsForDays": 730,
+    "refreshRowsForDays": 14
+  },
+  "schedule": {
+    "frequency": "daily",
+    "enabled": true,
+    "localTimeZoneId": "Eastern Standard Time",
+    "notifyOption": "MailOnFailure",
+    "times": [
+      "06:00",
+      "12:00",
+      "18:00"
+    ]
+  },
+  "dependencies": [
+    "REPORTING.REFRESH_ALL",
+    "REPORTING.WEEKLY_EXECUTIVE_SUMMARY",
+    "REPORTING.DAILY_FRAUD_SUMMARY",
+    "REPORTING.FRAUD_BY_GEOGRAPHY",
+    "REPORTING.FRAUD_BY_MERCHANT_CATEGORY",
+    "REPORTING.HOURLY_TRANSACTION_METRICS",
+    "REPORTING.MODEL_PERFORMANCE_DAILY",
+    "REPORTING.ALERT_RESOLUTION_METRICS"
+  ]
+}
+

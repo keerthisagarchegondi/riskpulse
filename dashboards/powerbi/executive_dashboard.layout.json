@@ -1,0 +1,220 @@
+{
+  "reportName": "RiskPulse Executive Fraud Analytics",
+  "theme": {
+    "name": "RiskPulse Executive",
+    "background": "#0F172A",
+    "foreground": "#E5E7EB",
+    "accent": "#38BDF8",
+    "riskCritical": "#A855F7",
+    "riskHigh": "#EF4444",
+    "riskMedium": "#F59E0B",
+    "riskLow": "#22C55E"
+  },
+  "pages": [
+    {
+      "name": "Executive Summary",
+      "order": 1,
+      "purpose": "Board-level status on fraud exposure, prevention value, ROI, and risk indicators.",
+      "visuals": [
+        {
+          "type": "card",
+          "title": "Total Fraud Prevented",
+          "measure": "Fraud Prevented",
+          "format": "currency",
+          "position": {"x": 0, "y": 0, "w": 3, "h": 1}
+        },
+        {
+          "type": "card",
+          "title": "Fraud Rate",
+          "measure": "Fraud Rate",
+          "format": "percentage",
+          "position": {"x": 3, "y": 0, "w": 3, "h": 1}
+        },
+        {
+          "type": "card",
+          "title": "Platform ROI",
+          "measure": "Platform ROI",
+          "format": "percentage",
+          "position": {"x": 6, "y": 0, "w": 3, "h": 1}
+        },
+        {
+          "type": "card",
+          "title": "System Uptime",
+          "measure": "System Uptime",
+          "format": "percentage",
+          "position": {"x": 9, "y": 0, "w": 3, "h": 1}
+        },
+        {
+          "type": "lineChart",
+          "title": "Fraud Rate Trend Month over Month",
+          "table": "DailyFraudSummary",
+          "axis": "SUMMARY_DATE",
+          "values": ["Fraud Rate", "Fraud Rate MoM"],
+          "position": {"x": 0, "y": 1, "w": 8, "h": 3}
+        },
+        {
+          "type": "multiRowCard",
+          "title": "Key Risk Indicators",
+          "measures": [
+            "High Risk Indicator Count",
+            "Latest Model AUC",
+            "False Positive Rate",
+            "SLA Compliance Rate"
+          ],
+          "position": {"x": 8, "y": 1, "w": 4, "h": 3}
+        },
+        {
+          "type": "barChart",
+          "title": "Top Fraud Categories",
+          "table": "FraudByMerchantCategory",
+          "axis": "CATEGORY_NAME",
+          "values": ["Fraud Amount", "Merchant Category Fraud Rate"],
+          "sort": {"by": "Fraud Amount", "direction": "desc"},
+          "topN": 10,
+          "position": {"x": 0, "y": 4, "w": 6, "h": 3}
+        },
+        {
+          "type": "barChart",
+          "title": "Fraud by Channel",
+          "table": "FraudByChannel",
+          "axis": "CHANNEL",
+          "values": ["Channel Fraud Rate"],
+          "position": {"x": 6, "y": 4, "w": 6, "h": 3}
+        }
+      ]
+    },
+    {
+      "name": "Fraud Trends",
+      "order": 2,
+      "purpose": "Strategic trend analysis across geography, merchant category, channel, and annual periods.",
+      "visuals": [
+        {
+          "type": "filledMap",
+          "title": "Fraud by Geography",
+          "table": "FraudByGeography",
+          "location": "COUNTRY_CODE",
+          "size": "Fraud Amount",
+          "color": "Geography Fraud Rate",
+          "position": {"x": 0, "y": 0, "w": 7, "h": 4}
+        },
+        {
+          "type": "barChart",
+          "title": "Fraud by Merchant Category",
+          "table": "FraudByMerchantCategory",
+          "axis": "CATEGORY_NAME",
+          "values": ["Fraud Amount", "Merchant Category Fraud Rate"],
+          "topN": 15,
+          "position": {"x": 7, "y": 0, "w": 5, "h": 4}
+        },
+        {
+          "type": "clusteredColumnChart",
+          "title": "Fraud by Channel",
+          "table": "FraudByChannel",
+          "axis": "CHANNEL",
+          "values": ["TOTAL_TRANSACTIONS", "FRAUD_TRANSACTIONS"],
+          "position": {"x": 0, "y": 4, "w": 6, "h": 3}
+        },
+        {
+          "type": "lineChart",
+          "title": "Year over Year Fraud Amount",
+          "table": "DailyFraudSummary",
+          "axis": "SUMMARY_DATE",
+          "values": ["Fraud Amount", "Fraud Amount YoY"],
+          "position": {"x": 6, "y": 4, "w": 6, "h": 3}
+        }
+      ]
+    },
+    {
+      "name": "Operational Metrics",
+      "order": 3,
+      "purpose": "Operational performance across alert handling, model quality, throughput, and reliability.",
+      "visuals": [
+        {
+          "type": "card",
+          "title": "Average Alert Resolution",
+          "measure": "Average Alert Resolution Minutes",
+          "format": "minutes",
+          "position": {"x": 0, "y": 0, "w": 3, "h": 1}
+        },
+        {
+          "type": "card",
+          "title": "Model AUC",
+          "measure": "Latest Model AUC",
+          "format": "decimal",
+          "position": {"x": 3, "y": 0, "w": 3, "h": 1}
+        },
+        {
+          "type": "card",
+          "title": "Throughput per Hour",
+          "measure": "Pipeline Throughput Per Hour",
+          "format": "wholeNumber",
+          "position": {"x": 6, "y": 0, "w": 3, "h": 1}
+        },
+        {
+          "type": "card",
+          "title": "System Uptime",
+          "measure": "System Uptime",
+          "format": "percentage",
+          "position": {"x": 9, "y": 0, "w": 3, "h": 1}
+        },
+        {
+          "type": "lineChart",
+          "title": "Alert Resolution Time",
+          "table": "AlertResolution",
+          "axis": "SUMMARY_DATE",
+          "legend": "SEVERITY",
+          "values": ["AVG_RESOLUTION_TIME_MINUTES", "P95_RESOLUTION_TIME_MINUTES"],
+          "position": {"x": 0, "y": 1, "w": 6, "h": 3}
+        },
+        {
+          "type": "lineChart",
+          "title": "Model Accuracy over Time",
+          "table": "ModelPerformance",
+          "axis": "SUMMARY_DATE",
+          "legend": "MODEL_VERSION",
+          "values": ["AUC_ROC", "F1_SCORE"],
+          "position": {"x": 6, "y": 1, "w": 6, "h": 3}
+        },
+        {
+          "type": "lineChart",
+          "title": "Pipeline Throughput",
+          "table": "OperationalMetrics",
+          "axis": "METRIC_HOUR",
+          "values": ["TOTAL_TRANSACTIONS", "AVG_LATENCY_MS"],
+          "position": {"x": 0, "y": 4, "w": 6, "h": 3}
+        },
+        {
+          "type": "gauge",
+          "title": "SLA Compliance",
+          "measure": "SLA Compliance Rate",
+          "target": 0.95,
+          "position": {"x": 6, "y": 4, "w": 3, "h": 3}
+        },
+        {
+          "type": "gauge",
+          "title": "System Uptime",
+          "measure": "System Uptime",
+          "target": 0.999,
+          "position": {"x": 9, "y": 4, "w": 3, "h": 3}
+        }
+      ]
+    }
+  ],
+  "slicers": [
+    {"field": "DailyFraudSummary[SUMMARY_DATE]", "type": "between"},
+    {"field": "TenantAccess[TENANT_ID]", "type": "dropdown"},
+    {"field": "FraudByChannel[CHANNEL]", "type": "dropdown"}
+  ],
+  "modelTables": [
+    "ExecutiveSummary",
+    "DailyFraudSummary",
+    "FraudByGeography",
+    "FraudByMerchantCategory",
+    "FraudByChannel",
+    "OperationalMetrics",
+    "ModelPerformance",
+    "AlertResolution",
+    "TenantAccess"
+  ]
+}
+

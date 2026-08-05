@@ -1,0 +1,28 @@
+{
+  "roles": [
+    {
+      "name": "Tenant Restricted",
+      "filters": {
+        "ExecutiveSummary": "ExecutiveSummary[TENANT_ID] IN CALCULATETABLE(VALUES(TenantAccess[TENANT_ID]), TenantAccess[USER_PRINCIPAL_NAME] = USERPRINCIPALNAME())",
+        "DailyFraudSummary": "DailyFraudSummary[TENANT_ID] IN CALCULATETABLE(VALUES(TenantAccess[TENANT_ID]), TenantAccess[USER_PRINCIPAL_NAME] = USERPRINCIPALNAME())",
+        "FraudByGeography": "FraudByGeography[TENANT_ID] IN CALCULATETABLE(VALUES(TenantAccess[TENANT_ID]), TenantAccess[USER_PRINCIPAL_NAME] = USERPRINCIPALNAME())",
+        "FraudByMerchantCategory": "FraudByMerchantCategory[TENANT_ID] IN CALCULATETABLE(VALUES(TenantAccess[TENANT_ID]), TenantAccess[USER_PRINCIPAL_NAME] = USERPRINCIPALNAME())",
+        "FraudByChannel": "FraudByChannel[TENANT_ID] IN CALCULATETABLE(VALUES(TenantAccess[TENANT_ID]), TenantAccess[USER_PRINCIPAL_NAME] = USERPRINCIPALNAME())",
+        "OperationalMetrics": "OperationalMetrics[TENANT_ID] IN CALCULATETABLE(VALUES(TenantAccess[TENANT_ID]), TenantAccess[USER_PRINCIPAL_NAME] = USERPRINCIPALNAME())",
+        "ModelPerformance": "ModelPerformance[TENANT_ID] IN CALCULATETABLE(VALUES(TenantAccess[TENANT_ID]), TenantAccess[USER_PRINCIPAL_NAME] = USERPRINCIPALNAME())",
+        "AlertResolution": "AlertResolution[TENANT_ID] IN CALCULATETABLE(VALUES(TenantAccess[TENANT_ID]), TenantAccess[USER_PRINCIPAL_NAME] = USERPRINCIPALNAME())"
+      }
+    },
+    {
+      "name": "Executive Admin",
+      "members": [
+        "RiskPulse Executive Admins"
+      ],
+      "filters": {}
+    }
+  ],
+  "tenantAccessTable": "SECURITY.POWERBI_USER_TENANT_ACCESS",
+  "userColumn": "USER_PRINCIPAL_NAME",
+  "tenantColumn": "TENANT_ID"
+}
+

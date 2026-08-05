@@ -1,0 +1,63 @@
+{
+  "reportName": "RiskPulse Fraud Trends Deep Dive",
+  "pages": [
+    {
+      "name": "Geography",
+      "visuals": [
+        {
+          "type": "filledMap",
+          "title": "Fraud Amount by Country",
+          "table": "FraudByGeography",
+          "location": "COUNTRY_CODE",
+          "size": "Fraud Amount",
+          "color": "Geography Fraud Rate"
+        },
+        {
+          "type": "table",
+          "title": "Country Details",
+          "table": "FraudByGeography",
+          "columns": [
+            "COUNTRY_NAME",
+            "TOTAL_TRANSACTIONS",
+            "FRAUD_TRANSACTIONS",
+            "FRAUD_AMOUNT",
+            "FRAUD_RATE"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Merchant Categories",
+      "visuals": [
+        {
+          "type": "barChart",
+          "title": "Merchant Category Fraud Rate",
+          "table": "FraudByMerchantCategory",
+          "axis": "CATEGORY_NAME",
+          "values": ["Merchant Category Fraud Rate", "Fraud Amount"],
+          "topN": 25
+        }
+      ]
+    },
+    {
+      "name": "Channel and YoY",
+      "visuals": [
+        {
+          "type": "clusteredColumnChart",
+          "title": "Online vs POS vs ATM vs Mobile",
+          "table": "FraudByChannel",
+          "axis": "CHANNEL",
+          "values": ["TOTAL_TRANSACTIONS", "FRAUD_TRANSACTIONS"]
+        },
+        {
+          "type": "lineChart",
+          "title": "Year over Year Fraud Rate",
+          "table": "DailyFraudSummary",
+          "axis": "SUMMARY_DATE",
+          "values": ["Fraud Rate", "Fraud Rate YoY"]
+        }
+      ]
+    }
+  ]
+}
+
