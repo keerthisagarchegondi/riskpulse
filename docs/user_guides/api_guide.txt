@@ -1,0 +1,74 @@
+RiskPulse API Integration Guide
+
+Base URL
+Production deployments expose the API under /api/v1. Interactive Swagger documentation is available at /docs. The OpenAPI JSON schema is available at /openapi.json and in docs/openapi.json when generated.
+
+Authentication
+Send the API key in the X-API-Key header.
+Example:
+X-API-Key: dev-api-key-riskpulse-2024
+
+Permission Levels
+read: lookup and monitoring workflows.
+write: ingestion and scoring workflows.
+admin: rule management, model reloads, and monitoring checks.
+
+Rate Limits
+Default limit is 100 requests per minute per API key or source IP. Responses include X-RateLimit-Limit and X-RateLimit-Remaining. A 429 response includes Retry-After.
+
+Common Error Codes
+400: malformed request or invalid operation.
+401: missing or invalid API key.
+403: insufficient permissions.
+404: entity not found.
+409: write conflict.
+422: validation failure.
+429: rate limit exceeded.
+500: unexpected server error.
+503: dependency unavailable.
+
+Submit a Transaction
+POST /api/v1/transactions
+Headers:
+Content-Type: application/json
+X-API-Key: <key>
+Body:
+{
+  "external_transaction_id": "EXT-20260806-0001",
+  "account_id": "ACC-12345",
+  "customer_id": "CUST-67890",
+  "merchant_name": "Example Electronics",
+  "merchant_category_code": "5732",
+  "transaction_amount": "249.99",
+  "transaction_currency": "USD",
+  "transaction_type": "purchase",
+  "channel": "online",
+  "geo_country": "USA",
+  "is_international": false,
+  "transaction_timestamp": "2026-08-06T14:30:00Z"
+}
+
+Score a Transaction
+POST /api/v1/score
+Use this endpoint when an application needs an immediate risk decision from the unified scoring pipeline.
+
+Batch Submission
+POST /api/v1/transactions/batch accepts up to 1000 transactions. Use batch ingestion for backfills and bulk event replay.
+
+Rule Evaluation
+POST /api/v1/rules/evaluate allows teams to test a transaction payload against active rules before deploying new policies.
+
+Operational Endpoints
+/health: dependency-aware health status.
+/health/live: liveness probe.
+/health/ready: readiness probe.
+/api/v1/score/metrics/summary: scoring pipeline metrics.
+/api/v1/risk-scores/health: model-serving health.
+
+Integration Checklist
+1. Validate API key permission scope.
+2. Send ISO 8601 timestamps with timezone.
+3. Preserve external_transaction_id for idempotent upstream reconciliation.
+4. Respect Retry-After on 429.
+5. Log request_id from error responses for support.
+

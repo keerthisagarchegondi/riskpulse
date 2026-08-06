@@ -1,0 +1,30 @@
+Sprint 5 Milestone Review: Dashboards and Monitoring Active
+
+Scope Completed
+1. Streamlit operational dashboards include real-time monitoring, investigation, trends, model performance, alert management, role-based access, error boundaries, and responsive styling.
+2. Power BI executive dashboard source package includes layouts, DAX measures, Snowflake queries, refresh schedule, and tenant RLS metadata.
+3. API documentation is available through FastAPI Swagger UI at /docs and exportable through scripts/generate_openapi.py.
+4. User guides are provided for Streamlit, Power BI, and API workflows.
+5. Streamlit Docker image is hardened for non-root runtime and includes dashboard runtime dependencies.
+
+Acceptance Checks
+1. Streamlit pages render through a common loading and error boundary.
+2. Dashboard navigation is role-aware.
+3. Empty and failed states are visible to users.
+4. Power BI artifacts map to existing Snowflake REPORTING tables.
+5. API OpenAPI schema documents authentication, rate limits, examples, and common error codes.
+6. Streamlit container exposes port 8501 and healthchecks /_stcore/health.
+
+Known External Dependencies
+1. Live PostgreSQL is required for Streamlit data rendering.
+2. Power BI Desktop or a Power BI build agent is required to export validated PBIX binaries.
+3. Snowflake credentials and tenant access rows are required for Power BI refresh and RLS validation.
+4. Kafka, PostgreSQL, Redis, and model server availability affect API readiness and full-path demos.
+
+Demo Checklist
+1. Log in as admin and confirm all Streamlit pages are visible.
+2. Load each Streamlit page and confirm no unhandled tracebacks are shown.
+3. Open API /docs and confirm Swagger UI loads.
+4. Submit a sample transaction in Swagger UI using X-API-Key.
+5. Open Power BI source layout and confirm each visual has a mapped dataset and measure.
+6. Run or schedule Snowflake REPORTING.REFRESH_ALL before Power BI refresh.

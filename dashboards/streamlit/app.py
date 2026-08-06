@@ -15,6 +15,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Callable
 
 import streamlit as st
 from sqlalchemy import create_engine, text
@@ -60,8 +61,16 @@ st.set_page_config(
 # Custom CSS
 # ---------------------------------------------------------------------------
 _CSS_PATH = Path(__file__).parent / "static" / "styles.css"
+
+
+@st.cache_data(show_spinner=False)
+def _read_css(path: str) -> str:
+    """Read dashboard CSS once per process for faster reruns."""
+    return Path(path).read_text(encoding="utf-8")
+
+
 if _CSS_PATH.exists():
-    st.markdown(f"<style>{_CSS_PATH.read_text()}</style>", unsafe_allow_html=True)
+    st.markdown(f"<style>{_read_css(str(_CSS_PATH))}</style>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +178,43 @@ _PAGES: dict[str, str] = {
 }
 
 
+PageRenderer = Callable[[Engine], None]
+
+
+def _page_renderers() -> dict[str, PageRenderer]:
+    """Return the page render dispatch table."""
+    return {
+        "real_time_monitor": real_time_monitor.render,
+        "investigation_console": investigation_console.render,
+        "trend_analysis": trend_analysis.render,
+        "model_performance": model_performance.render,
+        "alert_management": alert_management.render,
+    }
+
+
+def _render_page_safely(page_key: str, engine: Engine) -> None:
+    """Render a dashboard page with a production error boundary."""
+    renderer = _page_renderers().get(page_key)
+    if renderer is None:
+        st.error(f"Unknown page: {page_key}")
+        return
+
+    try:
+        with st.spinner("Loading dashboard data..."):
+            renderer(engine)
+    except Exception as exc:
+        logger.exception("dashboard_page_render_failed", extra={"page_key": page_key})
+        st.error("This dashboard could not be loaded. Please refresh or contact support.")
+        with st.expander("Troubleshooting details"):
+            st.write(
+                {
+                    "page": page_key,
+                    "error_type": type(exc).__name__,
+                    "message": str(exc),
+                }
+            )
+
+
 def _render_sidebar(engine: Engine) -> str:
     """Render sidebar navigation and metadata; return selected page key."""
     st.sidebar.image(
@@ -252,18 +298,7 @@ def main() -> None:
         st.error("You do not have access to this dashboard page.")
         return
 
-    if page_key == "real_time_monitor":
-        real_time_monitor.render(engine)
-    elif page_key == "investigation_console":
-        investigation_console.render(engine)
-    elif page_key == "trend_analysis":
-        trend_analysis.render(engine)
-    elif page_key == "model_performance":
-        model_performance.render(engine)
-    elif page_key == "alert_management":
-        alert_management.render(engine)
-    else:
-        st.error(f"Unknown page: {page_key}")
+    _render_page_safely(page_key, engine)
 
 
 if __name__ == "__main__":

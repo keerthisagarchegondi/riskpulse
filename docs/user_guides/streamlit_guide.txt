@@ -1,0 +1,65 @@
+RiskPulse Streamlit Dashboard User Guide
+
+Audience
+Fraud analysts, risk operations leads, model owners, and administrators using the operational dashboard.
+
+Access
+1. Open the Streamlit dashboard URL provided by the platform team.
+2. Sign in with the assigned dashboard username and password.
+3. Confirm the sidebar shows the expected role:
+   viewer: real-time monitoring only.
+   analyst: monitoring, investigation, and trend analysis.
+   admin: all pages, including model performance and alert management.
+
+Navigation
+The sidebar is the primary navigation surface. Pages are filtered by role, so unavailable pages are intentionally hidden.
+
+Real-Time Monitor
+Use this page to watch transaction volume, fraud rate, risk score distribution, alert severity, geography, channel mix, and the live transaction feed.
+Recommended workflow:
+1. Select the time range.
+2. Filter by severity, transaction status, channel, or risk score.
+3. Check database status in the sidebar before treating missing data as an operational issue.
+4. Use auto-refresh for monitoring displays; disable it during detailed review.
+
+Investigation Console
+Use this page to triage and resolve fraud alerts.
+Recommended workflow:
+1. Filter alert queue by severity, status, type, date range, or identifier.
+2. Review workload metrics at the top.
+3. Select an alert to inspect transaction details, customer history, risk breakdown, similar alerts, and geography.
+4. Move an alert to investigating before deeper review.
+5. Add investigation notes for intermediate findings.
+6. Resolve with confirmed fraud or false positive and include resolution notes.
+
+Trend Analysis
+Use this page for longer-window fraud, category, model, and rule analysis.
+Recommended workflow:
+1. Choose start date, end date, and aggregation grain.
+2. Review fraud trends and confirmed/false-positive changes.
+3. Inspect category tabs for merchant, channel, and geography concentration.
+4. Export CSVs when needed for risk review packets.
+
+Model Performance
+Admins use this page to monitor classifier quality and model health.
+Recommended workflow:
+1. Set the date range and decision threshold.
+2. Check labeled outcome count before interpreting AUC, ROC, or PR curves.
+3. Review confusion matrix and score distribution for threshold fit.
+4. Inspect feature importance for unexpected driver changes.
+5. Check drift and degradation alerts before approving model rollout decisions.
+
+Alert Management
+Admins use this page to manage alert operations and SLA health.
+Recommended workflow:
+1. Select date window and severity.
+2. Review total alerts, active alerts, resolution rate, false positive rate, SLA compliance, and average response.
+3. Use Volume for alert load and false-positive trend.
+4. Use Response for resolution and response-time distribution.
+5. Use Analysts for throughput by assignment.
+6. Use SLA for breached alerts.
+7. Use Rules to identify high-value and noisy rules.
+
+Troubleshooting
+If a page fails to load, refresh once. If it still fails, expand troubleshooting details and send the page name, error type, and message to support.
+

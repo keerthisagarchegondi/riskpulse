@@ -1,0 +1,47 @@
+RiskPulse Power BI Navigation Guide
+
+Audience
+Executives, fraud strategy leaders, and risk operations managers reviewing strategic fraud performance.
+
+Reports
+RiskPulse Executive Fraud Analytics is the primary executive report. RiskPulse Fraud Trends Deep Dive supports deeper review of geographic, merchant, channel, and year-over-year trends.
+
+Executive Summary Page
+Purpose: show the health and financial value of the fraud platform.
+Key visuals:
+1. Total Fraud Prevented: total prevented amount over the selected period.
+2. Fraud Rate: fraud transactions divided by total transactions.
+3. Platform ROI: prevented fraud net of estimated operating cost.
+4. System Uptime: availability signal from executive summary reporting.
+5. Fraud Rate Trend: month-over-month direction.
+6. Key Risk Indicators: high-risk volume, model AUC, false-positive rate, and SLA compliance.
+
+Fraud Trends Page
+Purpose: identify where fraud is growing and which business segments need attention.
+Key visuals:
+1. Fraud by Geography: filled map by ISO country code.
+2. Fraud by Merchant Category: top categories by fraud amount and rate.
+3. Fraud by Channel: online, POS, ATM, and mobile comparison.
+4. YoY Comparison: annual fraud amount and rate movement.
+
+Operational Metrics Page
+Purpose: show whether fraud operations and model-serving systems are healthy.
+Key visuals:
+1. Average Alert Resolution.
+2. Model AUC.
+3. Pipeline Throughput per Hour.
+4. System Uptime.
+5. Alert Resolution Time by severity.
+6. Model Accuracy over Time by model version.
+7. Pipeline Throughput and latency.
+8. SLA and uptime gauges.
+
+Filters
+Use date filters first, then tenant and channel filters. Tenant access is controlled by row-level security, so users only see allowed tenant rows.
+
+Refresh
+The dataset is configured for daily refresh at 06:00, 12:00, and 18:00 Eastern Time with incremental refresh. Refresh depends on Snowflake REPORTING tables being updated first.
+
+RLS Validation
+Use Power BI Service role testing to confirm tenant-restricted users can only see tenants assigned in SECURITY.POWERBI_USER_TENANT_ACCESS.
+

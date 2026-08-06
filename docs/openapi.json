@@ -1,0 +1,5078 @@
+{
+  "components": {
+    "schemas": {
+      "AuditStatsResponse": {
+        "description": "Response containing audit statistics.",
+        "properties": {
+          "breakdown": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Breakdown",
+            "type": "object"
+          },
+          "rules_tracked": {
+            "title": "Rules Tracked",
+            "type": "integer"
+          },
+          "total_evaluations": {
+            "title": "Total Evaluations",
+            "type": "integer"
+          },
+          "total_triggered": {
+            "title": "Total Triggered",
+            "type": "integer"
+          },
+          "trigger_rate": {
+            "title": "Trigger Rate",
+            "type": "number"
+          },
+          "unique_transactions": {
+            "title": "Unique Transactions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_evaluations",
+          "total_triggered",
+          "trigger_rate",
+          "unique_transactions",
+          "rules_tracked",
+          "breakdown"
+        ],
+        "title": "AuditStatsResponse",
+        "type": "object"
+      },
+      "AuditTrailResponse": {
+        "description": "Response containing audit trail records.",
+        "properties": {
+          "records": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "records",
+          "total"
+        ],
+        "title": "AuditTrailResponse",
+        "type": "object"
+      },
+      "BatchRiskScoreRequest": {
+        "description": "Request schema for batch scoring.",
+        "properties": {
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/RiskScoreRequest"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Transactions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "transactions"
+        ],
+        "title": "BatchRiskScoreRequest",
+        "type": "object"
+      },
+      "BatchRiskScoreResponse": {
+        "description": "Response schema for batch scoring.",
+        "properties": {
+          "batch_latency_ms": {
+            "title": "Batch Latency Ms",
+            "type": "number"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/RiskScoreResponse"
+            },
+            "title": "Scores",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scores",
+          "total",
+          "batch_latency_ms",
+          "model_version"
+        ],
+        "title": "BatchRiskScoreResponse",
+        "type": "object"
+      },
+      "BatchScoreRequest": {
+        "description": "Request schema for batch scoring.",
+        "properties": {
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreTransactionRequest"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Transactions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "transactions"
+        ],
+        "title": "BatchScoreRequest",
+        "type": "object"
+      },
+      "BatchScoreResponse": {
+        "description": "Response schema for batch scoring.",
+        "properties": {
+          "batch_latency_ms": {
+            "title": "Batch Latency Ms",
+            "type": "number"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreResponse"
+            },
+            "title": "Scores",
+            "type": "array"
+          },
+          "successful": {
+            "title": "Successful",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scores",
+          "total",
+          "successful",
+          "failed",
+          "batch_latency_ms"
+        ],
+        "title": "BatchScoreResponse",
+        "type": "object"
+      },
+      "BatchSubmitResponse": {
+        "description": "Response after submitting a batch of transactions.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionSubmitResponse"
+            },
+            "title": "Transactions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "accepted",
+          "rejected",
+          "transactions"
+        ],
+        "title": "BatchSubmitResponse",
+        "type": "object"
+      },
+      "DependencyStatus": {
+        "description": "Status of a single service dependency.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ],
+        "title": "DependencyStatus",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "description": "Comprehensive health check response.",
+        "properties": {
+          "dependencies": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DependencyStatus"
+            },
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uptime_seconds": {
+            "title": "Uptime Seconds",
+            "type": "number"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "service",
+          "version",
+          "environment",
+          "timestamp",
+          "uptime_seconds"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "MethodScoreResponse": {
+        "description": "Individual scoring method result.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "normalized_score": {
+            "title": "Normalized Score",
+            "type": "number"
+          },
+          "raw_score": {
+            "title": "Raw Score",
+            "type": "number"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          },
+          "weighted_score": {
+            "title": "Weighted Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "method",
+          "raw_score",
+          "normalized_score",
+          "weight",
+          "weighted_score",
+          "latency_ms",
+          "success"
+        ],
+        "title": "MethodScoreResponse",
+        "type": "object"
+      },
+      "MetricsResponse": {
+        "description": "Scoring pipeline metrics.",
+        "properties": {
+          "avg_latency_ms": {
+            "title": "Avg Latency Ms",
+            "type": "number"
+          },
+          "cache_stats": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Stats"
+          },
+          "classification_distribution": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Classification Distribution",
+            "type": "object"
+          },
+          "total_scored": {
+            "title": "Total Scored",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_scored",
+          "avg_latency_ms",
+          "classification_distribution",
+          "cache_stats"
+        ],
+        "title": "MetricsResponse",
+        "type": "object"
+      },
+      "ModelHealthResponse": {
+        "description": "Response schema for model health endpoint.",
+        "properties": {
+          "active_alerts": {
+            "title": "Active Alerts",
+            "type": "integer"
+          },
+          "avg_latency_ms": {
+            "title": "Avg Latency Ms",
+            "type": "number"
+          },
+          "error_rate": {
+            "title": "Error Rate",
+            "type": "number"
+          },
+          "is_ready": {
+            "title": "Is Ready",
+            "type": "boolean"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "prediction_count": {
+            "title": "Prediction Count",
+            "type": "integer"
+          },
+          "prediction_psi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prediction Psi"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "model_name",
+          "model_version",
+          "is_ready",
+          "prediction_count",
+          "avg_latency_ms",
+          "error_rate",
+          "active_alerts"
+        ],
+        "title": "ModelHealthResponse",
+        "type": "object"
+      },
+      "ModelInfoResponse": {
+        "description": "Response schema for model info.",
+        "properties": {
+          "ab_tests": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Ab Tests",
+            "type": "array"
+          },
+          "active_version": {
+            "title": "Active Version",
+            "type": "string"
+          },
+          "has_fallback": {
+            "title": "Has Fallback",
+            "type": "boolean"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "serving_stats": {
+            "additionalProperties": true,
+            "title": "Serving Stats",
+            "type": "object"
+          }
+        },
+        "required": [
+          "model_name",
+          "active_version",
+          "has_fallback",
+          "serving_stats"
+        ],
+        "title": "ModelInfoResponse",
+        "type": "object"
+      },
+      "RiskScoreRequest": {
+        "description": "Request schema for scoring a single transaction.",
+        "properties": {
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "customer_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "features": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pre-computed feature vector. If provided, bypasses feature store lookup.",
+            "title": "Features"
+          },
+          "geo_country": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Country"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "maxLength": 45,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "is_international": {
+            "default": false,
+            "title": "Is International",
+            "type": "boolean"
+          },
+          "merchant_category_code": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Category Code"
+          },
+          "transaction_amount": {
+            "exclusiveMinimum": 0.0,
+            "title": "Transaction Amount",
+            "type": "number"
+          },
+          "transaction_currency": {
+            "default": "USD",
+            "maxLength": 3,
+            "title": "Transaction Currency",
+            "type": "string"
+          },
+          "transaction_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Transaction Id",
+            "type": "string"
+          },
+          "transaction_type": {
+            "title": "Transaction Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "customer_id",
+          "transaction_amount",
+          "transaction_type",
+          "channel"
+        ],
+        "title": "RiskScoreRequest",
+        "type": "object"
+      },
+      "RiskScoreResponse": {
+        "description": "Response schema for a single risk score.",
+        "properties": {
+          "ab_test_variant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ab Test Variant"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "prediction_latency_ms": {
+            "title": "Prediction Latency Ms",
+            "type": "number"
+          },
+          "risk_level": {
+            "title": "Risk Level",
+            "type": "string"
+          },
+          "risk_score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Risk Score",
+            "type": "number"
+          },
+          "transaction_id": {
+            "title": "Transaction Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "risk_score",
+          "risk_level",
+          "confidence",
+          "model_version",
+          "prediction_latency_ms"
+        ],
+        "title": "RiskScoreResponse",
+        "type": "object"
+      },
+      "RuleCreateRequest": {
+        "description": "Schema for creating a new rule.",
+        "properties": {
+          "action": {
+            "default": "flag",
+            "description": "Action on trigger: block, flag, allow",
+            "title": "Action",
+            "type": "string"
+          },
+          "category": {
+            "default": "custom",
+            "description": "Rule category",
+            "maxLength": 64,
+            "title": "Category",
+            "type": "string"
+          },
+          "condition": {
+            "additionalProperties": true,
+            "description": "Rule condition definition",
+            "title": "Condition",
+            "type": "object"
+          },
+          "description": {
+            "default": "",
+            "description": "Rule description",
+            "maxLength": 512,
+            "title": "Description",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "description": "Whether the rule is active",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Unique rule identifier",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "Human-readable rule name",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "priority": {
+            "default": 100,
+            "description": "Execution priority (lower = higher)",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Priority",
+            "type": "integer"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Time-based activation schedule",
+            "title": "Schedule"
+          },
+          "severity": {
+            "default": "medium",
+            "description": "Rule severity level",
+            "title": "Severity",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Rule tags for filtering",
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "version": {
+            "default": "1.0.0",
+            "description": "Rule version (semver)",
+            "maxLength": 20,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "condition"
+        ],
+        "title": "RuleCreateRequest",
+        "type": "object"
+      },
+      "RuleEngineStatusResponse": {
+        "description": "Rules engine status information.",
+        "properties": {
+          "audit_trail_records": {
+            "title": "Audit Trail Records",
+            "type": "integer"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "enabled_rules": {
+            "title": "Enabled Rules",
+            "type": "integer"
+          },
+          "total_rules": {
+            "title": "Total Rules",
+            "type": "integer"
+          },
+          "velocity_tracked_entities": {
+            "title": "Velocity Tracked Entities",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_rules",
+          "enabled_rules",
+          "categories",
+          "velocity_tracked_entities",
+          "audit_trail_records"
+        ],
+        "title": "RuleEngineStatusResponse",
+        "type": "object"
+      },
+      "RuleEvaluateRequest": {
+        "additionalProperties": true,
+        "description": "Request to evaluate a transaction against rules.",
+        "properties": {
+          "transaction": {
+            "additionalProperties": true,
+            "description": "Transaction data to evaluate",
+            "title": "Transaction",
+            "type": "object"
+          }
+        },
+        "required": [
+          "transaction"
+        ],
+        "title": "RuleEvaluateRequest",
+        "type": "object"
+      },
+      "RuleEvaluateResponse": {
+        "description": "Response from rule evaluation.",
+        "properties": {
+          "highest_severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highest Severity"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "overall_action": {
+            "title": "Overall Action",
+            "type": "string"
+          },
+          "short_circuited": {
+            "title": "Short Circuited",
+            "type": "boolean"
+          },
+          "total_rules_evaluated": {
+            "title": "Total Rules Evaluated",
+            "type": "integer"
+          },
+          "total_rules_triggered": {
+            "title": "Total Rules Triggered",
+            "type": "integer"
+          },
+          "transaction_id": {
+            "title": "Transaction Id",
+            "type": "string"
+          },
+          "triggered_rules": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Triggered Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "overall_action",
+          "triggered_rules",
+          "total_rules_evaluated",
+          "total_rules_triggered",
+          "latency_ms",
+          "short_circuited"
+        ],
+        "title": "RuleEvaluateResponse",
+        "type": "object"
+      },
+      "RuleListResponse": {
+        "description": "Response for listing rules.",
+        "properties": {
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResponse"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rules",
+          "total",
+          "categories"
+        ],
+        "title": "RuleListResponse",
+        "type": "object"
+      },
+      "RuleResponse": {
+        "description": "Schema for a single rule response.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "condition": {
+            "additionalProperties": true,
+            "title": "Condition",
+            "type": "object"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "version",
+          "priority",
+          "enabled",
+          "severity",
+          "category",
+          "condition",
+          "action"
+        ],
+        "title": "RuleResponse",
+        "type": "object"
+      },
+      "RuleUpdateRequest": {
+        "description": "Schema for updating an existing rule.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "title": "RuleUpdateRequest",
+        "type": "object"
+      },
+      "ScoreResponse": {
+        "description": "Response schema for a single unified score.",
+        "properties": {
+          "alert_recommended": {
+            "title": "Alert Recommended",
+            "type": "boolean"
+          },
+          "auto_block_recommended": {
+            "title": "Auto Block Recommended",
+            "type": "boolean"
+          },
+          "cached": {
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "ensemble_weights_used": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Ensemble Weights Used",
+            "type": "object"
+          },
+          "final_score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Final Score",
+            "type": "number"
+          },
+          "method_scores": {
+            "items": {
+              "$ref": "#/components/schemas/MethodScoreResponse"
+            },
+            "title": "Method Scores",
+            "type": "array"
+          },
+          "methods_failed": {
+            "title": "Methods Failed",
+            "type": "integer"
+          },
+          "methods_succeeded": {
+            "title": "Methods Succeeded",
+            "type": "integer"
+          },
+          "risk_classification": {
+            "title": "Risk Classification",
+            "type": "string"
+          },
+          "scoring_version": {
+            "title": "Scoring Version",
+            "type": "string"
+          },
+          "total_latency_ms": {
+            "title": "Total Latency Ms",
+            "type": "number"
+          },
+          "transaction_id": {
+            "title": "Transaction Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "final_score",
+          "risk_classification",
+          "method_scores",
+          "ensemble_weights_used",
+          "total_latency_ms",
+          "methods_succeeded",
+          "methods_failed",
+          "alert_recommended",
+          "auto_block_recommended",
+          "cached",
+          "scoring_version"
+        ],
+        "title": "ScoreResponse",
+        "type": "object"
+      },
+      "ScoreTransactionRequest": {
+        "description": "Request schema for scoring a single transaction.",
+        "properties": {
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Enrichment context for rule engine evaluation.",
+            "title": "Context"
+          },
+          "customer_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "features": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pre-computed feature vector. Bypasses feature store lookup.",
+            "title": "Features"
+          },
+          "geo_country": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Country"
+          },
+          "geo_latitude": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Latitude"
+          },
+          "geo_longitude": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Longitude"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "maxLength": 45,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "is_international": {
+            "default": false,
+            "title": "Is International",
+            "type": "boolean"
+          },
+          "merchant_category_code": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Category Code"
+          },
+          "merchant_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Id"
+          },
+          "merchant_name": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Name"
+          },
+          "transaction_amount": {
+            "exclusiveMinimum": 0.0,
+            "title": "Transaction Amount",
+            "type": "number"
+          },
+          "transaction_currency": {
+            "default": "USD",
+            "maxLength": 3,
+            "title": "Transaction Currency",
+            "type": "string"
+          },
+          "transaction_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Transaction Id",
+            "type": "string"
+          },
+          "transaction_timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Timestamp"
+          },
+          "transaction_type": {
+            "title": "Transaction Type",
+            "type": "string"
+          },
+          "use_cache": {
+            "default": true,
+            "description": "Whether to use cached scores.",
+            "title": "Use Cache",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "customer_id",
+          "transaction_amount",
+          "transaction_type",
+          "channel"
+        ],
+        "title": "ScoreTransactionRequest",
+        "type": "object"
+      },
+      "TransactionBatchCreate": {
+        "description": "Schema for batch transaction submission.",
+        "properties": {
+          "transactions": {
+            "description": "List of transactions (max 1000)",
+            "items": {
+              "$ref": "#/components/schemas/TransactionCreate"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Transactions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "transactions"
+        ],
+        "title": "TransactionBatchCreate",
+        "type": "object"
+      },
+      "TransactionCreate": {
+        "description": "Schema for creating a new transaction.",
+        "properties": {
+          "account_id": {
+            "description": "Account identifier",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Account Id",
+            "type": "string"
+          },
+          "card_last_four": {
+            "anyOf": [
+              {
+                "maxLength": 4,
+                "minLength": 4,
+                "pattern": "^\\d{4}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Last Four"
+          },
+          "card_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Card type",
+            "title": "Card Type"
+          },
+          "channel": {
+            "description": "Transaction channel",
+            "title": "Channel",
+            "type": "string"
+          },
+          "customer_id": {
+            "description": "Customer identifier",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Device fingerprint",
+            "title": "Device Id"
+          },
+          "device_type": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Device type",
+            "title": "Device Type"
+          },
+          "external_transaction_id": {
+            "description": "Unique external identifier for the transaction",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "External Transaction Id",
+            "type": "string"
+          },
+          "geo_city": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "City name",
+            "title": "Geo City"
+          },
+          "geo_country": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 3166-1 alpha-3 country code",
+            "title": "Geo Country"
+          },
+          "geo_latitude": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Transaction latitude",
+            "title": "Geo Latitude"
+          },
+          "geo_longitude": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Transaction longitude",
+            "title": "Geo Longitude"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "maxLength": 45,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Client IP address",
+            "title": "Ip Address"
+          },
+          "is_international": {
+            "default": false,
+            "description": "Whether this is an international transaction",
+            "title": "Is International",
+            "type": "boolean"
+          },
+          "merchant_category_code": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "MCC code",
+            "title": "Merchant Category Code"
+          },
+          "merchant_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Merchant identifier",
+            "title": "Merchant Id"
+          },
+          "merchant_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Merchant name",
+            "title": "Merchant Name"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Additional metadata",
+            "title": "Metadata"
+          },
+          "transaction_amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,13}|(?=[\\d.]{1,16}0*$)\\d{0,13}\\.\\d{0,2}0*$)",
+                "type": "string"
+              }
+            ],
+            "description": "Transaction amount",
+            "title": "Transaction Amount"
+          },
+          "transaction_currency": {
+            "default": "USD",
+            "description": "ISO 4217 currency code",
+            "maxLength": 3,
+            "title": "Transaction Currency",
+            "type": "string"
+          },
+          "transaction_timestamp": {
+            "description": "When the transaction occurred",
+            "format": "date-time",
+            "title": "Transaction Timestamp",
+            "type": "string"
+          },
+          "transaction_type": {
+            "description": "Type of transaction",
+            "title": "Transaction Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "external_transaction_id",
+          "account_id",
+          "customer_id",
+          "transaction_amount",
+          "transaction_type",
+          "channel",
+          "transaction_timestamp"
+        ],
+        "title": "TransactionCreate",
+        "type": "object"
+      },
+      "TransactionListResponse": {
+        "description": "Paginated list of transactions.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "pages"
+        ],
+        "title": "TransactionListResponse",
+        "type": "object"
+      },
+      "TransactionResponse": {
+        "description": "Schema for transaction response.",
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "card_last_four": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Last Four"
+          },
+          "card_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Type"
+          },
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "customer_id": {
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "device_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Id"
+          },
+          "device_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Type"
+          },
+          "external_transaction_id": {
+            "title": "External Transaction Id",
+            "type": "string"
+          },
+          "geo_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo City"
+          },
+          "geo_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Country"
+          },
+          "geo_latitude": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Latitude"
+          },
+          "geo_longitude": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geo Longitude"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "is_international": {
+            "title": "Is International",
+            "type": "boolean"
+          },
+          "merchant_category_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Category Code"
+          },
+          "merchant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Id"
+          },
+          "merchant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Name"
+          },
+          "processed_timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed Timestamp"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "transaction_amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Transaction Amount",
+            "type": "string"
+          },
+          "transaction_currency": {
+            "title": "Transaction Currency",
+            "type": "string"
+          },
+          "transaction_id": {
+            "format": "uuid",
+            "title": "Transaction Id",
+            "type": "string"
+          },
+          "transaction_timestamp": {
+            "format": "date-time",
+            "title": "Transaction Timestamp",
+            "type": "string"
+          },
+          "transaction_type": {
+            "title": "Transaction Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "external_transaction_id",
+          "account_id",
+          "customer_id",
+          "transaction_amount",
+          "transaction_currency",
+          "transaction_type",
+          "channel",
+          "is_international",
+          "transaction_timestamp",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TransactionResponse",
+        "type": "object"
+      },
+      "TransactionSubmitResponse": {
+        "description": "Response after submitting a transaction for processing.",
+        "properties": {
+          "external_transaction_id": {
+            "title": "External Transaction Id",
+            "type": "string"
+          },
+          "message": {
+            "default": "Transaction accepted for processing",
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "default": "accepted",
+            "title": "Status",
+            "type": "string"
+          },
+          "transaction_id": {
+            "format": "uuid",
+            "title": "Transaction Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id",
+          "external_transaction_id"
+        ],
+        "title": "TransactionSubmitResponse",
+        "type": "object"
+      },
+      "UpdateWeightsRequest": {
+        "description": "Request to update ensemble weights.",
+        "properties": {
+          "anomaly_score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Anomaly Score",
+            "type": "number"
+          },
+          "ml_score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Ml Score",
+            "type": "number"
+          },
+          "rule_score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Rule Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "rule_score",
+          "anomaly_score",
+          "ml_score"
+        ],
+        "title": "UpdateWeightsRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "src__api__routes__risk_scores__ErrorResponse": {
+        "description": "Standard error response.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          }
+        },
+        "required": [
+          "error",
+          "detail"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "src__api__routes__rules__ErrorResponse": {
+        "description": "Standard error response.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "detail"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "src__api__schemas__transaction_schema__ErrorResponse": {
+        "description": "Standard error response.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      },
+      "ApiKeyAuth": {
+        "description": "RiskPulse uses API key authentication. Send the key in the `X-API-Key` header. Development and test environments include `dev-api-key-riskpulse-2024` by default. Production keys should be provisioned through the configured secret store and scoped with `read`, `write`, or `admin` permissions.",
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "Fraud Analytics & Risk Intelligence Platform API.\n\n## Authentication\nRiskPulse uses API key authentication. Send the key in the `X-API-Key` header. Development and test environments include `dev-api-key-riskpulse-2024` by default. Production keys should be provisioned through the configured secret store and scoped with `read`, `write`, or `admin` permissions.\n\n## Rate Limits\nDefault limit is 100 requests per minute per API key or source IP. Responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` headers when applicable.\n\n## Error Codes\n- `400`: Malformed request or invalid operation state.\n- `401`: Missing or invalid `X-API-Key` header.\n- `403`: Authenticated key lacks required permission.\n- `404`: Requested entity was not found.\n- `409`: Requested write conflicts with an existing resource.\n- `422`: Request payload or query parameter validation failed.\n- `429`: Rate limit exceeded. Retry after the `Retry-After` header value.\n- `500`: Unexpected server error with a correlation request id when available.\n- `503`: Dependency unavailable, such as Kafka, PostgreSQL, or model serving.\n\n## Correlation\nEvery request is logged with a correlation id when available. Error responses include `request_id` for support and incident triage.",
+    "title": "RiskPulse API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/risk-scores/health": {
+      "get": {
+        "description": "Get the current model serving health and monitoring metrics.",
+        "operationId": "model_health_api_v1_risk_scores_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Model health status",
+        "tags": [
+          "Risk Scores"
+        ]
+      }
+    },
+    "/api/v1/risk-scores/info": {
+      "get": {
+        "description": "Get information about the currently served model, fallback, and A/B tests.",
+        "operationId": "model_info_api_v1_risk_scores_info_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInfoResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Model serving info",
+        "tags": [
+          "Risk Scores"
+        ]
+      }
+    },
+    "/api/v1/risk-scores/monitoring/alerts": {
+      "get": {
+        "description": "Retrieve recent model monitoring alerts (drift, performance, quality).",
+        "operationId": "get_monitoring_alerts_api_v1_risk_scores_monitoring_alerts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Monitoring Alerts Api V1 Risk Scores Monitoring Alerts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get monitoring alerts",
+        "tags": [
+          "Risk Scores"
+        ]
+      }
+    },
+    "/api/v1/risk-scores/monitoring/check": {
+      "post": {
+        "description": "Manually trigger all monitoring checks (drift, performance, quality).",
+        "operationId": "run_monitoring_checks_api_v1_risk_scores_monitoring_check_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Monitoring Checks Api V1 Risk Scores Monitoring Check Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__risk_scores__ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__risk_scores__ErrorResponse"
+                }
+              }
+            },
+            "description": "Insufficient permissions"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Run monitoring checks",
+        "tags": [
+          "Risk Scores"
+        ]
+      }
+    },
+    "/api/v1/risk-scores/predict": {
+      "post": {
+        "description": "Compute fraud risk score for a single transaction in real-time.",
+        "operationId": "predict_risk_score_api_v1_risk_scores_predict_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "riskScorePredict": {
+                  "summary": "Model serving request",
+                  "value": {
+                    "channel": "online",
+                    "customer_id": "CUST-67890",
+                    "features": {
+                      "amount_zscore": 0.7,
+                      "velocity_1h": 1.0
+                    },
+                    "transaction_amount": 249.99,
+                    "transaction_currency": "USD",
+                    "transaction_id": "EXT-20260806-0001",
+                    "transaction_type": "purchase"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RiskScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskScoreResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__risk_scores__ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__risk_scores__ErrorResponse"
+                }
+              }
+            },
+            "description": "Model not available"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Score a single transaction",
+        "tags": [
+          "Risk Scores"
+        ]
+      }
+    },
+    "/api/v1/risk-scores/predict/batch": {
+      "post": {
+        "description": "Compute fraud risk scores for up to 1000 transactions in a single request.",
+        "operationId": "predict_batch_api_v1_risk_scores_predict_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRiskScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRiskScoreResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__risk_scores__ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__risk_scores__ErrorResponse"
+                }
+              }
+            },
+            "description": "Model not available"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Score a batch of transactions",
+        "tags": [
+          "Risk Scores"
+        ]
+      }
+    },
+    "/api/v1/risk-scores/reload": {
+      "post": {
+        "description": "Check for model updates and hot-reload if a newer version is available.",
+        "operationId": "reload_model_api_v1_risk_scores_reload_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reload Model Api V1 Risk Scores Reload Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__risk_scores__ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__risk_scores__ErrorResponse"
+                }
+              }
+            },
+            "description": "Insufficient permissions"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Trigger model hot-reload",
+        "tags": [
+          "Risk Scores"
+        ]
+      }
+    },
+    "/api/v1/rules": {
+      "get": {
+        "description": "Get all configured business rules with optional filtering.",
+        "operationId": "list_rules_api_v1_rules_get",
+        "parameters": [
+          {
+            "description": "Filter by category",
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by category",
+              "title": "Category"
+            }
+          },
+          {
+            "description": "Only return enabled rules",
+            "in": "query",
+            "name": "enabled_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Only return enabled rules",
+              "title": "Enabled Only",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List all rules",
+        "tags": [
+          "Rules Engine"
+        ]
+      },
+      "post": {
+        "description": "Add a new business rule to the engine (in-memory, not persisted to YAML).",
+        "operationId": "create_rule_api_v1_rules_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__rules__ErrorResponse"
+                }
+              }
+            },
+            "description": "Rule already exists"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create a new rule",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/audit/recent": {
+      "get": {
+        "description": "Get the most recent rule evaluation audit records.",
+        "operationId": "get_recent_audit_api_v1_rules_audit_recent_get",
+        "parameters": [
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditTrailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get recent audit records",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/audit/rule/{rule_id}": {
+      "get": {
+        "description": "Get recent evaluation history for a specific rule.",
+        "operationId": "get_rule_audit_api_v1_rules_audit_rule__rule_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditTrailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get audit for rule",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/audit/stats": {
+      "get": {
+        "description": "Get aggregated statistics about rule evaluations.",
+        "operationId": "get_audit_stats_api_v1_rules_audit_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditStatsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get audit statistics",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/audit/transaction/{transaction_id}": {
+      "get": {
+        "description": "Get all rule evaluations for a specific transaction.",
+        "operationId": "get_transaction_audit_api_v1_rules_audit_transaction__transaction_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditTrailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get audit for transaction",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/evaluate": {
+      "post": {
+        "description": "Test a transaction against all active rules. Used for testing and debugging.",
+        "operationId": "evaluate_transaction_api_v1_rules_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "ruleEvaluation": {
+                  "summary": "Evaluate rules before deployment",
+                  "value": {
+                    "transaction": {
+                      "account_id": "ACC-12345",
+                      "card_last_four": "4242",
+                      "card_type": "credit",
+                      "channel": "online",
+                      "customer_id": "CUST-67890",
+                      "device_id": "device-web-123",
+                      "device_type": "desktop",
+                      "external_transaction_id": "EXT-20260806-0001",
+                      "geo_city": "New York",
+                      "geo_country": "USA",
+                      "geo_latitude": "40.7128",
+                      "geo_longitude": "-74.0060",
+                      "ip_address": "203.0.113.10",
+                      "is_international": false,
+                      "merchant_category_code": "5732",
+                      "merchant_id": "MERCH-11111",
+                      "merchant_name": "Example Electronics",
+                      "metadata": {
+                        "checkout_session_id": "sess_abc123"
+                      },
+                      "transaction_amount": "249.99",
+                      "transaction_currency": "USD",
+                      "transaction_timestamp": "2026-08-06T14:30:00Z",
+                      "transaction_type": "purchase"
+                    }
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/RuleEvaluateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEvaluateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Evaluate a transaction",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/reload": {
+      "post": {
+        "description": "Force the engine to reload rules from the YAML configuration file.",
+        "operationId": "reload_rules_api_v1_rules_reload_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reload Rules Api V1 Rules Reload Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Force reload rules",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/status": {
+      "get": {
+        "description": "Get current status of the rules engine including rule counts and metrics.",
+        "operationId": "get_status_api_v1_rules_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEngineStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get rules engine status",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/{rule_id}": {
+      "delete": {
+        "description": "Remove a rule from the engine (in-memory).",
+        "operationId": "delete_rule_api_v1_rules__rule_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__rules__ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete a rule",
+        "tags": [
+          "Rules Engine"
+        ]
+      },
+      "get": {
+        "description": "Get the full definition of a specific rule by its ID.",
+        "operationId": "get_rule_api_v1_rules__rule_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__rules__ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get a specific rule",
+        "tags": [
+          "Rules Engine"
+        ]
+      },
+      "patch": {
+        "description": "Partially update an existing rule's properties.",
+        "operationId": "update_rule_api_v1_rules__rule_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__rules__ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Update an existing rule",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/{rule_id}/disable": {
+      "post": {
+        "description": "Disable a rule without deleting it.",
+        "operationId": "disable_rule_api_v1_rules__rule_id__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__rules__ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Disable a rule",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/rules/{rule_id}/enable": {
+      "post": {
+        "description": "Enable a previously disabled rule.",
+        "operationId": "enable_rule_api_v1_rules__rule_id__enable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__routes__rules__ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Enable a rule",
+        "tags": [
+          "Rules Engine"
+        ]
+      }
+    },
+    "/api/v1/score": {
+      "post": {
+        "description": "Run unified fraud scoring (rule + anomaly + ML) on a single transaction.",
+        "operationId": "score_transaction_api_v1_score_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "scoreTransaction": {
+                  "summary": "Score a transaction with feature hints",
+                  "value": {
+                    "channel": "online",
+                    "customer_id": "CUST-67890",
+                    "features": {
+                      "amount_zscore": 0.7,
+                      "merchant_risk": 0.2,
+                      "velocity_1h": 1.0
+                    },
+                    "geo_country": "USA",
+                    "is_international": false,
+                    "merchant_category_code": "5732",
+                    "merchant_id": "MERCH-11111",
+                    "merchant_name": "Example Electronics",
+                    "transaction_amount": 249.99,
+                    "transaction_currency": "USD",
+                    "transaction_id": "EXT-20260806-0001",
+                    "transaction_type": "purchase",
+                    "use_cache": true
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/ScoreTransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Score a single transaction",
+        "tags": [
+          "Scoring"
+        ]
+      }
+    },
+    "/api/v1/score/batch": {
+      "post": {
+        "description": "Run unified fraud scoring on multiple transactions in parallel.",
+        "operationId": "score_batch_api_v1_score_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "scoreBatch": {
+                  "summary": "Batch scoring request",
+                  "value": {
+                    "transactions": [
+                      {
+                        "channel": "online",
+                        "customer_id": "CUST-67890",
+                        "features": {
+                          "amount_zscore": 0.7,
+                          "merchant_risk": 0.2,
+                          "velocity_1h": 1.0
+                        },
+                        "geo_country": "USA",
+                        "is_international": false,
+                        "merchant_category_code": "5732",
+                        "merchant_id": "MERCH-11111",
+                        "merchant_name": "Example Electronics",
+                        "transaction_amount": 249.99,
+                        "transaction_currency": "USD",
+                        "transaction_id": "EXT-20260806-0001",
+                        "transaction_type": "purchase",
+                        "use_cache": true
+                      }
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/BatchScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchScoreResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Score a batch of transactions",
+        "tags": [
+          "Scoring"
+        ]
+      }
+    },
+    "/api/v1/score/metrics/summary": {
+      "get": {
+        "description": "Retrieve aggregated scoring pipeline performance metrics.",
+        "operationId": "get_metrics_api_v1_score_metrics_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get scoring pipeline metrics",
+        "tags": [
+          "Scoring"
+        ]
+      }
+    },
+    "/api/v1/score/weights": {
+      "put": {
+        "description": "Dynamically update the ensemble scoring weights.",
+        "operationId": "update_weights_api_v1_score_weights_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWeightsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Weights Api V1 Score Weights Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Update ensemble weights",
+        "tags": [
+          "Scoring"
+        ]
+      }
+    },
+    "/api/v1/score/{transaction_id}": {
+      "get": {
+        "description": "Retrieve a previously computed score from cache by transaction ID.",
+        "operationId": "get_score_api_v1_score__transaction_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid `X-API-Key` header."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Retrieve a cached score",
+        "tags": [
+          "Scoring"
+        ]
+      }
+    },
+    "/api/v1/transactions": {
+      "get": {
+        "description": "Retrieve a paginated list of transactions with optional filtering.",
+        "operationId": "list_transactions_api_v1_transactions_get",
+        "parameters": [
+          {
+            "description": "Filter by account ID",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by account ID",
+              "title": "Account Id"
+            }
+          },
+          {
+            "description": "Filter by customer ID",
+            "in": "query",
+            "name": "customer_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by customer ID",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "description": "Filter by status",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Filter by transaction type",
+            "in": "query",
+            "name": "transaction_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by transaction type",
+              "title": "Transaction Type"
+            }
+          },
+          {
+            "description": "Filter by channel",
+            "in": "query",
+            "name": "channel",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by channel",
+              "title": "Channel"
+            }
+          },
+          {
+            "description": "Minimum amount filter",
+            "in": "query",
+            "name": "min_amount",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum amount filter",
+              "title": "Min Amount"
+            }
+          },
+          {
+            "description": "Maximum amount filter",
+            "in": "query",
+            "name": "max_amount",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Maximum amount filter",
+              "title": "Max Amount"
+            }
+          },
+          {
+            "description": "Start date filter (ISO 8601)",
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start date filter (ISO 8601)",
+              "title": "Start Date"
+            }
+          },
+          {
+            "description": "End date filter (ISO 8601)",
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End date filter (ISO 8601)",
+              "title": "End Date"
+            }
+          },
+          {
+            "description": "Page number",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Page number",
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items per page",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Items per page",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__schemas__transaction_schema__ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "List transactions with filters",
+        "tags": [
+          "Transactions"
+        ]
+      },
+      "post": {
+        "description": "Submit a single transaction for fraud analysis. The transaction is validated and published to Kafka.",
+        "operationId": "submit_transaction_api_v1_transactions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "singleTransaction": {
+                  "summary": "Single online purchase",
+                  "value": {
+                    "account_id": "ACC-12345",
+                    "card_last_four": "4242",
+                    "card_type": "credit",
+                    "channel": "online",
+                    "customer_id": "CUST-67890",
+                    "device_id": "device-web-123",
+                    "device_type": "desktop",
+                    "external_transaction_id": "EXT-20260806-0001",
+                    "geo_city": "New York",
+                    "geo_country": "USA",
+                    "geo_latitude": "40.7128",
+                    "geo_longitude": "-74.0060",
+                    "ip_address": "203.0.113.10",
+                    "is_international": false,
+                    "merchant_category_code": "5732",
+                    "merchant_id": "MERCH-11111",
+                    "merchant_name": "Example Electronics",
+                    "metadata": {
+                      "checkout_session_id": "sess_abc123"
+                    },
+                    "transaction_amount": "249.99",
+                    "transaction_currency": "USD",
+                    "transaction_timestamp": "2026-08-06T14:30:00Z",
+                    "transaction_type": "purchase"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/TransactionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionSubmitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__schemas__transaction_schema__ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Kafka unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Submit a single transaction",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/batch": {
+      "post": {
+        "description": "Submit up to 1000 transactions in a single request for bulk processing.",
+        "operationId": "submit_batch_api_v1_transactions_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "batchTransactions": {
+                  "summary": "Two transaction batch",
+                  "value": {
+                    "transactions": [
+                      {
+                        "account_id": "ACC-12345",
+                        "card_last_four": "4242",
+                        "card_type": "credit",
+                        "channel": "online",
+                        "customer_id": "CUST-67890",
+                        "device_id": "device-web-123",
+                        "device_type": "desktop",
+                        "external_transaction_id": "EXT-20260806-0001",
+                        "geo_city": "New York",
+                        "geo_country": "USA",
+                        "geo_latitude": "40.7128",
+                        "geo_longitude": "-74.0060",
+                        "ip_address": "203.0.113.10",
+                        "is_international": false,
+                        "merchant_category_code": "5732",
+                        "merchant_id": "MERCH-11111",
+                        "merchant_name": "Example Electronics",
+                        "metadata": {
+                          "checkout_session_id": "sess_abc123"
+                        },
+                        "transaction_amount": "249.99",
+                        "transaction_currency": "USD",
+                        "transaction_timestamp": "2026-08-06T14:30:00Z",
+                        "transaction_type": "purchase"
+                      },
+                      {
+                        "account_id": "ACC-12345",
+                        "card_last_four": "4242",
+                        "card_type": "credit",
+                        "channel": "online",
+                        "customer_id": "CUST-67890",
+                        "device_id": "device-web-123",
+                        "device_type": "desktop",
+                        "external_transaction_id": "EXT-20260806-0002",
+                        "geo_city": "New York",
+                        "geo_country": "USA",
+                        "geo_latitude": "40.7128",
+                        "geo_longitude": "-74.0060",
+                        "ip_address": "203.0.113.10",
+                        "is_international": false,
+                        "merchant_category_code": "5732",
+                        "merchant_id": "MERCH-11111",
+                        "merchant_name": "Example Electronics",
+                        "metadata": {
+                          "checkout_session_id": "sess_abc123"
+                        },
+                        "transaction_amount": "249.99",
+                        "transaction_currency": "USD",
+                        "transaction_timestamp": "2026-08-06T14:30:00Z",
+                        "transaction_type": "purchase"
+                      }
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/TransactionBatchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSubmitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__schemas__transaction_schema__ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Submit a batch of transactions",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/{transaction_id}": {
+      "get": {
+        "description": "Get details of a specific transaction by its internal UUID.",
+        "operationId": "get_transaction_api_v1_transactions__transaction_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__schemas__transaction_schema__ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__api__schemas__transaction_schema__ErrorResponse"
+                }
+              }
+            },
+            "description": "Transaction not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Maximum requests allowed in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Approximate remaining requests in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error with a correlation request id when available."
+          },
+          "503": {
+            "description": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Retrieve a transaction by ID",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Returns the overall health status of the API service and its dependencies.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Service health check",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "description": "Simple liveness check for Kubernetes/Docker health probes.",
+        "operationId": "liveness_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Liveness Health Live Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Readiness check \u2014 returns 200 only if the service can accept traffic.",
+        "operationId": "readiness_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Readiness Health Ready Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness probe",
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "description": "Service liveness, readiness, and dependency status.",
+      "name": "Health"
+    },
+    {
+      "description": "Transaction ingestion and transaction lookup APIs.",
+      "name": "Transactions"
+    },
+    {
+      "description": "Unified rule, anomaly, and ML fraud scoring APIs.",
+      "name": "Scoring"
+    },
+    {
+      "description": "Model serving, model health, and monitoring APIs.",
+      "name": "Risk Scores"
+    },
+    {
+      "description": "Rule management, rule evaluation, and rule audit APIs.",
+      "name": "Rules Engine"
+    }
+  ],
+  "x-riskpulse-error-codes": {
+    "400": "Malformed request or invalid operation state.",
+    "401": "Missing or invalid `X-API-Key` header.",
+    "403": "Authenticated key lacks required permission.",
+    "404": "Requested entity was not found.",
+    "409": "Requested write conflicts with an existing resource.",
+    "422": "Request payload or query parameter validation failed.",
+    "429": "Rate limit exceeded. Retry after the `Retry-After` header value.",
+    "500": "Unexpected server error with a correlation request id when available.",
+    "503": "Dependency unavailable, such as Kafka, PostgreSQL, or model serving."
+  },
+  "x-riskpulse-rate-limits": {
+    "defaultRequestsPerMinute": 100,
+    "headers": [
+      "X-RateLimit-Limit",
+      "X-RateLimit-Remaining",
+      "Retry-After"
+    ]
+  }
+}

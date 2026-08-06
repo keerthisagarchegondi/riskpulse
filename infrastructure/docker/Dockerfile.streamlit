@@ -16,10 +16,15 @@ RUN pip install --no-cache-dir --upgrade pip \
     psycopg2-binary \
     sqlalchemy \
     pandas \
+    numpy \
     pyyaml
 
 # --- Runtime Stage ---
 FROM python:3.11-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    STREAMLIT_SERVER_HEADLESS=true
 
 RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
 

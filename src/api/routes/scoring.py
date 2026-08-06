@@ -11,19 +11,17 @@ Provides endpoints for:
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.api.middleware.auth import require_permission, verify_api_key
-from src.fraud_detection.scoring_pipeline import (
-    RiskClassification,
-    ScoringPipeline,
-    UnifiedScore,
-)
 from src.utils.constants import API_PREFIX
+
+if TYPE_CHECKING:
+    from src.fraud_detection.scoring_pipeline import ScoringPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -142,18 +140,20 @@ class MetricsResponse(BaseModel):
 
 # ── Dependency: Pipeline Instance ────────────────────────────────────
 
-_pipeline_instance: ScoringPipeline | None = None
+_pipeline_instance: "ScoringPipeline | None" = None
 
 
-def get_scoring_pipeline() -> ScoringPipeline:
+def get_scoring_pipeline() -> "ScoringPipeline":
     """Get or create the singleton scoring pipeline instance."""
     global _pipeline_instance
     if _pipeline_instance is None:
+        from src.fraud_detection.scoring_pipeline import ScoringPipeline
+
         _pipeline_instance = ScoringPipeline()
     return _pipeline_instance
 
 
-def set_scoring_pipeline(pipeline: ScoringPipeline) -> None:
+def set_scoring_pipeline(pipeline: "ScoringPipeline") -> None:
     """Override the scoring pipeline (for testing or reconfiguration)."""
     global _pipeline_instance
     _pipeline_instance = pipeline
@@ -197,7 +197,7 @@ def _request_to_transaction_dict(req: ScoreTransactionRequest) -> dict[str, Any]
     return txn
 
 
-def _unified_score_to_response(score: UnifiedScore) -> ScoreResponse:
+def _unified_score_to_response(score: Any) -> ScoreResponse:
     """Convert internal UnifiedScore to API response."""
     return ScoreResponse(
         transaction_id=score.transaction_id,
@@ -239,7 +239,7 @@ def _unified_score_to_response(score: UnifiedScore) -> ScoreResponse:
 )
 async def score_transaction(
     request: ScoreTransactionRequest,
-    pipeline: ScoringPipeline = Depends(get_scoring_pipeline),
+    pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
     _api_key: str = Depends(verify_api_key),
 ) -> ScoreResponse:
     txn_dict = _request_to_transaction_dict(request)
@@ -272,7 +272,7 @@ async def score_transaction(
 )
 async def score_batch(
     request: BatchScoreRequest,
-    pipeline: ScoringPipeline = Depends(get_scoring_pipeline),
+    pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
     _api_key: str = Depends(verify_api_key),
 ) -> BatchScoreResponse:
     start = time.perf_counter()
@@ -314,7 +314,7 @@ async def score_batch(
 )
 async def get_score(
     transaction_id: str,
-    pipeline: ScoringPipeline = Depends(get_scoring_pipeline),
+    pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
     _api_key: str = Depends(verify_api_key),
 ) -> ScoreResponse:
     if pipeline._cache is None:
@@ -345,7 +345,7 @@ async def get_score(
     description="Retrieve aggregated scoring pipeline performance metrics.",
 )
 async def get_metrics(
-    pipeline: ScoringPipeline = Depends(get_scoring_pipeline),
+    pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
     _api_key: str = Depends(verify_api_key),
 ) -> MetricsResponse:
     m = pipeline.metrics
@@ -366,7 +366,7 @@ async def get_metrics(
 )
 async def update_weights(
     request: UpdateWeightsRequest,
-    pipeline: ScoringPipeline = Depends(get_scoring_pipeline),
+    pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
     _api_key: str = Depends(verify_api_key),
 ) -> dict[str, Any]:
     new_weights = {

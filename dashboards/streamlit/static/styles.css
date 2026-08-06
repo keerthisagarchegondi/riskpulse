@@ -119,6 +119,24 @@
     font-size: 0.95rem;
 }
 
+/* --- Production feedback states --- */
+.dashboard-feedback {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 4px solid #3498db;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: #ecf0f1;
+}
+
+.dashboard-feedback.error {
+    border-left-color: #e74c3c;
+}
+
+.dashboard-feedback.warning {
+    border-left-color: #f39c12;
+}
+
 /* --- Badges --- */
 .status-badge {
     display: inline-block;
@@ -182,7 +200,7 @@
 [data-testid="stPlotlyChart"] {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 4px;
 }
 
@@ -202,6 +220,57 @@ hr {
 [data-testid="stForm"] {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 30px;
+}
+
+/* --- Mobile and compact viewport adjustments --- */
+@media (max-width: 768px) {
+    [data-testid="stAppViewContainer"] .block-container {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+        padding-top: 1.2rem;
+    }
+
+    .kpi-card {
+        padding: 12px 14px;
+        gap: 10px;
+        border-radius: 8px;
+    }
+
+    .kpi-icon {
+        font-size: 22px;
+    }
+
+    .kpi-value {
+        font-size: 1.2rem;
+        overflow-wrap: anywhere;
+    }
+
+    .feed-table-wrapper {
+        max-height: 360px;
+        overflow-x: auto;
+    }
+
+    .feed-table {
+        min-width: 720px;
+    }
+
+    [data-testid="stPlotlyChart"] {
+        padding: 2px;
+    }
+}
+
+@media (max-width: 420px) {
+    .kpi-card {
+        align-items: flex-start;
+    }
+
+    .kpi-title {
+        font-size: 0.68rem;
+    }
+
+    .kpi-value {
+        font-size: 1.05rem;
+    }
 }

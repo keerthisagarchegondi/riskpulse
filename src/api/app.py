@@ -15,6 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.api.openapi import install_custom_openapi
 from src.utils.config import get_settings
 from src.utils.constants import APP_NAME, APP_VERSION, API_PREFIX
 from src.utils.logger import configure_logging
@@ -151,6 +152,7 @@ def create_app() -> FastAPI:
     app.include_router(rules_router)
     app.include_router(risk_scores_router)
     app.include_router(scoring_router)
+    install_custom_openapi(app)
 
     # Root endpoint
     @app.get("/", include_in_schema=False)
