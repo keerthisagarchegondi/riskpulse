@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.api.openapi import install_custom_openapi
+from src.monitoring.cloudwatch_logger import configure_cloudwatch_logging
 from src.utils.config import get_settings
 from src.utils.constants import APP_NAME, APP_VERSION, API_PREFIX
 from src.utils.logger import configure_logging
@@ -29,6 +30,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     settings = get_settings()
     configure_logging()
+    configure_cloudwatch_logging(
+        service="api",
+        environment=settings.environment,
+        retention_days=settings.get("monitoring.cloudwatch.log_retention_days", 30),
+    )
     logger.info(
         "api_starting",
         service=APP_NAME,

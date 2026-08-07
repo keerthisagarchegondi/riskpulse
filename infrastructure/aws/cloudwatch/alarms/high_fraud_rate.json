@@ -1,0 +1,24 @@
+{
+  "AlarmName": "riskpulse-prod-high-fraud-rate-spike",
+  "AlarmDescription": "Fraud detection rate is more than 2x the expected production baseline.",
+  "Namespace": "RiskPulse/Platform",
+  "MetricName": "FraudDetectionRate",
+  "Dimensions": [
+    {
+      "Name": "Environment",
+      "Value": "prod"
+    },
+    {
+      "Name": "Severity",
+      "Value": "high"
+    }
+  ],
+  "Statistic": "Average",
+  "ComparisonOperator": "GreaterThanThreshold",
+  "Threshold": 2.0,
+  "EvaluationPeriods": 3,
+  "DatapointsToAlarm": 2,
+  "Period": 300,
+  "TreatMissingData": "notBreaching",
+  "Unit": "Percent"
+}

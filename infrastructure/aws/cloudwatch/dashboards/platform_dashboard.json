@@ -1,0 +1,108 @@
+{
+  "start": "-PT3H",
+  "periodOverride": "auto",
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Pipeline Health Overview",
+        "region": "us-east-1",
+        "view": "timeSeries",
+        "stacked": false,
+        "metrics": [
+          ["RiskPulse/Platform", "TransactionsProcessedPerMinute", "Environment", "prod"],
+          [".", "PipelineThroughputRecords", ".", "."],
+          [".", "DependencyHealth", ".", ".", "Dependency", "kafka"],
+          [".", "DependencyHealth", ".", ".", "Dependency", "postgresql"]
+        ],
+        "annotations": {
+          "horizontal": [
+            {
+              "label": "Dependency healthy",
+              "value": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Fraud Metrics",
+        "region": "us-east-1",
+        "view": "timeSeries",
+        "metrics": [
+          ["RiskPulse/Platform", "FraudDetectionRate", "Environment", "prod"],
+          [".", "AlertGenerationRate", ".", "."],
+          [".", "FalsePositiveRate", ".", "."]
+        ],
+        "yAxis": {
+          "left": {
+            "min": 0
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Error Rate",
+        "region": "us-east-1",
+        "view": "timeSeries",
+        "metrics": [
+          ["RiskPulse/Platform", "ErrorRate", "Environment", "prod"],
+          [".", "ErrorCount", ".", "."]
+        ],
+        "annotations": {
+          "horizontal": [
+            {
+              "label": "1% error rate",
+              "value": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Latency and Consumer Lag",
+        "region": "us-east-1",
+        "view": "timeSeries",
+        "metrics": [
+          ["RiskPulse/Platform", "PipelineLatency", "Environment", "prod", "Percentile", "P99"],
+          [".", "ModelPredictionLatency", ".", "."],
+          [".", "KafkaConsumerLag", ".", "."]
+        ],
+        "annotations": {
+          "horizontal": [
+            {
+              "label": "P99 latency 5s",
+              "value": 5000
+            },
+            {
+              "label": "Lag 10K",
+              "value": 10000
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

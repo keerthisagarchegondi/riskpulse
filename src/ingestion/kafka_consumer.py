@@ -24,6 +24,8 @@ from typing import Any, Callable
 
 from confluent_kafka import Consumer, KafkaError, KafkaException, TopicPartition
 
+from src.monitoring.cloudwatch_logger import configure_cloudwatch_logging, set_correlation_id
+from src.monitoring.metrics_collector import CloudWatchMetricsCollector
 from src.pipeline_orchestrator import (
     BatchResult,
     PipelineMetrics,
@@ -138,6 +140,11 @@ class TransactionConsumer:
         on_dlq: Callable[[dict[str, Any], str, str], None] | None = None,
     ) -> None:
         settings = get_settings()
+        configure_cloudwatch_logging(
+            service="worker",
+            environment=settings.environment,
+            retention_days=settings.get("monitoring.cloudwatch.log_retention_days", 30),
+        )
 
         self._bootstrap_servers = bootstrap_servers or settings.kafka_bootstrap_servers
         self._group_id = group_id or "riskpulse-pipeline-consumer"
@@ -171,6 +178,11 @@ class TransactionConsumer:
         self._running = Event()
         self._shutdown = Event()
         self._metrics = ConsumerMetrics()
+        self._cloudwatch_metrics = CloudWatchMetricsCollector(
+            service="worker",
+            environment=settings.environment,
+            enabled=bool(settings.get("monitoring.cloudwatch.enabled", False)),
+        )
         self._lock = Lock()
 
         logger.info(
@@ -234,6 +246,7 @@ class TransactionConsumer:
 
         batch_result = self._pipeline.process_batch(records)
         self._metrics.record_batch(batch_result)
+        self._publish_batch_metrics(batch_result)
 
         # Commit offsets after successful batch processing
         self._commit_offsets()
@@ -257,6 +270,7 @@ class TransactionConsumer:
         """
         batch_result = self._pipeline.process_batch(records)
         self._metrics.record_batch(batch_result)
+        self._publish_batch_metrics(batch_result)
         return batch_result
 
     # -------------------------------------------------------------------------
@@ -368,6 +382,7 @@ class TransactionConsumer:
 
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
                 self._metrics.record_deserialization_error()
+                self._cloudwatch_metrics.record_error(error_count=1, severity="medium")
                 logger.warning(
                     "Message deserialization failed",
                     error=str(e),
@@ -377,6 +392,26 @@ class TransactionConsumer:
                 )
 
         return records
+
+    def _publish_batch_metrics(self, batch_result: BatchResult) -> None:
+        """Publish worker batch metrics to CloudWatch when enabled."""
+        set_correlation_id(batch_result.batch_id)
+        self._cloudwatch_metrics.record_transactions_processed(batch_result.total)
+        self._cloudwatch_metrics.record_error(
+            error_count=batch_result.failed,
+            total_count=batch_result.total,
+            severity="high" if batch_result.failed else "none",
+        )
+        self._cloudwatch_metrics.record_pipeline_latency(
+            batch_result.latency_ms or batch_result.metrics.total_pipeline_latency_ms,
+            stage="batch",
+        )
+        for stage_name, stage_metrics in batch_result.metrics.stage_metrics.items():
+            self._cloudwatch_metrics.record_pipeline_latency(
+                stage_metrics.avg_latency_ms,
+                stage=stage_name,
+            )
+        self._cloudwatch_metrics.flush()
 
     def _commit_offsets(self) -> None:
         """Commit consumer offsets."""

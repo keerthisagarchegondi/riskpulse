@@ -77,6 +77,20 @@ monitoring:
   metrics_interval_seconds: 60
   health_check_interval_seconds: 30
   log_level: "INFO"
+  cloudwatch:
+    enabled: false
+    metrics_enabled: true
+    namespace: "RiskPulse/Platform"
+    log_retention_days: 30
+    services:
+      - api
+      - worker
+      - fraud-engine
+      - airflow
+  log_levels:
+    dev: "DEBUG"
+    staging: "INFO"
+    prod: "INFO"
 
 s3:
   partitioning: "year/month/day/hour"

@@ -1,0 +1,80 @@
+{
+  "alarms": [
+    {
+      "AlarmName": "riskpulse-prod-high-error-rate",
+      "AlarmDescription": "API or pipeline service error rate is above 1%.",
+      "Namespace": "RiskPulse/Platform",
+      "MetricName": "ErrorRate",
+      "Statistic": "Average",
+      "ComparisonOperator": "GreaterThanThreshold",
+      "Threshold": 1.0,
+      "EvaluationPeriods": 2,
+      "DatapointsToAlarm": 2,
+      "Period": 300,
+      "TreatMissingData": "notBreaching",
+      "Unit": "Percent"
+    },
+    {
+      "AlarmName": "riskpulse-prod-p99-pipeline-latency",
+      "AlarmDescription": "Pipeline P99 latency is above 5 seconds.",
+      "Namespace": "RiskPulse/Platform",
+      "MetricName": "PipelineLatency",
+      "Dimensions": [
+        {
+          "Name": "Percentile",
+          "Value": "P99"
+        }
+      ],
+      "Statistic": "Average",
+      "ComparisonOperator": "GreaterThanThreshold",
+      "Threshold": 5000,
+      "EvaluationPeriods": 3,
+      "DatapointsToAlarm": 2,
+      "Period": 60,
+      "TreatMissingData": "missing",
+      "Unit": "Milliseconds"
+    },
+    {
+      "AlarmName": "riskpulse-prod-kafka-consumer-lag",
+      "AlarmDescription": "Kafka consumer lag is above 10,000 messages.",
+      "Namespace": "RiskPulse/Platform",
+      "MetricName": "KafkaConsumerLag",
+      "Statistic": "Maximum",
+      "ComparisonOperator": "GreaterThanThreshold",
+      "Threshold": 10000,
+      "EvaluationPeriods": 2,
+      "DatapointsToAlarm": 2,
+      "Period": 60,
+      "TreatMissingData": "notBreaching",
+      "Unit": "Count"
+    },
+    {
+      "AlarmName": "riskpulse-prod-critical-dependency-unhealthy",
+      "AlarmDescription": "Kafka or PostgreSQL health check is failing.",
+      "Namespace": "RiskPulse/Platform",
+      "MetricName": "DependencyHealth",
+      "Statistic": "Minimum",
+      "ComparisonOperator": "LessThanThreshold",
+      "Threshold": 1,
+      "EvaluationPeriods": 2,
+      "DatapointsToAlarm": 2,
+      "Period": 60,
+      "TreatMissingData": "breaching",
+      "Unit": "None"
+    },
+    {
+      "AlarmName": "riskpulse-prod-model-prediction-latency",
+      "AlarmDescription": "Model prediction latency is above 750ms.",
+      "Namespace": "RiskPulse/Platform",
+      "MetricName": "ModelPredictionLatency",
+      "Statistic": "p95",
+      "ComparisonOperator": "GreaterThanThreshold",
+      "Threshold": 750,
+      "EvaluationPeriods": 3,
+      "DatapointsToAlarm": 2,
+      "Period": 60,
+      "TreatMissingData": "notBreaching",
+      "Unit": "Milliseconds"
+    }
+  ]
+}
