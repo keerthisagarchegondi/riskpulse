@@ -1,0 +1,45 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadRawTransactions",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::riskpulse-*-raw",
+        "arn:aws:s3:::riskpulse-*-raw/transactions/*"
+      ]
+    },
+    {
+      "Sid": "WriteProcessedData",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": [
+        "arn:aws:s3:::riskpulse-*-processed/processed/*",
+        "arn:aws:s3:::riskpulse-*-models/*"
+      ]
+    },
+    {
+      "Sid": "ReadAnalyticsArtifacts",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::riskpulse-*-processed",
+        "arn:aws:s3:::riskpulse-*-processed/reporting/*",
+        "arn:aws:s3:::riskpulse-*-models",
+        "arn:aws:s3:::riskpulse-*-models/*"
+      ]
+    }
+  ]
+}

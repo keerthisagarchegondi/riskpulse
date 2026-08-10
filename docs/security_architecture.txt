@@ -1,0 +1,23 @@
+RiskPulse Security Architecture
+
+This implementation uses dedicated IAM roles per workload:
+api, worker, airflow, dashboard, and admin. Service roles are scoped to their
+required S3 paths, CloudWatch logging and metrics, KMS key usage, notification
+publishing, and Secrets Manager reads. The admin role is intended for controlled
+operations and secret rotation.
+
+Secrets are read through src/utils/secrets_manager.py. Production should enable
+security.secrets_manager.enabled and provide secret IDs for database credentials,
+API keys, and JWT signing material. Local development keeps Secrets Manager off
+by default.
+
+The API accepts either X-API-Key or Authorization bearer JWT credentials.
+Request audit events are emitted through riskpulse.security_audit with
+correlation IDs and PII scrubbing. Rate limiting remains per authenticated
+identity, with Redis support when configured and in-memory fallback for local
+development.
+
+Input validation uses Pydantic plus explicit sanitization for user-controlled
+strings and metadata. Transaction listing SQL uses allowlisted column/operator
+construction and positional parameters, preventing injected input from becoming
+SQL syntax.

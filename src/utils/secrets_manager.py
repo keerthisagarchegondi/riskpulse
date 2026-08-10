@@ -1,0 +1,162 @@
+"""AWS Secrets Manager integration for RiskPulse credentials.
+
+Secrets access is optional and injectable so application code can use the same
+interface in local tests, CI, and AWS workloads. Production deployments should
+grant each service role access only to the specific secret ARNs it needs.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import time
+from dataclasses import dataclass
+from typing import Any
+
+import structlog
+
+from src.utils.config import get_settings
+
+logger = structlog.get_logger(__name__)
+
+
+class SecretsManagerError(Exception):
+    """Raised when a secret cannot be loaded or parsed."""
+
+
+@dataclass(frozen=True)
+class SecretValue:
+    """A parsed secret value with retrieval metadata."""
+
+    secret_id: str
+    value: dict[str, Any]
+    version_id: str | None = None
+    created_at: float = 0.0
+
+
+class SecretsManager:
+    """Small cached wrapper around AWS Secrets Manager."""
+
+    def __init__(
+        self,
+        *,
+        client: Any | None = None,
+        region_name: str | None = None,
+        cache_ttl_seconds: int | None = None,
+        enabled: bool | None = None,
+    ) -> None:
+        settings = get_settings()
+        self.enabled = (
+            enabled
+            if enabled is not None
+            else bool(settings.get("security.secrets_manager.enabled", False))
+        )
+        self.region_name = region_name or os.environ.get("AWS_REGION", "us-east-1")
+        self.cache_ttl_seconds = cache_ttl_seconds or int(
+            settings.get("security.secrets_manager.cache_ttl_seconds", 300)
+        )
+        self._client = client if client is not None else (self._create_client() if self.enabled else None)
+        self._cache: dict[str, SecretValue] = {}
+
+    def get_secret(self, secret_id: str, *, force_refresh: bool = False) -> dict[str, Any]:
+        """Return a secret as a dictionary.
+
+        JSON secrets are parsed directly. Plain string secrets are returned under
+        the ``value`` key so callers can use the same shape consistently.
+        """
+        if not secret_id:
+            raise SecretsManagerError("secret_id is required")
+
+        cached = self._cache.get(secret_id)
+        if cached and not force_refresh and (time.time() - cached.created_at) < self.cache_ttl_seconds:
+            return cached.value.copy()
+
+        if self._client is None:
+            raise SecretsManagerError("Secrets Manager is disabled and no client was provided")
+
+        try:
+            response = self._client.get_secret_value(SecretId=secret_id)
+        except Exception as exc:  # pragma: no cover - AWS SDK exceptions vary by version
+            logger.error("secret_load_failed", secret_id=secret_id, error=str(exc))
+            raise SecretsManagerError(f"Failed to load secret {secret_id}") from exc
+
+        raw_value = response.get("SecretString")
+        if raw_value is None and response.get("SecretBinary") is not None:
+            raw_value = response["SecretBinary"].decode("utf-8")
+        if raw_value is None:
+            raise SecretsManagerError(f"Secret {secret_id} contains no usable value")
+
+        try:
+            parsed = json.loads(raw_value)
+            value = parsed if isinstance(parsed, dict) else {"value": parsed}
+        except json.JSONDecodeError:
+            value = {"value": raw_value}
+
+        self._cache[secret_id] = SecretValue(
+            secret_id=secret_id,
+            value=value,
+            version_id=response.get("VersionId"),
+            created_at=time.time(),
+        )
+        return value.copy()
+
+    def get_database_credentials(self, secret_id: str | None = None) -> dict[str, Any]:
+        settings = get_settings()
+        configured_id = secret_id or settings.get("security.secrets_manager.database_secret_id")
+        if configured_id:
+            return self.get_secret(configured_id)
+        return {
+            "host": os.environ.get("RISKPULSE_DB_HOST", "localhost"),
+            "port": os.environ.get("RISKPULSE_DB_PORT", "5432"),
+            "database": os.environ.get("RISKPULSE_DB_NAME", "riskpulse"),
+            "username": os.environ.get("RISKPULSE_DB_USER", "riskpulse"),
+            "password": os.environ.get("RISKPULSE_DB_PASSWORD", "riskpulse"),
+        }
+
+    def get_api_keys(self, secret_id: str | None = None) -> list[dict[str, Any]]:
+        settings = get_settings()
+        configured_id = secret_id or settings.get("security.secrets_manager.api_keys_secret_id")
+        if not configured_id:
+            configured = settings.get("api.api_keys", [])
+            return configured if isinstance(configured, list) else []
+
+        secret = self.get_secret(configured_id)
+        keys = secret.get("api_keys", secret.get("keys", []))
+        if not isinstance(keys, list):
+            raise SecretsManagerError("API key secret must contain an api_keys list")
+        return [item for item in keys if isinstance(item, dict)]
+
+    def get_jwt_secret(self, secret_id: str | None = None) -> str:
+        settings = get_settings()
+        configured_id = secret_id or settings.get("security.secrets_manager.jwt_secret_id")
+        if configured_id:
+            secret = self.get_secret(configured_id)
+            value = secret.get("jwt_secret") or secret.get("secret") or secret.get("value")
+            if value:
+                return str(value)
+        return os.environ.get("RISKPULSE_JWT_SECRET", settings.get("security.jwt.dev_secret", "dev-jwt-secret"))
+
+    @staticmethod
+    def _create_client() -> Any:
+        try:
+            import boto3
+        except ImportError as exc:  # pragma: no cover - optional dependency
+            raise SecretsManagerError("boto3 is required for AWS Secrets Manager integration") from exc
+        return boto3.client("secretsmanager")
+
+
+_manager: SecretsManager | None = None
+
+
+def get_secrets_manager() -> SecretsManager:
+    """Return the module-level Secrets Manager wrapper."""
+    global _manager
+    if _manager is None:
+        _manager = SecretsManager()
+    return _manager
+
+
+def reset_secrets_manager() -> None:
+    """Reset the singleton, mostly for tests."""
+    global _manager
+    _manager = None

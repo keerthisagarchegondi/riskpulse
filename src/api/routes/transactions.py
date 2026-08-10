@@ -25,6 +25,8 @@ from src.api.schemas.transaction_schema import (
     TransactionResponse,
     TransactionSubmitResponse,
 )
+from src.utils.security import SecurityValidationError, sanitize_string
+from src.utils.sql_security import SqlFilter, build_where_clause
 from src.utils.constants import API_PREFIX, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, TOPIC_RAW_EVENTS
 
 logger = structlog.get_logger(__name__)
@@ -221,6 +223,18 @@ async def list_transactions(
     _auth: dict[str, Any] = Depends(verify_api_key),
 ) -> TransactionListResponse:
     """List transactions with pagination and filtering."""
+    try:
+        account_id = _sanitize_optional_filter(account_id)
+        customer_id = _sanitize_optional_filter(customer_id)
+        status_filter = _sanitize_optional_filter(status_filter)
+        transaction_type = _sanitize_optional_filter(transaction_type)
+        channel = _sanitize_optional_filter(channel)
+    except SecurityValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
     filters = TransactionFilter(
         account_id=account_id,
         customer_id=customer_id,
@@ -281,6 +295,12 @@ def _build_kafka_event(transaction_id: uuid.UUID, transaction: TransactionCreate
     }
 
 
+def _sanitize_optional_filter(value: str | None) -> str | None:
+    if value is None:
+        return value
+    return sanitize_string(value, reject_sql_tokens=True)
+
+
 def _get_kafka_producer():
     """Get the Kafka producer instance from the application state.
 
@@ -338,49 +358,28 @@ class _TransactionStorage:
             settings = get_settings()
             conn = await asyncpg.connect(dsn=settings.database_url.replace("+asyncpg", ""))
 
-            # Build dynamic query
-            conditions: list[str] = []
-            params: list[Any] = []
-            param_idx = 1
+            sql_filters: list[SqlFilter] = []
 
             if filters.account_id:
-                conditions.append(f"account_id = ${param_idx}")
-                params.append(filters.account_id)
-                param_idx += 1
+                sql_filters.append(SqlFilter("account_id", "=", filters.account_id))
             if filters.customer_id:
-                conditions.append(f"customer_id = ${param_idx}")
-                params.append(filters.customer_id)
-                param_idx += 1
+                sql_filters.append(SqlFilter("customer_id", "=", filters.customer_id))
             if filters.status:
-                conditions.append(f"status = ${param_idx}")
-                params.append(filters.status)
-                param_idx += 1
+                sql_filters.append(SqlFilter("status", "=", filters.status))
             if filters.transaction_type:
-                conditions.append(f"transaction_type = ${param_idx}")
-                params.append(filters.transaction_type)
-                param_idx += 1
+                sql_filters.append(SqlFilter("transaction_type", "=", filters.transaction_type))
             if filters.channel:
-                conditions.append(f"channel = ${param_idx}")
-                params.append(filters.channel)
-                param_idx += 1
+                sql_filters.append(SqlFilter("channel", "=", filters.channel))
             if filters.min_amount is not None:
-                conditions.append(f"transaction_amount >= ${param_idx}")
-                params.append(float(filters.min_amount))
-                param_idx += 1
+                sql_filters.append(SqlFilter("transaction_amount", ">=", float(filters.min_amount)))
             if filters.max_amount is not None:
-                conditions.append(f"transaction_amount <= ${param_idx}")
-                params.append(float(filters.max_amount))
-                param_idx += 1
+                sql_filters.append(SqlFilter("transaction_amount", "<=", float(filters.max_amount)))
             if filters.start_date:
-                conditions.append(f"transaction_timestamp >= ${param_idx}")
-                params.append(filters.start_date)
-                param_idx += 1
+                sql_filters.append(SqlFilter("transaction_timestamp", ">=", filters.start_date))
             if filters.end_date:
-                conditions.append(f"transaction_timestamp <= ${param_idx}")
-                params.append(filters.end_date)
-                param_idx += 1
+                sql_filters.append(SqlFilter("transaction_timestamp", "<=", filters.end_date))
 
-            where_clause = " AND ".join(conditions) if conditions else "TRUE"
+            where_clause, params, param_idx = build_where_clause(sql_filters)
             offset = (filters.page - 1) * filters.page_size
 
             # Get total count

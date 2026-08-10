@@ -100,6 +100,11 @@ def create_app() -> FastAPI:
 
     app.add_middleware(LoggingMiddleware)
 
+    # Security audit middleware
+    from src.api.middleware.security_audit import SecurityAuditMiddleware
+
+    app.add_middleware(SecurityAuditMiddleware)
+
     # Rate limiting middleware
     from src.api.middleware.rate_limiter import RateLimitMiddleware
 

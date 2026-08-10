@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from src.utils.security import SecurityValidationError, sanitize_mapping, sanitize_string
 from src.utils.constants import (
     CARD_TYPES,
     CHANNELS,
@@ -65,6 +66,28 @@ class TransactionCreate(BaseModel):
             raise ValueError(f"Invalid transaction type: {v}. Allowed: {', '.join(TRANSACTION_TYPES)}")
         return v_lower
 
+    @field_validator(
+        "external_transaction_id",
+        "account_id",
+        "customer_id",
+        "merchant_id",
+        "merchant_name",
+        "merchant_category_code",
+        "device_id",
+        "device_type",
+        "geo_country",
+        "geo_city",
+        mode="before",
+    )
+    @classmethod
+    def sanitize_text_fields(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        try:
+            return sanitize_string(str(v), reject_sql_tokens=True)
+        except SecurityValidationError as exc:
+            raise ValueError(str(exc)) from exc
+
     @field_validator("channel")
     @classmethod
     def validate_channel(cls, v: str) -> str:
@@ -103,6 +126,16 @@ class TransactionCreate(BaseModel):
         if (lat is not None) != (lon is not None):
             raise ValueError("Both geo_latitude and geo_longitude must be provided together")
         return self
+
+    @field_validator("metadata")
+    @classmethod
+    def sanitize_metadata(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        if v is None:
+            return v
+        try:
+            return sanitize_mapping(v)
+        except SecurityValidationError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class TransactionBatchCreate(BaseModel):

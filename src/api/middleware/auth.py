@@ -1,7 +1,7 @@
-"""API key authentication middleware for RiskPulse API.
+"""API authentication middleware for RiskPulse API.
 
-Validates API keys passed via X-API-Key header against configured keys.
-Supports multiple API keys with different permission levels.
+Validates API keys passed via X-API-Key and JWT bearer tokens passed via
+Authorization. Supports multiple identities with different permission levels.
 """
 
 from __future__ import annotations
@@ -13,13 +13,16 @@ from typing import Any
 
 import structlog
 from fastapi import HTTPException, Request, Security, status
-from fastapi.security import APIKeyHeader
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from src.utils.config import get_settings
+from src.utils.secrets_manager import SecretsManagerError, get_secrets_manager
+from src.utils.security import SecurityValidationError, verify_jwt_token
 
 logger = structlog.get_logger(__name__)
 
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
+BEARER_TOKEN = HTTPBearer(auto_error=False)
 
 
 class APIKeyManager:
@@ -32,11 +35,15 @@ class APIKeyManager:
     def _load_keys(self) -> None:
         """Load API keys from configuration.
 
-        In production, these would come from AWS Secrets Manager or a secure vault.
-        For development, they are loaded from settings.
+        Production deployments should configure AWS Secrets Manager. Development
+        and tests can still load local keys from settings.
         """
         settings = get_settings()
-        configured_keys = settings.get("api.api_keys", [])
+        try:
+            configured_keys = get_secrets_manager().get_api_keys()
+        except SecretsManagerError as exc:
+            logger.warning("api_keys_secret_unavailable", error=str(exc))
+            configured_keys = settings.get("api.api_keys", [])
 
         if isinstance(configured_keys, list):
             for entry in configured_keys:
@@ -46,6 +53,7 @@ class APIKeyManager:
                         "name": entry.get("name", "unknown"),
                         "permissions": entry.get("permissions", ["read"]),
                         "rate_limit": entry.get("rate_limit"),
+                        "auth_type": "api_key",
                     }
 
         # Always include a development key in non-production environments
@@ -56,6 +64,7 @@ class APIKeyManager:
                 "name": "development",
                 "permissions": ["read", "write", "admin"],
                 "rate_limit": None,
+                "auth_type": "api_key",
             }
 
     @staticmethod
@@ -101,12 +110,61 @@ def reset_key_manager() -> None:
 async def verify_api_key(
     request: Request,
     api_key: str | None = Security(API_KEY_HEADER),
+    bearer: HTTPAuthorizationCredentials | None = Security(BEARER_TOKEN),
 ) -> dict[str, Any]:
-    """Dependency that validates the API key from request headers.
+    """Dependency that validates API keys or JWT bearer tokens.
 
     Returns the key metadata (name, permissions) if valid.
     Raises 401 if missing or invalid.
     """
+    if bearer is not None:
+        try:
+            metadata = verify_jwt_token(bearer.credentials)
+        except SecurityValidationError:
+            logger.warning("jwt_invalid", path=request.url.path)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid bearer token.",
+            )
+
+        _bind_auth_metadata(request, metadata)
+        request.state.jwt_subject = metadata["name"]
+        return metadata
+
+    if api_key is not None:
+        manager = get_key_manager()
+        metadata = manager.validate_key(api_key)
+
+        if metadata is None:
+            logger.warning("api_key_invalid", path=request.url.path)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid API key.",
+            )
+
+        _bind_auth_metadata(request, metadata)
+        return metadata
+
+    logger.warning("auth_missing", path=request.url.path)
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Missing API key or bearer token. Provide X-API-Key or Authorization bearer token.",
+    )
+
+
+def _bind_auth_metadata(request: Request, metadata: dict[str, Any]) -> None:
+    """Attach auth identity to request state for logging and rate limiting."""
+    request.state.api_key_name = metadata["name"]
+    request.state.api_key_permissions = metadata.get("permissions", [])
+    request.state.api_key_rate_limit = metadata.get("rate_limit")
+    request.state.auth_type = metadata.get("auth_type", "api_key")
+
+
+async def verify_api_key_only(
+    request: Request,
+    api_key: str | None = Security(API_KEY_HEADER),
+) -> dict[str, Any]:
+    """Strict API-key-only dependency for routes that require shared keys."""
     if api_key is None:
         logger.warning("api_key_missing", path=request.url.path)
         raise HTTPException(
@@ -114,20 +172,12 @@ async def verify_api_key(
             detail="Missing API key. Provide X-API-Key header.",
         )
 
-    manager = get_key_manager()
-    metadata = manager.validate_key(api_key)
-
+    metadata = get_key_manager().validate_key(api_key)
     if metadata is None:
         logger.warning("api_key_invalid", path=request.url.path)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key.",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key.")
 
-    # Attach API key identity to request state for downstream use
-    request.state.api_key_name = metadata["name"]
-    request.state.api_key_permissions = metadata["permissions"]
-
+    _bind_auth_metadata(request, metadata)
     return metadata
 
 

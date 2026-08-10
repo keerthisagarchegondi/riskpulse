@@ -11,6 +11,9 @@ api:
   host: "0.0.0.0"
   port: 8000
   workers: 4
+  cors_origins:
+    - "http://localhost:8501"
+    - "http://localhost:3000"
   rate_limit:
     requests_per_minute: 100
     burst_size: 20
@@ -91,6 +94,20 @@ monitoring:
     dev: "DEBUG"
     staging: "INFO"
     prod: "INFO"
+
+security:
+  secrets_manager:
+    enabled: false
+    cache_ttl_seconds: 300
+    database_secret_id: ""
+    api_keys_secret_id: ""
+    jwt_secret_id: ""
+  jwt:
+    expiration_minutes: 60
+    dev_secret: "dev-jwt-secret"
+  audit:
+    enabled: true
+    log_name: "riskpulse.security_audit"
 
 s3:
   partitioning: "year/month/day/hour"
