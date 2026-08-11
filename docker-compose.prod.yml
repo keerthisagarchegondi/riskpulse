@@ -1,0 +1,203 @@
+name: riskpulse-prod
+
+x-app-env: &app-env
+  RISKPULSE_ENV: prod
+  RISKPULSE_KAFKA_BOOTSTRAP_SERVERS: ${RISKPULSE_KAFKA_BOOTSTRAP_SERVERS:-kafka:29092}
+  RISKPULSE_DB_HOST: ${RISKPULSE_DB_HOST:-postgres}
+  RISKPULSE_DB_PORT: ${RISKPULSE_DB_PORT:-5432}
+  RISKPULSE_DB_NAME: ${RISKPULSE_DB_NAME:-riskpulse}
+  RISKPULSE_DB_USER: ${RISKPULSE_DB_USER:-riskpulse}
+  RISKPULSE_DB_PASSWORD: ${RISKPULSE_DB_PASSWORD:-change-me}
+  RISKPULSE_REDIS_HOST: ${RISKPULSE_REDIS_HOST:-redis}
+  RISKPULSE_REDIS_PORT: ${RISKPULSE_REDIS_PORT:-6379}
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  RISKPULSE_SECURITY__SECRETS_MANAGER__ENABLED: "true"
+  RISKPULSE_MONITORING__CLOUDWATCH__ENABLED: "true"
+
+x-awslogs: &awslogs
+  driver: awslogs
+  options:
+    awslogs-region: ${AWS_REGION:-us-east-1}
+    awslogs-create-group: "true"
+    awslogs-group: /riskpulse/prod/containers
+
+services:
+  api:
+    image: ${RISKPULSE_IMAGE_REGISTRY:-riskpulse}/api:${RISKPULSE_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    environment:
+      <<: *app-env
+      RISKPULSE_SERVICE: api
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+    ports:
+      - "${RISKPULSE_API_PORT:-8000}:8000"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "scripts/container_healthcheck.py", "api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      <<: *awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /riskpulse/prod/api
+        awslogs-stream: api
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    networks:
+      - public
+      - backend
+
+  worker:
+    image: ${RISKPULSE_IMAGE_REGISTRY:-riskpulse}/worker:${RISKPULSE_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.worker
+    environment:
+      <<: *app-env
+      RISKPULSE_SERVICE: worker
+      RISKPULSE_KAFKA_HOST: ${RISKPULSE_KAFKA_HOST:-kafka}
+      RISKPULSE_KAFKA_PORT: ${RISKPULSE_KAFKA_PORT:-29092}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "scripts/container_healthcheck.py", "worker"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    logging:
+      <<: *awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /riskpulse/prod/worker
+        awslogs-stream: worker
+    deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 1536M
+        reservations:
+          cpus: "0.50"
+          memory: 512M
+    networks:
+      - backend
+
+  streamlit:
+    image: ${RISKPULSE_IMAGE_REGISTRY:-riskpulse}/streamlit:${RISKPULSE_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.streamlit
+    environment:
+      <<: *app-env
+      RISKPULSE_SERVICE: streamlit
+    ports:
+      - "${RISKPULSE_STREAMLIT_PORT:-8501}:8501"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "scripts/container_healthcheck.py", "streamlit"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      <<: *awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /riskpulse/prod/streamlit
+        awslogs-stream: streamlit
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 768M
+        reservations:
+          cpus: "0.20"
+          memory: 256M
+    networks:
+      - public
+      - backend
+
+  airflow:
+    image: ${RISKPULSE_IMAGE_REGISTRY:-riskpulse}/airflow:${RISKPULSE_IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.airflow
+    environment:
+      <<: *app-env
+      RISKPULSE_SERVICE: airflow
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR:-LocalExecutor}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-postgresql+psycopg2://riskpulse:change-me@postgres:5432/riskpulse}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY:-change-me}
+    ports:
+      - "${RISKPULSE_AIRFLOW_PORT:-8080}:8080"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
+    healthcheck:
+      test: ["CMD", "python", "/opt/airflow/scripts/container_healthcheck.py", "airflow"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    logging:
+      <<: *awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-create-group: "true"
+        awslogs-group: /riskpulse/prod/airflow
+        awslogs-stream: airflow
+    deploy:
+      resources:
+        limits:
+          cpus: "2.00"
+          memory: 2048M
+        reservations:
+          cpus: "0.50"
+          memory: 768M
+    networks:
+      - public
+      - backend
+
+networks:
+  public:
+    name: riskpulse-prod-public
+  backend:
+    name: riskpulse-prod-backend
+    internal: false

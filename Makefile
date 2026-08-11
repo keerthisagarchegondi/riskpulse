@@ -1,4 +1,4 @@
-.PHONY: install install-dev lint format test test-unit test-integration test-coverage run docker-up docker-down docker-build clean help
+.PHONY: install install-dev lint format test test-unit test-integration test-coverage run docker-up docker-down docker-build docker-test clean help
 
 # Default target
 help: ## Show this help message
@@ -80,19 +80,29 @@ run-streamlit: ## Run the Streamlit dashboard
 # =============================================================================
 
 docker-up: ## Start all development services
-	docker compose -f docker-compose.dev.yml up -d
+	docker compose -f docker-compose.yml up -d
 
 docker-down: ## Stop all development services
-	docker compose -f docker-compose.dev.yml down
+	docker compose -f docker-compose.yml down
 
 docker-build: ## Build all Docker images
-	docker compose -f docker-compose.dev.yml build
+	docker compose -f docker-compose.yml build api worker streamlit airflow
+
+docker-build-prod: ## Build production Docker images
+	docker compose -f docker-compose.prod.yml build api worker streamlit airflow
+
+docker-test: ## Validate compose files and run container health smoke checks
+	docker compose -f docker-compose.yml config --quiet
+	docker compose -f docker-compose.prod.yml config --quiet
+	docker compose -f docker-compose.yml up -d --build
+	docker compose -f docker-compose.yml ps
+	docker compose -f docker-compose.yml down
 
 docker-logs: ## View Docker service logs
-	docker compose -f docker-compose.dev.yml logs -f
+	docker compose -f docker-compose.yml logs -f
 
 docker-ps: ## Show running containers
-	docker compose -f docker-compose.dev.yml ps
+	docker compose -f docker-compose.yml ps
 
 # =============================================================================
 # Database

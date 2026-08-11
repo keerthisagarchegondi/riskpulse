@@ -479,3 +479,13 @@ class TransactionConsumer:
         if hasattr(kafka_error, "code"):
             return kafka_error.code() in fatal_codes
         return False
+
+
+def main() -> None:
+    """Run the transaction consumer as a container-friendly worker."""
+    consumer = TransactionConsumer()
+    consumer.start()
+
+
+if __name__ == "__main__":
+    main()

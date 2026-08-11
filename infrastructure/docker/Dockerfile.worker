@@ -18,8 +18,6 @@ RUN apt-get update \
         libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-
 RUN python -m venv /opt/venv \
     && /opt/venv/bin/pip install --upgrade pip setuptools wheel \
     && /opt/venv/bin/pip install \
@@ -27,17 +25,18 @@ RUN python -m venv /opt/venv \
         boto3 \
         confluent-kafka \
         cryptography \
-        fastapi \
-        passlib[bcrypt] \
+        numpy \
+        pandas \
+        psycopg2-binary \
+        pyarrow \
         pydantic \
-        pydantic-settings \
-        python-jose[cryptography] \
         pyyaml \
         redis \
+        scikit-learn \
+        snowflake-connector-python \
         sqlalchemy[asyncio] \
         structlog \
-        tenacity \
-        uvicorn[standard]
+        tenacity
 
 FROM python:${PYTHON_VERSION}-slim AS runtime
 
@@ -46,13 +45,14 @@ ENV PATH="/opt/venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     RISKPULSE_ENV=prod \
-    RISKPULSE_SERVICE=api \
-    UVICORN_WORKERS=2
+    RISKPULSE_SERVICE=worker \
+    RISKPULSE_KAFKA_HOST=kafka \
+    RISKPULSE_KAFKA_PORT=29092
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        curl \
         librdkafka1 \
+        libgomp1 \
         libpq5 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system riskpulse \
@@ -70,9 +70,7 @@ RUN chown -R riskpulse:riskpulse /app
 
 USER riskpulse
 
-EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python scripts/container_healthcheck.py worker
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD python scripts/container_healthcheck.py api
-
-CMD ["sh", "-c", "uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS} --proxy-headers"]
+CMD ["python", "-m", "src.ingestion.kafka_consumer"]

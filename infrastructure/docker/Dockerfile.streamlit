@@ -1,58 +1,69 @@
-# --- Build Stage ---
-FROM python:3.11-slim AS builder
+# syntax=docker/dockerfile:1.7
+
+ARG PYTHON_VERSION=3.11
+
+FROM python:${PYTHON_VERSION}-slim AS builder
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /build
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir --prefix=/install \
-    streamlit \
-    plotly \
-    psycopg2-binary \
-    sqlalchemy \
-    pandas \
-    numpy \
-    pyyaml
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip setuptools wheel \
+    && /opt/venv/bin/pip install \
+        numpy \
+        pandas \
+        plotly \
+        psycopg2-binary \
+        pyyaml \
+        sqlalchemy \
+        streamlit
 
-# --- Runtime Stage ---
-FROM python:3.11-slim AS runtime
+FROM python:${PYTHON_VERSION}-slim AS runtime
 
-ENV PYTHONUNBUFFERED=1 \
+ENV PATH="/opt/venv/bin:${PATH}" \
+    PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    STREAMLIT_SERVER_HEADLESS=true
+    RISKPULSE_ENV=prod \
+    RISKPULSE_SERVICE=streamlit \
+    STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system riskpulse \
+    && useradd --system --gid riskpulse --home-dir /app --shell /usr/sbin/nologin riskpulse
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /install /usr/local
-
+COPY --from=builder /opt/venv /opt/venv
 COPY dashboards/streamlit/ ./dashboards/streamlit/
 COPY src/utils/ ./src/utils/
 COPY config/ ./config/
+COPY scripts/container_healthcheck.py ./scripts/container_healthcheck.py
 
 RUN mkdir -p /app/.streamlit \
-    && printf '[server]\nheadless = true\nport = 8501\nenableCORS = false\nenableXsrfProtection = true\nmaxUploadSize = 5\n\n[browser]\ngatherUsageStats = false\n\n[theme]\nbase = "dark"\nprimaryColor = "#3498db"\nbackgroundColor = "#0f0c29"\nsecondaryBackgroundColor = "#1a1a2e"\ntextColor = "#ecf0f1"\n' > /app/.streamlit/config.toml
+    && printf '[server]\nheadless = true\nport = 8501\nenableCORS = false\nenableXsrfProtection = true\nmaxUploadSize = 5\n\n[browser]\ngatherUsageStats = false\n\n[theme]\nbase = "dark"\nprimaryColor = "#3498db"\nbackgroundColor = "#0f0c29"\nsecondaryBackgroundColor = "#1a1a2e"\ntextColor = "#ecf0f1"\n' > /app/.streamlit/config.toml \
+    && chown -R riskpulse:riskpulse /app
 
-RUN chown -R appuser:appuser /app
-
-USER appuser
+USER riskpulse
 
 EXPOSE 8501
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD python scripts/container_healthcheck.py streamlit
 
-ENTRYPOINT ["streamlit", "run", "dashboards/streamlit/app.py", \
-    "--server.address=0.0.0.0", \
-    "--server.port=8501"]
+CMD ["streamlit", "run", "dashboards/streamlit/app.py", "--server.address=0.0.0.0", "--server.port=8501"]

@@ -1,0 +1,69 @@
+# syntax=docker/dockerfile:1.7
+
+ARG AIRFLOW_VERSION=2.9.3
+ARG PYTHON_VERSION=3.11
+
+FROM apache/airflow:${AIRFLOW_VERSION}-python${PYTHON_VERSION} AS builder
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        librdkafka-dev \
+        libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+USER airflow
+
+RUN pip install --no-cache-dir \
+        apache-airflow-providers-amazon \
+        apache-airflow-providers-apache-kafka \
+        apache-airflow-providers-snowflake \
+        boto3 \
+        confluent-kafka \
+        pandas \
+        psycopg2-binary \
+        pyarrow \
+        pyyaml \
+        redis \
+        snowflake-connector-python \
+        sqlalchemy \
+        structlog \
+        tenacity
+
+FROM apache/airflow:${AIRFLOW_VERSION}-python${PYTHON_VERSION} AS runtime
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        librdkafka1 \
+        libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+USER airflow
+
+ENV PYTHONPATH=/opt/airflow \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    RISKPULSE_ENV=prod \
+    RISKPULSE_SERVICE=airflow \
+    AIRFLOW__CORE__LOAD_EXAMPLES=False \
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
+
+COPY --from=builder /home/airflow/.local /home/airflow/.local
+COPY --chown=airflow:0 airflow/dags/ /opt/airflow/dags/
+COPY --chown=airflow:0 airflow/plugins/ /opt/airflow/plugins/
+COPY --chown=airflow:0 src/ /opt/airflow/src/
+COPY --chown=airflow:0 config/ /opt/airflow/config/
+COPY --chown=airflow:0 scripts/container_healthcheck.py /opt/airflow/scripts/container_healthcheck.py
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python /opt/airflow/scripts/container_healthcheck.py airflow
+
+CMD ["standalone"]
