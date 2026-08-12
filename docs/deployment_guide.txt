@@ -1,0 +1,77 @@
+RiskPulse Deployment Guide
+
+GitHub Environments
+
+Create two protected environments:
+- staging
+- production
+
+Production must require reviewer approval before deployment jobs can run. Use
+GitHub environment protection rather than custom approval logic in scripts, so
+audits show who approved each production release.
+
+Required Repository Variables
+
+AWS_REGION
+ECR_REGISTRY
+STAGING_ECS_CLUSTER
+STAGING_ECS_SERVICE_PREFIX
+STAGING_BASE_URL
+PRODUCTION_ECS_CLUSTER
+PRODUCTION_ECS_SERVICE_PREFIX
+PRODUCTION_BASE_URL
+SLACK_WEBHOOK_URL, optional
+
+Required Repository Secrets
+
+STAGING_AWS_ROLE_ARN
+PRODUCTION_AWS_ROLE_ARN
+
+The AWS roles should trust GitHub Actions OIDC and should be scoped to ECR push,
+ECS describe/register/update-service, and CloudWatch read operations needed by
+deployment monitoring. Avoid static AWS access keys.
+
+Branch Protection
+
+main:
+- Require pull request before merge.
+- Require CI workflow to pass.
+- Require conversation resolution.
+- Require linear history.
+- Restrict direct pushes.
+- Require signed commits if organization policy supports it.
+
+develop:
+- Require pull request before merge.
+- Require CI workflow to pass.
+- Require branch to be up to date before merge.
+- Require conversation resolution.
+
+Release Flow
+
+1. Pull request into develop runs CI.
+2. Merge to develop runs CI again, builds images, pushes staging tags to ECR,
+   deploys ECS services, and runs staging smoke tests.
+3. Pull request into main runs CI.
+4. Merge to main builds production images and deploys through the protected
+   production environment.
+5. Manual production deployment can be started with workflow_dispatch by passing
+   a known image tag and typing deploy-production.
+
+Rollback Flow
+
+The production workflow captures the current ECS task definition ARN for each
+service before deployment. If smoke tests or the five-minute monitoring loop
+fails, scripts/rollback.sh updates each service back to its captured task
+definition and waits for ECS stability.
+
+Coverage Gate
+
+CI runs unit tests with coverage and enforces a 90 percent minimum. The coverage
+XML report is uploaded as an artifact for review.
+
+Security Scanning
+
+CI runs Bandit for source scanning and Safety for dependency vulnerability
+scanning. Failures block merges and deployment because the CD workflows call the
+same reusable CI workflow first.

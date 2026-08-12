@@ -1,0 +1,137 @@
+name: CD Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Docker image tag to deploy
+        required: true
+        type: string
+      confirm_production:
+        description: Type deploy-production to confirm
+        required: true
+        type: string
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  IMAGE_TAG: ${{ inputs.image_tag || format('production-{0}', github.sha) }}
+  ECS_CLUSTER: ${{ vars.PRODUCTION_ECS_CLUSTER }}
+  ECS_SERVICE_PREFIX: ${{ vars.PRODUCTION_ECS_SERVICE_PREFIX || 'riskpulse-prod' }}
+  DEPLOY_ENVIRONMENT: production
+
+jobs:
+  ci:
+    if: github.event_name == 'push' || inputs.confirm_production == 'deploy-production'
+    uses: ./.github/workflows/ci.yml
+
+  build-push:
+    name: Build and Push Production Images
+    if: github.event_name == 'push'
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PRODUCTION_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build images
+        run: docker compose -f docker-compose.prod.yml build api worker streamlit airflow
+
+      - name: Tag and push images
+        run: |
+          for service in api worker streamlit airflow; do
+            docker tag riskpulse/${service}:latest "${ECR_REGISTRY}/riskpulse/${service}:${IMAGE_TAG}"
+            docker push "${ECR_REGISTRY}/riskpulse/${service}:${IMAGE_TAG}"
+          done
+
+  deploy:
+    name: Deploy to Production
+    needs:
+      - ci
+      - build-push
+    if: always() && needs.ci.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.build-push.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_BASE_URL }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PRODUCTION_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Capture current task definitions
+        run: |
+          mkdir -p deployment-state
+          for service in api worker streamlit airflow; do
+            aws ecs describe-services \
+              --cluster "${ECS_CLUSTER}" \
+              --services "${ECS_SERVICE_PREFIX}-${service}" \
+              --query 'services[0].taskDefinition' \
+              --output text > "deployment-state/${service}.taskdef"
+          done
+
+      - name: Deploy services
+        run: bash scripts/deploy.sh production "${IMAGE_TAG}"
+
+      - name: Run smoke tests
+        env:
+          PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
+        run: |
+          test -n "${PRODUCTION_BASE_URL}"
+          curl --fail --retry 10 --retry-delay 15 "${PRODUCTION_BASE_URL}/health/live"
+          curl --fail --retry 10 --retry-delay 15 "${PRODUCTION_BASE_URL}/health/ready"
+
+      - name: Monitor production for 5 minutes
+        env:
+          PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
+        run: |
+          for attempt in $(seq 1 20); do
+            curl --fail --max-time 10 "${PRODUCTION_BASE_URL}/health/live"
+            curl --fail --max-time 10 "${PRODUCTION_BASE_URL}/health/ready"
+            sleep 15
+          done
+
+      - name: Rollback on failure
+        if: failure()
+        run: bash scripts/rollback.sh production deployment-state
+
+      - name: Notify success
+        if: success() && vars.SLACK_WEBHOOK_URL != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"RiskPulse production deploy succeeded: ${IMAGE_TAG}\"}" \
+            "${{ vars.SLACK_WEBHOOK_URL }}"
+
+      - name: Notify failure
+        if: failure() && vars.SLACK_WEBHOOK_URL != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"RiskPulse production deploy failed and rollback was attempted: ${IMAGE_TAG}\"}" \
+            "${{ vars.SLACK_WEBHOOK_URL }}"

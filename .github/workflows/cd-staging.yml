@@ -1,0 +1,99 @@
+name: CD Staging
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  IMAGE_TAG: staging-${{ github.sha }}
+  ECS_CLUSTER: ${{ vars.STAGING_ECS_CLUSTER }}
+  ECS_SERVICE_PREFIX: ${{ vars.STAGING_ECS_SERVICE_PREFIX || 'riskpulse-staging' }}
+  DEPLOY_ENVIRONMENT: staging
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build-push:
+    name: Build and Push Images
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      image-tag: ${{ env.IMAGE_TAG }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.STAGING_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build images
+        run: docker compose -f docker-compose.prod.yml build api worker streamlit airflow
+
+      - name: Tag and push images
+        run: |
+          for service in api worker streamlit airflow; do
+            docker tag riskpulse/${service}:latest "${ECR_REGISTRY}/riskpulse/${service}:${IMAGE_TAG}"
+            docker push "${ECR_REGISTRY}/riskpulse/${service}:${IMAGE_TAG}"
+          done
+
+  deploy:
+    name: Deploy to Staging
+    needs: build-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_BASE_URL }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.STAGING_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy services
+        run: bash scripts/deploy.sh staging "${IMAGE_TAG}"
+
+      - name: Run staging E2E smoke tests
+        env:
+          STAGING_BASE_URL: ${{ vars.STAGING_BASE_URL }}
+        run: |
+          test -n "${STAGING_BASE_URL}"
+          curl --fail --retry 10 --retry-delay 15 "${STAGING_BASE_URL}/health/live"
+          curl --fail --retry 10 --retry-delay 15 "${STAGING_BASE_URL}/health/ready"
+
+      - name: Notify success
+        if: success() && vars.SLACK_WEBHOOK_URL != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"RiskPulse staging deploy succeeded: ${IMAGE_TAG}\"}" \
+            "${{ vars.SLACK_WEBHOOK_URL }}"
+
+      - name: Notify failure
+        if: failure() && vars.SLACK_WEBHOOK_URL != ''
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"RiskPulse staging deploy failed: ${IMAGE_TAG}\"}" \
+            "${{ vars.SLACK_WEBHOOK_URL }}"
