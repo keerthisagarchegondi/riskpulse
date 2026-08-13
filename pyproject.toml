@@ -83,6 +83,9 @@ profile = "black"
 line_length = 100
 known_first_party = ["src"]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
@@ -101,6 +104,7 @@ markers = [
     "unit: Unit tests",
     "integration: Integration tests",
     "performance: Performance tests",
+    "security: Security regression tests",
     "slow: Slow running tests",
 ]
 

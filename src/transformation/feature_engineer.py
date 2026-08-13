@@ -74,10 +74,15 @@ class FeatureMetrics:
 
     def to_dict(self) -> dict[str, Any]:
         with self._lock:
+            avg_latency_ms = (
+                self.total_latency_ms / self.total_computed
+                if self.total_computed
+                else 0.0
+            )
             return {
                 "total_computed": self.total_computed,
                 "total_errors": self.total_errors,
-                "avg_latency_ms": round(self.avg_latency_ms, 4),
+                "avg_latency_ms": round(avg_latency_ms, 4),
                 "min_latency_ms": round(self.min_latency_ms, 4) if self.min_latency_ms != float("inf") else 0.0,
                 "max_latency_ms": round(self.max_latency_ms, 4),
             }

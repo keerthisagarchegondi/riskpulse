@@ -103,6 +103,11 @@ jobs:
             --cov-report=term-missing \
             --cov-fail-under=${COVERAGE_MINIMUM}
 
+      - name: Security regression tests
+        env:
+          RISKPULSE_ENV: test
+        run: pytest tests/security -m security
+
       - name: Start Docker integration dependencies
         run: |
           docker compose -f docker-compose.yml up -d zookeeper kafka postgres redis
@@ -120,6 +125,11 @@ jobs:
           RISKPULSE_REDIS_HOST: localhost
           RISKPULSE_REDIS_PORT: "6379"
         run: pytest tests/integration -m integration
+
+      - name: Performance smoke benchmarks
+        env:
+          RISKPULSE_ENV: test
+        run: pytest tests/performance/test_latency.py -m performance
 
       - name: Security scan with bandit
         run: bandit -r src -c pyproject.toml -f json -o bandit-report.json
@@ -141,6 +151,14 @@ jobs:
           name: coverage-xml
           path: coverage.xml
           if-no-files-found: error
+
+      - name: Upload HTML coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: htmlcov
+          if-no-files-found: ignore
 
       - name: Upload security report
         if: always()
