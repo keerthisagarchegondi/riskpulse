@@ -1,0 +1,49 @@
+RiskPulse Day 39 Testing Strategy
+Generated for: Data Quality Testing & Model Validation
+
+Scope
+This strategy covers warehouse data quality checks, ML holdout validation,
+synthetic fixture management, and CI automation for regression gates.
+
+Data Quality Gates
+1. Schema conformance: every warehouse-style table must include required columns.
+2. Type conformance: timestamps, amounts, booleans, and scores must be parseable.
+3. Primary keys: customer, account, transaction, alert, and score identifiers must be unique.
+4. Referential integrity: accounts, transactions, alerts, and scores must join to valid parents.
+5. Freshness: transaction ingest timestamps must be less than 15 minutes old in test fixtures.
+6. Score timeliness: model score timestamps must not precede ingestion timestamps.
+7. Alert timeliness: alert creation timestamps must not precede ingestion timestamps.
+8. Volume anomaly detection: per-minute volume must stay within 3 standard deviations.
+9. Distribution health: channel, country, amount, fraud-rate, and score distributions are monitored.
+10. Business rules: positive amounts, supported currencies, valid enums, and bounded scores.
+11. Test safety: generated identifiers are anonymized and IP addresses are neutralized.
+
+ML Validation Gates
+1. Holdout accuracy must meet threshold.
+2. Precision and recall must meet threshold.
+3. Brier score validates score calibration.
+4. Segment performance is checked across standard, new-to-credit, cross-border, and high-velocity groups.
+5. True-positive and false-positive rate gaps are bounded.
+6. Positive-rate behavior is monitored by segment.
+7. Feature importance stability is compared between production and challenger versions.
+8. Prediction latency P99 is benchmarked.
+9. Challenger model quality must not regress beyond tolerance.
+10. Feature vector schema order must remain stable.
+
+Synthetic Data Management
+The enhanced generator in scripts/generate_test_data.py creates deterministic
+fixtures for data quality and ML validation. Fixture metadata includes a stable
+version and record hash. Identifier anonymization preserves joins while avoiding
+production-style raw identifiers in test artifacts.
+
+Automation
+Run:
+pytest tests/data_quality -m data_quality
+pytest tests/ml_validation -m ml_validation
+python scripts/generate_test_data.py --count 1000 --output file --seed 39
+
+CI
+The GitHub Actions CI pipeline runs unit coverage, security regression tests,
+data quality validation tests, ML validation tests, integration tests,
+performance smoke benchmarks, security scans, compose validation, Docker builds,
+and coverage artifact upload.

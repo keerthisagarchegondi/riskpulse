@@ -1,0 +1,36 @@
+{
+  "report": "Day 39 Data Quality Testing & Model Validation",
+  "generated_at": "2026-08-14T11:44:04.763762+00:00",
+  "dimensions": {
+    "data_quality": [
+      "schema conformance",
+      "referential integrity",
+      "freshness SLA",
+      "volume anomalies",
+      "distribution skew",
+      "business rules"
+    ],
+    "model_validation": [
+      "holdout accuracy",
+      "segment fairness",
+      "score calibration",
+      "feature importance stability",
+      "prediction latency",
+      "production challenger comparison"
+    ],
+    "test_data_management": [
+      "deterministic synthetic fixtures",
+      "fixture version hashes",
+      "identifier anonymization",
+      "non-production fixture boundaries"
+    ]
+  },
+  "automation": {
+    "commands": [
+      "pytest tests/data_quality -m data_quality",
+      "pytest tests/ml_validation -m ml_validation",
+      "python scripts/generate_test_data.py --count 1000 --output file --seed 39"
+    ],
+    "coverage_artifact": "htmlcov/index.html"
+  }
+}

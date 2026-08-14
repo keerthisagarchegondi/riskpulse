@@ -105,6 +105,8 @@ markers = [
     "integration: Integration tests",
     "performance: Performance tests",
     "security: Security regression tests",
+    "data_quality: Data quality validation checks",
+    "ml_validation: ML model validation checks",
     "slow: Slow running tests",
 ]
 

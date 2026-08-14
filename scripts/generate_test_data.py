@@ -26,14 +26,16 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
 import random
 import sys
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 
 # Add project root to path for imports
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -92,17 +94,18 @@ DEVICE_TYPES = ["mobile", "desktop", "tablet", "pos"]
 
 # Amount distribution parameters for realistic patterns
 AMOUNT_PROFILES = {
-    "daily_small": (5, 50),         # Coffee, lunch
-    "daily_medium": (20, 150),      # Groceries, gas
-    "weekly_large": (100, 500),     # Shopping, dining
-    "monthly_big": (500, 2000),     # Bills, electronics
-    "rare_high": (2000, 10000),     # Travel, luxury
+    "daily_small": (5, 50),  # Coffee, lunch
+    "daily_medium": (20, 150),  # Groceries, gas
+    "weekly_large": (100, 500),  # Shopping, dining
+    "monthly_big": (500, 2000),  # Bills, electronics
+    "rare_high": (2000, 10000),  # Travel, luxury
 }
 
 
 # ============================================================================
 # Customer Profiles
 # ============================================================================
+
 
 class CustomerProfile:
     """Represents a synthetic customer with consistent behavior patterns."""
@@ -123,6 +126,7 @@ class CustomerProfile:
 # ============================================================================
 # Transaction Generator
 # ============================================================================
+
 
 def generate_transaction(
     customer: CustomerProfile | None = None,
@@ -151,9 +155,7 @@ def generate_transaction(
     return _generate_legit_transaction(customer, base_time)
 
 
-def _generate_legit_transaction(
-    customer: CustomerProfile, base_time: datetime
-) -> dict:
+def _generate_legit_transaction(customer: CustomerProfile, base_time: datetime) -> dict:
     """Generate a realistic legitimate transaction."""
     merchant = random.choice(customer.preferred_merchants)
 
@@ -188,12 +190,8 @@ def _generate_legit_transaction(
         "merchant_category_code": merchant[2],
         "transaction_amount": amount,
         "transaction_currency": "USD",
-        "transaction_type": random.choices(
-            TRANSACTION_TYPES, weights=[0.7, 0.1, 0.1, 0.1], k=1
-        )[0],
-        "channel": random.choices(
-            CHANNELS, weights=[0.4, 0.3, 0.1, 0.2], k=1
-        )[0],
+        "transaction_type": random.choices(TRANSACTION_TYPES, weights=[0.7, 0.1, 0.1, 0.1], k=1)[0],
+        "channel": random.choices(CHANNELS, weights=[0.4, 0.3, 0.1, 0.2], k=1)[0],
         "card_type": customer.card_type,
         "card_last_four": customer.card_last_four,
         "ip_address": _generate_ip(domestic=True),
@@ -265,9 +263,7 @@ def _fraud_high_value(customer: CustomerProfile, timestamp: datetime) -> dict:
         "geo_country": random.choice(["RU", "NG", "CN", "RO"]),
         "geo_city": random.choice(["Moscow", "Lagos", "Beijing", "Bucharest"]),
         "is_international": True,
-        "transaction_timestamp": timestamp.replace(
-            hour=random.randint(1, 5)
-        ).isoformat(),
+        "transaction_timestamp": timestamp.replace(hour=random.randint(1, 5)).isoformat(),
     }
 
 
@@ -383,9 +379,7 @@ def _fraud_account_takeover(customer: CustomerProfile, timestamp: datetime) -> d
         "geo_country": customer.home_location[0],
         "geo_city": customer.home_location[1],
         "is_international": False,
-        "transaction_timestamp": timestamp.replace(
-            hour=random.randint(0, 5)
-        ).isoformat(),
+        "transaction_timestamp": timestamp.replace(hour=random.randint(0, 5)).isoformat(),
     }
 
 
@@ -403,6 +397,7 @@ def _generate_ip(domestic: bool = True) -> str:
 # ============================================================================
 # Dataset Generation
 # ============================================================================
+
 
 def generate_dataset(
     n_transactions: int = 1000,
@@ -436,7 +431,13 @@ def generate_dataset(
         transactions.append(generate_transaction(customer=customer, is_fraud=False))
 
     # Generate fraudulent transactions with varied patterns
-    fraud_patterns = ["high_value", "velocity_attack", "geo_anomaly", "card_testing", "account_takeover"]
+    fraud_patterns = [
+        "high_value",
+        "velocity_attack",
+        "geo_anomaly",
+        "card_testing",
+        "account_takeover",
+    ]
     for i in range(n_fraud):
         customer = random.choice(customers)
         pattern = fraud_patterns[i % len(fraud_patterns)]
@@ -446,6 +447,355 @@ def generate_dataset(
 
     random.shuffle(transactions)
     return transactions
+
+
+def anonymize_value(value: str, *, salt: str = "riskpulse-test") -> str:
+    """Return a stable irreversible test identifier for sensitive values."""
+    digest = hashlib.sha256(f"{salt}:{value}".encode("utf-8")).hexdigest()[:16].upper()
+    return f"ANON-{digest}"
+
+
+def anonymize_transactions(
+    transactions: list[dict[str, Any]],
+    *,
+    salt: str = "riskpulse-test",
+) -> list[dict[str, Any]]:
+    """Anonymize stable identifiers while preserving joinability in test fixtures."""
+    customer_map: dict[str, str] = {}
+    account_map: dict[str, str] = {}
+    device_map: dict[str, str] = {}
+    card_map: dict[str, str] = {}
+
+    anonymized: list[dict[str, Any]] = []
+    for txn in transactions:
+        record = dict(txn)
+
+        customer_id = str(record.get("customer_id", "unknown"))
+        account_id = str(record.get("account_id", "unknown"))
+        device_id = str(record.get("device_id", "unknown"))
+        card_last_four = str(record.get("card_last_four", "0000"))
+
+        customer_map.setdefault(customer_id, anonymize_value(customer_id, salt=salt))
+        account_map.setdefault(account_id, anonymize_value(account_id, salt=salt))
+        device_map.setdefault(device_id, anonymize_value(device_id, salt=salt))
+        card_map.setdefault(
+            card_last_four, hashlib.sha256(f"{salt}:{card_last_four}".encode()).hexdigest()[:4]
+        )
+
+        record["customer_id"] = customer_map[customer_id]
+        record["account_id"] = account_map[account_id]
+        record["device_id"] = device_map[device_id]
+        record["card_last_four"] = card_map[card_last_four]
+        if record.get("ip_address"):
+            record["ip_address"] = "0.0.0.0"
+        anonymized.append(record)
+
+    return anonymized
+
+
+def build_fixture_version(
+    payload: Any,
+    *,
+    generated_at: datetime | None = None,
+    version: str = "2026.08.day39",
+) -> dict[str, Any]:
+    """Build deterministic fixture version metadata for generated test data."""
+    rendered = json.dumps(payload, sort_keys=True, default=str)
+    return {
+        "fixture_version": version,
+        "generated_at": (generated_at or datetime.now(timezone.utc)).isoformat(),
+        "record_hash": hashlib.sha256(rendered.encode("utf-8")).hexdigest(),
+    }
+
+
+def generate_data_quality_dataset(
+    n_transactions: int = 360,
+    fraud_rate: float = 0.08,
+    seed: int = 39,
+    generated_at: datetime | None = None,
+) -> dict[str, Any]:
+    """Generate relational table fixtures for data quality validation.
+
+    The returned payload intentionally resembles warehouse tables: customers,
+    accounts, transactions, fraud alerts, and model scores. Timestamps are kept
+    fresh by default so freshness SLA tests do not depend on wall-clock drift.
+    """
+    rng_state = random.getstate()
+    random.seed(seed)
+    now = (generated_at or datetime.now(timezone.utc)).replace(second=0, microsecond=0)
+    customer_count = max(n_transactions // 12, 20)
+    customers = [CustomerProfile(f"CUST-{10000 + idx}") for idx in range(customer_count)]
+
+    transactions: list[dict[str, Any]] = []
+    fraud_cutoff = int(n_transactions * fraud_rate)
+    fraud_patterns = [
+        "high_value",
+        "velocity_attack",
+        "geo_anomaly",
+        "card_testing",
+        "account_takeover",
+    ]
+    for idx in range(n_transactions):
+        customer = customers[idx % customer_count]
+        is_fraud = idx < fraud_cutoff
+        pattern = fraud_patterns[idx % len(fraud_patterns)] if is_fraud else None
+        txn_time = now - timedelta(minutes=idx % 12, seconds=idx % 37)
+        txn = generate_transaction(
+            customer=customer,
+            is_fraud=is_fraud,
+            fraud_pattern=pattern,
+            base_timestamp=txn_time,
+        )
+        if not is_fraud and idx % 6 == 0:
+            location = LOCATIONS[7 + (idx % 3)]
+            txn["geo_latitude"] = location[2] + random.uniform(-0.05, 0.05)
+            txn["geo_longitude"] = location[3] + random.uniform(-0.05, 0.05)
+            txn["geo_country"] = location[0]
+            txn["geo_city"] = location[1]
+            txn["is_international"] = True
+        txn["transaction_id"] = f"TXN-DQ-{idx:06d}"
+        txn["status"] = "flagged" if is_fraud else "approved"
+        txn["is_fraud"] = is_fraud
+        ingest_time = now - timedelta(minutes=idx % 12) + timedelta(seconds=20)
+        txn["ingested_at"] = ingest_time.isoformat()
+        transactions.append(txn)
+
+    anonymized_transactions = anonymize_transactions(transactions, salt=f"riskpulse-day39-{seed}")
+    customer_ids = sorted({txn["customer_id"] for txn in anonymized_transactions})
+    account_ids = sorted({txn["account_id"] for txn in anonymized_transactions})
+
+    customer_rows = [
+        {
+            "customer_id": customer_id,
+            "risk_tier": ["standard", "elevated", "high"][idx % 3],
+            "home_country": ["US", "US", "CA", "GB"][idx % 4],
+            "created_at": (now - timedelta(days=90 + idx)).isoformat(),
+        }
+        for idx, customer_id in enumerate(customer_ids)
+    ]
+    account_rows = [
+        {
+            "account_id": account_id,
+            "customer_id": customer_ids[idx % len(customer_ids)],
+            "account_status": "active",
+            "opened_at": (now - timedelta(days=120 + idx)).isoformat(),
+        }
+        for idx, account_id in enumerate(account_ids)
+    ]
+    transaction_customer = {
+        txn["account_id"]: txn["customer_id"] for txn in anonymized_transactions
+    }
+    for account in account_rows:
+        account["customer_id"] = transaction_customer.get(
+            account["account_id"], account["customer_id"]
+        )
+
+    score_rows = []
+    alert_rows = []
+    for txn in anonymized_transactions:
+        base_score = 0.82 if txn["is_fraud"] else 0.18
+        amount_adjustment = min(float(txn["transaction_amount"]) / 10000.0, 0.1)
+        score = min(0.99, max(0.01, base_score + amount_adjustment))
+        score_rows.append(
+            {
+                "score_id": f"SCORE-{txn['transaction_id']}",
+                "transaction_id": txn["transaction_id"],
+                "model_version": "prod-2026.08",
+                "risk_score": round(score, 6),
+                "score_timestamp": txn["ingested_at"],
+            }
+        )
+        if txn["is_fraud"]:
+            alert_rows.append(
+                {
+                    "alert_id": f"ALERT-{txn['transaction_id']}",
+                    "transaction_id": txn["transaction_id"],
+                    "severity": "critical" if score >= 0.9 else "high",
+                    "status": "open",
+                    "created_at": txn["ingested_at"],
+                }
+            )
+
+    payload = {
+        "customers": customer_rows,
+        "accounts": account_rows,
+        "transactions": anonymized_transactions,
+        "fraud_alerts": alert_rows,
+        "model_scores": score_rows,
+        "expected_profiles": {
+            "transactions_per_minute_mean": n_transactions / 12,
+            "transactions_per_minute_std": max(4.0, math.sqrt(n_transactions / 12)),
+            "fraud_rate": fraud_rate,
+            "freshness_sla_minutes": 15,
+        },
+    }
+    payload["metadata"] = build_fixture_version(payload, generated_at=now)
+    random.setstate(rng_state)
+    return payload
+
+
+ML_FEATURE_NAMES = [
+    "transaction_amount",
+    "hour_of_day",
+    "is_international",
+    "velocity_1h",
+    "new_device",
+    "merchant_risk",
+    "customer_tenure_days",
+    "prior_declines_24h",
+]
+
+
+def _sigmoid(value: float) -> float:
+    return 1.0 / (1.0 + math.exp(-value))
+
+
+def generate_ml_validation_dataset(
+    n_samples: int = 800,
+    seed: int = 39,
+) -> dict[str, Any]:
+    """Generate deterministic holdout data and model score fixtures."""
+    random_state = random.getstate()
+    random.seed(seed)
+    segments = ["standard", "new_to_credit", "cross_border", "high_velocity"]
+    records: list[dict[str, Any]] = []
+
+    current_importance = {
+        "transaction_amount": 0.28,
+        "hour_of_day": 0.08,
+        "is_international": 0.16,
+        "velocity_1h": 0.2,
+        "new_device": 0.12,
+        "merchant_risk": 0.1,
+        "customer_tenure_days": 0.03,
+        "prior_declines_24h": 0.03,
+    }
+    challenger_importance = {
+        "transaction_amount": 0.27,
+        "hour_of_day": 0.08,
+        "is_international": 0.15,
+        "velocity_1h": 0.21,
+        "new_device": 0.12,
+        "merchant_risk": 0.1,
+        "customer_tenure_days": 0.04,
+        "prior_declines_24h": 0.03,
+    }
+
+    for idx in range(n_samples):
+        segment = segments[idx % len(segments)]
+        amount = random.lognormvariate(4.6, 0.9)
+        hour = random.randint(0, 23)
+        is_international = 1 if segment == "cross_border" or random.random() < 0.08 else 0
+        velocity = random.randint(0, 16 if segment == "high_velocity" else 8)
+        new_device = 1 if segment == "new_to_credit" or random.random() < 0.12 else 0
+        merchant_risk = random.random()
+        tenure = random.randint(15, 2500 if segment != "new_to_credit" else 180)
+        prior_declines = random.randint(0, 5 if segment == "high_velocity" else 2)
+
+        logit = (
+            -3.0
+            + min(amount, 6000.0) / 1600.0
+            + 0.9 * is_international
+            + 0.18 * velocity
+            + 0.75 * new_device
+            + 1.3 * merchant_risk
+            + 0.28 * prior_declines
+            + (0.35 if hour < 6 else 0.0)
+            - min(tenure, 2500) / 7000.0
+        )
+        true_probability = _sigmoid(logit)
+        label = 1 if true_probability >= 0.5 else 0
+        production_score = min(0.99, max(0.01, true_probability * 0.96 + 0.02))
+        challenger_score = min(0.99, max(0.01, true_probability * 1.01 + 0.005))
+
+        records.append(
+            {
+                "transaction_id": f"TXN-MLVAL-{idx:06d}",
+                "segment": segment,
+                "label": label,
+                "features": {
+                    "transaction_amount": round(amount, 4),
+                    "hour_of_day": hour,
+                    "is_international": is_international,
+                    "velocity_1h": velocity,
+                    "new_device": new_device,
+                    "merchant_risk": round(merchant_risk, 6),
+                    "customer_tenure_days": tenure,
+                    "prior_declines_24h": prior_declines,
+                },
+                "production_score": round(production_score, 6),
+                "challenger_score": round(challenger_score, 6),
+            }
+        )
+
+    payload = {
+        "feature_names": ML_FEATURE_NAMES,
+        "records": records,
+        "models": {
+            "production": {
+                "version": "prod-2026.08",
+                "threshold": 0.5,
+                "feature_importance": current_importance,
+            },
+            "challenger": {
+                "version": "candidate-2026.09",
+                "threshold": 0.5,
+                "feature_importance": challenger_importance,
+            },
+        },
+    }
+    payload["metadata"] = build_fixture_version(payload, version="2026.08.day39.ml")
+    random.setstate(random_state)
+    return payload
+
+
+def write_validation_report(
+    report_path: str | Path = "docs/day39_test_report.json",
+    *,
+    generated_at: datetime | None = None,
+) -> Path:
+    """Write a comprehensive Day 39 testing report scaffold as JSON."""
+    now = generated_at or datetime.now(timezone.utc)
+    report = {
+        "report": "Day 39 Data Quality Testing & Model Validation",
+        "generated_at": now.isoformat(),
+        "dimensions": {
+            "data_quality": [
+                "schema conformance",
+                "referential integrity",
+                "freshness SLA",
+                "volume anomalies",
+                "distribution skew",
+                "business rules",
+            ],
+            "model_validation": [
+                "holdout accuracy",
+                "segment fairness",
+                "score calibration",
+                "feature importance stability",
+                "prediction latency",
+                "production challenger comparison",
+            ],
+            "test_data_management": [
+                "deterministic synthetic fixtures",
+                "fixture version hashes",
+                "identifier anonymization",
+                "non-production fixture boundaries",
+            ],
+        },
+        "automation": {
+            "commands": [
+                "pytest tests/data_quality -m data_quality",
+                "pytest tests/ml_validation -m ml_validation",
+                "python scripts/generate_test_data.py --count 1000 --output file --seed 39",
+            ],
+            "coverage_artifact": "htmlcov/index.html",
+        },
+    }
+    path = Path(report_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    return path
 
 
 def stream_transactions(
@@ -479,6 +829,7 @@ def stream_transactions(
 # ============================================================================
 # Kafka Publishing
 # ============================================================================
+
 
 def publish_to_kafka(
     transactions: list[dict],
@@ -521,8 +872,7 @@ def publish_to_kafka(
             if (i + 1) % 1000 == 0:
                 elapsed = time.time() - start_time
                 rate = (i + 1) / elapsed
-                print(f"  Progress: {i + 1}/{len(transactions)} "
-                      f"({rate:.0f} events/sec)")
+                print(f"  Progress: {i + 1}/{len(transactions)} " f"({rate:.0f} events/sec)")
 
         # Flush remaining
         remaining = producer.flush(timeout=30.0)
@@ -544,6 +894,7 @@ def publish_to_kafka(
 # CLI Entry Point
 # ============================================================================
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate synthetic transaction data for RiskPulse",
@@ -557,39 +908,58 @@ Examples:
         """,
     )
     parser.add_argument(
-        "--count", "-n", type=int, default=1000,
+        "--count",
+        "-n",
+        type=int,
+        default=1000,
         help="Number of transactions to generate (default: 1000)",
     )
     parser.add_argument(
-        "--output", "-o", choices=["file", "kafka", "stdout"], default="file",
+        "--output",
+        "-o",
+        choices=["file", "kafka", "stdout"],
+        default="file",
         help="Output destination (default: file)",
     )
     parser.add_argument(
-        "--fraud-rate", "-f", type=float, default=0.02,
+        "--fraud-rate",
+        "-f",
+        type=float,
+        default=0.02,
         help="Fraud rate as decimal (default: 0.02 = 2%%)",
     )
     parser.add_argument(
-        "--customers", type=int, default=None,
+        "--customers",
+        type=int,
+        default=None,
         help="Number of unique customers (default: count/5)",
     )
     parser.add_argument(
-        "--rate", "-r", type=float, default=None,
+        "--rate",
+        "-r",
+        type=float,
+        default=None,
         help="Rate limit for Kafka publishing (events/second)",
     )
     parser.add_argument(
-        "--bootstrap-servers", default="localhost:9092",
+        "--bootstrap-servers",
+        default="localhost:9092",
         help="Kafka bootstrap servers (default: localhost:9092)",
     )
     parser.add_argument(
-        "--output-file", default="tests/fixtures/generated_transactions.json",
+        "--output-file",
+        default="tests/fixtures/generated_transactions.json",
         help="Output file path (for file mode)",
     )
     parser.add_argument(
-        "--load-test", action="store_true",
+        "--load-test",
+        action="store_true",
         help="Run in load test mode with performance reporting",
     )
     parser.add_argument(
-        "--seed", type=int, default=None,
+        "--seed",
+        type=int,
+        default=None,
         help="Random seed for reproducibility",
     )
 
@@ -647,23 +1017,27 @@ Examples:
         print(f"  Failed:      {result['failed']:,}")
         print(f"  Throughput:  {result['events_per_second']:,.1f} events/sec")
         print(f"  Duration:    {result['elapsed_seconds']:.2f}s")
-        if result['remaining_in_buffer'] > 0:
+        if result["remaining_in_buffer"] > 0:
             print(f"  WARNING: {result['remaining_in_buffer']} messages not delivered!")
 
         if args.load_test:
-            metrics = result['producer_metrics']
+            metrics = result["producer_metrics"]
             print(f"\nLoad Test Metrics:")
             print(f"  Avg latency:  {metrics['average_latency_ms']:.2f}ms")
             print(f"  Error rate:   {metrics['error_rate']:.4f}")
             print(f"  Bytes sent:   {metrics['bytes_produced']:,}")
 
             # Verify throughput target
-            if result['events_per_second'] >= 1000:
-                print(f"\n  ✓ PASS: Throughput target met "
-                      f"({result['events_per_second']:.0f} >= 1000 events/sec)")
+            if result["events_per_second"] >= 1000:
+                print(
+                    f"\n  ✓ PASS: Throughput target met "
+                    f"({result['events_per_second']:.0f} >= 1000 events/sec)"
+                )
             else:
-                print(f"\n  ✗ FAIL: Throughput below target "
-                      f"({result['events_per_second']:.0f} < 1000 events/sec)")
+                print(
+                    f"\n  ✗ FAIL: Throughput below target "
+                    f"({result['events_per_second']:.0f} < 1000 events/sec)"
+                )
                 sys.exit(1)
 
     elif args.output == "stdout":

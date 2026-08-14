@@ -108,6 +108,16 @@ jobs:
           RISKPULSE_ENV: test
         run: pytest tests/security -m security
 
+      - name: Data quality validation tests
+        env:
+          RISKPULSE_ENV: test
+        run: pytest tests/data_quality -m data_quality
+
+      - name: ML model validation tests
+        env:
+          RISKPULSE_ENV: test
+        run: pytest tests/ml_validation -m ml_validation
+
       - name: Start Docker integration dependencies
         run: |
           docker compose -f docker-compose.yml up -d zookeeper kafka postgres redis
