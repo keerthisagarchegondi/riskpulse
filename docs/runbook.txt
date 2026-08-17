@@ -1,0 +1,339 @@
+RiskPulse Production Runbook
+
+Purpose
+This runbook gives on-call engineers and incident commanders a single operating
+guide for incidents, alerts, recovery, restarts, rollbacks, and escalation.
+
+Incident Severity
+SEV1 - Critical customer or platform impact:
+- API unavailable.
+- Fraud scoring unavailable.
+- Pipeline stopped for more than 10 minutes.
+- Production data loss or confirmed corruption.
+- Security incident or leaked credential.
+
+SEV2 - Major degraded service:
+- API error rate greater than 1 percent for 10 minutes.
+- Pipeline P99 latency greater than 5 seconds for 10 minutes.
+- Kafka consumer lag greater than 10,000 messages.
+- Alert generation delayed more than 15 minutes.
+- Dashboard outage during business-critical monitoring.
+
+SEV3 - Minor degraded service:
+- Single non-critical dashboard page broken.
+- Isolated analyst workflow issue.
+- Backfill required but real-time path healthy.
+- Warning alarm with no customer-facing impact.
+
+SEV4 - Informational:
+- One-off transient alarm.
+- Non-production issue.
+- Documentation, access, or routine maintenance request.
+
+Incident Response Procedure
+1. Acknowledge the alert in the paging or chat system.
+2. Assign roles: incident commander, communications lead, subject-matter owner.
+3. Record the start time, affected environment, affected services, and first symptom.
+4. Check the platform dashboard in CloudWatch.
+5. Check service health endpoints:
+   - API /health/live
+   - API /health/ready
+6. Check CloudWatch logs for correlation IDs and recent error spikes.
+7. Check Kafka lag, DLQ rate, PostgreSQL health, Redis health, and Snowflake load status.
+8. Mitigate first: restart, scale, pause consumers, rollback, or disable a faulty rule.
+9. Communicate status every 15 minutes for SEV1/SEV2.
+10. After resolution, complete a post-incident review within two business days.
+
+Primary Dashboards and Logs
+- CloudWatch platform dashboard:
+  infrastructure/aws/cloudwatch/dashboards/platform_dashboard.json
+- API logs:
+  /riskpulse/prod/api
+- Worker logs:
+  /riskpulse/prod/worker
+- Streamlit logs:
+  /riskpulse/prod/streamlit
+- Airflow logs:
+  /riskpulse/prod/airflow
+- Container aggregate logs:
+  /riskpulse/prod/containers
+
+Health Endpoints
+- GET /health/live: process liveness.
+- GET /health/ready: dependency readiness.
+- GET /docs: Swagger UI when API service is healthy.
+- GET /openapi.json: generated OpenAPI specification.
+
+Common Alert Playbooks
+
+High Error Rate Greater Than 1 Percent
+Symptoms:
+- CloudWatch high error-rate alarm fires.
+- API 5xx or worker exception count rising.
+
+Diagnosis:
+1. Filter CloudWatch logs by service and correlation_id.
+2. Check most recent deployment time and image tag.
+3. Check dependency readiness from /health/ready.
+4. Compare errors by route, topic, or pipeline stage.
+
+Mitigation:
+1. If linked to a new deployment, roll back.
+2. If dependency-specific, route to the dependency playbook.
+3. If malformed input-specific, quarantine failing records and keep consumers running.
+4. If API saturation, scale API tasks and check rate-limit behavior.
+
+Verification:
+- Error rate below 1 percent for 15 minutes.
+- Smoke transaction succeeds in staging or production-safe path.
+- No new DLQ spike.
+
+Pipeline Latency P99 Greater Than 5 Seconds
+Symptoms:
+- Pipeline latency alarm fires.
+- Worker logs show slow validation, enrichment, scoring, or storage.
+
+Diagnosis:
+1. Check Kafka consumer lag.
+2. Check PostgreSQL connection pool and slow query logs.
+3. Check Redis latency.
+4. Check model prediction latency metrics.
+5. Check recent rule or model changes.
+
+Mitigation:
+1. Scale worker service horizontally.
+2. Disable or roll back the slow rule/model if latency started after a release.
+3. Pause non-critical backfills.
+4. Increase batch size only after verifying database capacity.
+
+Verification:
+- P99 below 5 seconds for 15 minutes.
+- Consumer lag trending down.
+- Fraud alerts are generated within SLA.
+
+Kafka Consumer Lag Greater Than 10,000 Messages
+Symptoms:
+- Consumer lag alarm fires.
+- Worker throughput below ingestion rate.
+
+Diagnosis:
+1. Check worker task count and health.
+2. Check broker health and partition availability.
+3. Check DLQ and poison-pill records.
+4. Check recent deploy or schema change.
+
+Mitigation:
+1. Scale workers.
+2. Restart unhealthy workers.
+3. If poison-pill pattern exists, quarantine records and patch parser/validator.
+4. If schema mismatch exists, deploy compatible schema and consumer update.
+
+Verification:
+- Lag decreases for three consecutive checks.
+- DLQ rate returns to baseline.
+- End-to-end synthetic transaction reaches scored topic.
+
+Fraud Rate Spike Greater Than 2x Baseline
+Symptoms:
+- High fraud rate alarm fires.
+- Alert generation rate increases sharply.
+
+Diagnosis:
+1. Compare spike across channels, merchants, countries, and customer segments.
+2. Check model version, rule changes, and enrichment sources.
+3. Confirm whether the spike is real fraud or instrumentation drift.
+4. Check score distribution by actual label when labels are available.
+
+Mitigation:
+1. If real fraud, increase alert staffing and adjust routing severity.
+2. If rule-induced, disable or roll back the noisy rule.
+3. If model-induced, roll back model version.
+4. If enrichment-induced, fail open or use cached enrichment if safe.
+
+Verification:
+- Fraud rate returns to expected range or is explained by active incident.
+- False-positive rate does not breach operational threshold.
+- Analyst queue remains within SLA.
+
+Alert Volume Spike
+Symptoms:
+- Analyst queue grows quickly.
+- SLA compliance drops.
+
+Diagnosis:
+1. Check alert_management dashboard.
+2. Break down volume by rule_id, severity, channel, merchant, country, and model version.
+3. Check deduplication and suppression engines.
+
+Mitigation:
+1. Raise severity threshold only with fraud ops approval.
+2. Disable known-bad rule through rules API or config rollback.
+3. Add temporary suppression for duplicate false positives.
+4. Escalate staffing for confirmed attack.
+
+Verification:
+- Queue volume stabilizes.
+- SLA compliance recovers.
+- No confirmed fraud class is fully suppressed.
+
+Database Recovery Procedures
+
+PostgreSQL Connectivity Failure
+1. Check /health/ready.
+2. Check PostgreSQL endpoint, credentials, security groups, and connection count.
+3. Check latest database logs and slow queries.
+4. Restart API and worker only after confirming database accepts connections.
+5. If credentials rotated, refresh Secrets Manager values and redeploy tasks.
+
+PostgreSQL Restore
+1. Declare SEV1 if production data is corrupted or unavailable.
+2. Freeze writes where possible by pausing worker consumers.
+3. Identify last known good backup.
+4. Restore to a new instance first.
+5. Validate migrations, counts, referential integrity, and sample joins.
+6. Cut over application configuration only after validation.
+7. Resume consumers and monitor lag.
+
+Database Migration Failure
+1. Stop the deployment.
+2. Identify failed migration file.
+3. Check whether the migration is idempotent.
+4. If no data changed, fix and rerun.
+5. If partial data changed, restore from backup or run an approved corrective migration.
+6. Do not manually edit production schema without a reviewed migration.
+
+Snowflake Load Failure
+1. Check Airflow snowflake_load DAG.
+2. Check S3 stage file availability.
+3. Validate Snowflake warehouse status and role permissions.
+4. Rerun failed procedure after correcting root cause:
+   - database/snowflake/procedures/load_transactions.sql
+   - database/snowflake/procedures/refresh_materialized_views.sql
+5. Validate reporting tables and Power BI refresh.
+
+Service Restart Procedures
+
+Docker Local or Single-Host Restart
+API:
+docker compose -f docker-compose.yml restart api
+
+Worker:
+docker compose -f docker-compose.yml restart worker
+
+Streamlit:
+docker compose -f docker-compose.yml restart streamlit
+
+Airflow:
+docker compose -f docker-compose.yml restart airflow
+
+All services:
+docker compose -f docker-compose.yml up -d
+
+ECS Restart
+Use a forced new deployment against the current task definition:
+aws ecs update-service --cluster <cluster> --service <service> --force-new-deployment
+
+Restart Safety Checks
+- Confirm the service has at least one healthy replacement before terminating old tasks.
+- Check /health/ready for API.
+- Check consumer lag for worker.
+- Check DAG scheduler health for Airflow.
+- Check dashboard login and page access for Streamlit.
+
+Rollback Procedures
+
+Automatic Rollback
+The production workflow captures current ECS task definitions before deployment.
+If smoke tests or five-minute monitoring fails, scripts/rollback.sh updates each
+service back to its captured task definition and waits for ECS stability.
+
+Manual Rollback
+Required environment variables:
+- AWS_REGION
+- ECS_CLUSTER
+- ECS_SERVICE_PREFIX
+- SERVICES
+
+Dry run:
+DRY_RUN=true scripts/rollback.sh production deployment-state
+
+Execute:
+scripts/rollback.sh production deployment-state
+
+Rollback Verification
+1. ECS services are stable.
+2. API /health/ready is healthy.
+3. Worker lag trends down.
+4. Error rate drops below threshold.
+5. Dashboards load.
+6. CloudWatch alarms clear.
+
+Security Incident Procedure
+1. Declare SEV1.
+2. Preserve logs and audit artifacts.
+3. Rotate affected secrets in AWS Secrets Manager.
+4. Disable compromised API keys or JWT issuers.
+5. Review security audit logs from src/api/middleware/security_audit.py.
+6. Validate IAM role blast radius.
+7. Redeploy affected services to force secret refresh.
+8. Document timeline and containment steps.
+
+Escalation Contacts
+Use role-based escalation rather than personal contact details in source control.
+
+Primary roles:
+- Incident Commander: RiskPulse on-call lead.
+- Platform Owner: API, worker, Docker, and CI/CD.
+- Data Owner: PostgreSQL, Snowflake, S3, and Airflow.
+- Fraud Ops Lead: rules, alerts, analyst workflows, false positives.
+- ML Owner: risk scorer, anomaly detector, model validation, calibration.
+- Security Owner: IAM, secrets, audit logs, rate limiting, CORS.
+
+Escalation order:
+1. Service owner.
+2. Platform on-call.
+3. Fraud operations lead.
+4. Security owner if auth, IAM, PII, or audit logs are involved.
+5. Engineering manager or executive incident sponsor for SEV1.
+
+Post-Incident Review Template
+- Incident ID:
+- Severity:
+- Start time:
+- End time:
+- Customer impact:
+- Detection source:
+- Root cause:
+- Timeline:
+- What worked:
+- What failed:
+- Corrective actions:
+- Owners:
+- Due dates:
+- Follow-up validation:
+
+Operational Commands
+Validate compose:
+docker compose -f docker-compose.yml config --quiet
+docker compose -f docker-compose.prod.yml config --quiet
+
+Run unit tests:
+pytest tests/unit -v
+
+Run data quality checks:
+pytest tests/data_quality -m data_quality
+
+Run ML validation:
+pytest tests/ml_validation -m ml_validation
+
+Run security regression tests:
+pytest tests/security -m security
+
+Run performance smoke:
+pytest tests/performance/test_latency.py -m performance
+
+Generate OpenAPI:
+python scripts/generate_openapi.py
+
+Generate synthetic data:
+python scripts/generate_test_data.py --count 1000 --output file --seed 39

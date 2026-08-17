@@ -1,38 +1,71 @@
-RiskPulse Deployment Guide
+RiskPulse Production Deployment Guide
 
-GitHub Environments
+Purpose
+This guide describes how to provision, configure, deploy, verify, and roll back
+RiskPulse services in staging and production. It is written for operators with
+AWS, Snowflake, GitHub Actions, Docker, and database access.
 
-Create two protected environments:
-- staging
-- production
+Deployment Principles
+- Deploy the same container images through staging and production.
+- Use immutable image tags, preferably the Git commit SHA.
+- Store credentials in AWS Secrets Manager or GitHub environments, never in code.
+- Run CI, data quality, ML validation, and security scans before deployment.
+- Deploy stateful dependencies before stateless application services.
+- Verify health, logs, metrics, and business data after every release.
 
-Production must require reviewer approval before deployment jobs can run. Use
-GitHub environment protection rather than custom approval logic in scripts, so
-audits show who approved each production release.
+Production Components
+- FastAPI API service: src/api/app.py, port 8000.
+- Kafka worker: src/ingestion/kafka_consumer.py.
+- Streamlit dashboard: dashboards/streamlit/app.py, port 8501.
+- Airflow orchestration: airflow/dags and airflow/plugins.
+- PostgreSQL operational database.
+- Redis cache and rate-limit backend.
+- Kafka raw, validated, enriched, scored, alert, DLQ, metrics, and audit topics.
+- Snowflake analytics warehouse.
+- S3 data lake and model artifact storage.
+- CloudWatch logs, metrics, dashboards, and alarms.
+- GitHub Actions CI/CD workflows.
+
+Required Local Tools
+- git
+- Docker and Docker Compose
+- Python 3.11+
+- AWS CLI v2
+- jq
+- psql
+- Snowflake SQL client or Snowsight access
+- Terraform, when provisioning infrastructure modules
 
 Required Repository Variables
-
-AWS_REGION
-ECR_REGISTRY
-STAGING_ECS_CLUSTER
-STAGING_ECS_SERVICE_PREFIX
-STAGING_BASE_URL
-PRODUCTION_ECS_CLUSTER
-PRODUCTION_ECS_SERVICE_PREFIX
-PRODUCTION_BASE_URL
-SLACK_WEBHOOK_URL, optional
+- AWS_REGION
+- ECR_REGISTRY
+- STAGING_ECS_CLUSTER
+- STAGING_ECS_SERVICE_PREFIX
+- STAGING_BASE_URL
+- PRODUCTION_ECS_CLUSTER
+- PRODUCTION_ECS_SERVICE_PREFIX
+- PRODUCTION_BASE_URL
+- SLACK_WEBHOOK_URL, optional
 
 Required Repository Secrets
+- STAGING_AWS_ROLE_ARN
+- PRODUCTION_AWS_ROLE_ARN
 
-STAGING_AWS_ROLE_ARN
-PRODUCTION_AWS_ROLE_ARN
+GitHub Environment Protection
+Create protected environments named staging and production.
 
-The AWS roles should trust GitHub Actions OIDC and should be scoped to ECR push,
-ECS describe/register/update-service, and CloudWatch read operations needed by
-deployment monitoring. Avoid static AWS access keys.
+Staging:
+- Required reviewers optional.
+- Deployment branch: develop.
+- Secrets scoped to staging roles and endpoints.
+
+Production:
+- Required reviewer approval mandatory.
+- Deployment branch: main or manual workflow_dispatch only.
+- Secrets scoped to production roles and endpoints.
+- Use GitHub OIDC to assume AWS roles. Avoid static AWS access keys.
 
 Branch Protection
-
 main:
 - Require pull request before merge.
 - Require CI workflow to pass.
@@ -47,31 +80,264 @@ develop:
 - Require branch to be up to date before merge.
 - Require conversation resolution.
 
-Release Flow
+Infrastructure Provisioning Order
+1. Provision network, private subnets, security groups, and load balancer.
+2. Provision S3 buckets and lifecycle/encryption policies from infrastructure/terraform/modules/s3.
+3. Provision IAM roles and least-privilege policies from infrastructure/terraform/modules/iam.
+4. Provision CloudWatch log groups, dashboards, and alarms from infrastructure/terraform/modules/cloudwatch.
+5. Provision PostgreSQL and Redis.
+6. Provision Kafka or connect to the managed Kafka cluster.
+7. Provision Snowflake databases, schemas, stages, and warehouse roles.
+8. Create ECR repositories for api, worker, streamlit, and airflow.
+9. Create ECS task definitions and services for api, worker, streamlit, and airflow.
+10. Configure GitHub environments, variables, and secrets.
 
-1. Pull request into develop runs CI.
-2. Merge to develop runs CI again, builds images, pushes staging tags to ECR,
-   deploys ECS services, and runs staging smoke tests.
-3. Pull request into main runs CI.
-4. Merge to main builds production images and deploys through the protected
-   production environment.
-5. Manual production deployment can be started with workflow_dispatch by passing
-   a known image tag and typing deploy-production.
+Terraform Module Checklist
+- infrastructure/terraform/modules/s3/main.tf
+- infrastructure/terraform/modules/iam/main.tf
+- infrastructure/terraform/modules/iam/roles.tf
+- infrastructure/terraform/modules/iam/policies.tf
+- infrastructure/terraform/modules/cloudwatch/main.tf
 
-Rollback Flow
+Configuration Management
+Configuration files:
+- config/settings.yaml
+- config/environments/dev.yaml
+- config/environments/staging.yaml
+- config/environments/prod.yaml
+- config/kafka_config.yaml
+- config/logging.yaml
+- config/fraud_rules.yaml
+- config/business_rules.yaml
+- config/validation_rules.yaml
+- config/scoring_weights.yaml
+- config/alert_routing.yaml
+- config/escalation_policies.yaml
 
-The production workflow captures the current ECS task definition ARN for each
-service before deployment. If smoke tests or the five-minute monitoring loop
-fails, scripts/rollback.sh updates each service back to its captured task
-definition and waits for ECS stability.
+Runtime environment variables:
+- RISKPULSE_ENV
+- RISKPULSE_SERVICE
+- RISKPULSE_KAFKA_BOOTSTRAP_SERVERS
+- RISKPULSE_DB_HOST
+- RISKPULSE_DB_PORT
+- RISKPULSE_DB_NAME
+- RISKPULSE_DB_USER
+- RISKPULSE_DB_PASSWORD
+- RISKPULSE_REDIS_HOST
+- RISKPULSE_REDIS_PORT
+- RISKPULSE_SECURITY__SECRETS_MANAGER__ENABLED
+- RISKPULSE_MONITORING__CLOUDWATCH__ENABLED
+- AWS_REGION
 
-Coverage Gate
+Secrets Management
+- Store database passwords, API keys, JWT secrets, Snowflake credentials, and notification tokens in AWS Secrets Manager.
+- Enable database password rotation where supported.
+- Scope each ECS task role to only the secrets it needs.
+- Validate that no credentials are committed:
+  git grep -n "password\\|secret\\|api_key" -- ':!docs' ':!tests/fixtures'
 
-CI runs unit tests with coverage and enforces a 90 percent minimum. The coverage
-XML report is uploaded as an artifact for review.
+Database Deployment
+Run migrations in numeric order:
+- database/migrations/001_create_transactions.sql
+- database/migrations/002_create_fraud_alerts.sql
+- database/migrations/003_create_risk_scores.sql
+- database/migrations/004_create_audit_logs.sql
+- database/migrations/005_create_rules.sql
+- database/migrations/007_create_feature_store.sql
 
-Security Scanning
+Operational command:
+make db-migrate
 
-CI runs Bandit for source scanning and Safety for dependency vulnerability
-scanning. Failures block merges and deployment because the CD workflows call the
-same reusable CI workflow first.
+Seed non-production only:
+make db-seed
+
+Never run seed_test_data.sql against production.
+
+Snowflake Deployment
+Apply schemas:
+- database/snowflake/schemas/raw_schema.sql
+- database/snowflake/schemas/staging_schema.sql
+- database/snowflake/schemas/analytics_schema.sql
+- database/snowflake/schemas/reporting_schema.sql
+
+Apply procedures:
+- database/snowflake/procedures/load_transactions.sql
+- database/snowflake/procedures/refresh_materialized_views.sql
+
+Power BI Snowflake artifacts:
+- dashboards/powerbi/data_connections/snowflake_connector.py
+- dashboards/powerbi/data_connections/snowflake_rls_setup.sql
+- dashboards/powerbi/models/rls_roles.json
+- dashboards/powerbi/models/snowflake_queries.pq
+- dashboards/powerbi/refresh_schedule.json
+
+Container Build
+Development validation:
+docker compose -f docker-compose.yml config --quiet
+docker compose -f docker-compose.prod.yml config --quiet
+
+Build production images:
+docker compose -f docker-compose.prod.yml build api worker streamlit airflow
+
+Makefile equivalent:
+make docker-build-prod
+
+Local smoke deployment:
+docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml ps
+docker compose -f docker-compose.yml down
+
+Service Deployment Order
+1. Database migrations.
+2. Kafka topics and schema registry.
+3. Redis.
+4. API service.
+5. Worker service.
+6. Airflow service.
+7. Streamlit dashboard.
+8. Power BI refresh configuration.
+9. CloudWatch alarms enabled.
+
+GitHub Actions Flow
+Pull request to develop or main:
+- Checkout.
+- Setup Python.
+- Install dependencies.
+- Run black, isort, flake8, and mypy.
+- Run unit tests with coverage gate.
+- Run security regression tests.
+- Run data quality validation tests.
+- Run ML model validation tests.
+- Start Docker integration dependencies.
+- Run integration tests.
+- Run Bandit and Safety.
+- Validate compose files.
+- Build Docker images.
+- Upload coverage and security artifacts.
+
+Merge to develop:
+- Reuse CI.
+- Build and push staging images to ECR.
+- Deploy staging ECS services.
+- Run staging E2E checks.
+- Notify team.
+
+Production:
+- Manual workflow_dispatch or merge to main.
+- Require protected environment approval.
+- Capture rollback task definitions.
+- Deploy production images.
+- Run smoke tests.
+- Monitor for five minutes.
+- Run rollback automatically on failure.
+
+Manual ECS Deploy
+Set environment variables:
+AWS_REGION=us-east-1
+ECR_REGISTRY=<account>.dkr.ecr.us-east-1.amazonaws.com
+ECS_CLUSTER=<cluster-name>
+ECS_SERVICE_PREFIX=riskpulse-production
+IMAGE_TAG=<immutable-tag>
+SERVICES="api worker streamlit airflow"
+
+Dry run:
+DRY_RUN=true scripts/deploy.sh production <image-tag>
+
+Deploy:
+scripts/deploy.sh production <image-tag>
+
+Rollback
+Rollback requires task definition state files, one per service:
+- deployment-state/api.taskdef
+- deployment-state/worker.taskdef
+- deployment-state/streamlit.taskdef
+- deployment-state/airflow.taskdef
+
+Dry run:
+DRY_RUN=true scripts/rollback.sh production deployment-state
+
+Execute:
+scripts/rollback.sh production deployment-state
+
+Monitoring Setup
+CloudWatch logs:
+- /riskpulse/prod/api
+- /riskpulse/prod/worker
+- /riskpulse/prod/streamlit
+- /riskpulse/prod/airflow
+- /riskpulse/prod/containers
+
+Dashboard:
+- infrastructure/aws/cloudwatch/dashboards/platform_dashboard.json
+
+Alarms:
+- infrastructure/aws/cloudwatch/alarms/high_fraud_rate.json
+- infrastructure/aws/cloudwatch/alarms/pipeline_failure.json
+
+Metrics to verify:
+- Transactions processed per minute.
+- Fraud detection rate.
+- Alert generation rate.
+- Pipeline latency P50, P95, P99.
+- Model prediction latency.
+- Error rates per service.
+- Kafka consumer lag.
+
+Post-Deployment Verification
+API:
+- GET /health/live returns status 200.
+- GET /health/ready returns ready true and dependencies healthy.
+- POST /api/v1/transactions accepts a valid test transaction in staging.
+
+Worker:
+- Consumer lag below 10,000 messages.
+- DLQ volume stable.
+- Processing latency P99 below 5 seconds.
+
+Database:
+- New transactions land in PostgreSQL.
+- Risk scores join to transactions.
+- Fraud alerts join to scored transactions.
+
+Snowflake:
+- Raw transaction load succeeds.
+- Materialized or reporting views refresh.
+- Row-level security filters by tenant or role.
+
+Dashboards:
+- Streamlit real-time monitor loads.
+- Streamlit model performance and alert management pages render.
+- Power BI refresh completes from Snowflake.
+
+Security:
+- API rejects missing or invalid credentials.
+- Rate limiting returns 429 after threshold breach.
+- CloudWatch logs scrub PII.
+- Security audit log captures access events.
+
+Data Quality and ML Gates
+Run before production:
+pytest tests/data_quality -m data_quality
+pytest tests/ml_validation -m ml_validation
+
+Performance Gates
+Run before production or major scoring releases:
+pytest tests/performance/test_latency.py -m performance
+pytest tests/performance/test_throughput.py -m performance
+
+Rollback Decision Criteria
+Roll back immediately when any of these persist for more than five minutes:
+- API 5xx error rate greater than 1 percent.
+- Pipeline P99 latency greater than 5 seconds.
+- Kafka consumer lag greater than 10,000 messages.
+- Fraud rate spike greater than 2x baseline without business explanation.
+- Health readiness fails for api, worker, or airflow.
+- Data quality tests fail against staging after deployment.
+- Model validation shows accuracy or fairness regression.
+
+Release Closeout
+- Confirm GitHub deployment status is successful.
+- Confirm CloudWatch alarms are green.
+- Confirm staging or production smoke tests are attached to the run.
+- Confirm rollback state is retained for the deployed version.
+- Record the release in CHANGELOG.txt.

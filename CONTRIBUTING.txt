@@ -1,0 +1,102 @@
+RiskPulse Contributing Guide
+
+Principles
+- Protect production data and credentials.
+- Keep changes scoped and reviewable.
+- Prefer existing project patterns over new abstractions.
+- Add tests for changed behavior.
+- Update operational docs when production behavior changes.
+- Do not commit secrets, API keys, database dumps, or production customer data.
+
+Branch Workflow
+1. Start from develop.
+2. Create a focused branch:
+   feature/<short-name>
+   fix/<short-name>
+   test/<short-name>
+   docs/<short-name>
+   infra/<short-name>
+3. Commit related work together.
+4. Open a pull request into develop.
+5. Wait for CI and reviewer approval before merge.
+
+Commit Message Types
+- feat: application feature.
+- fix: bug fix.
+- test: tests or fixtures.
+- docs: documentation.
+- ci: CI/CD changes.
+- infra: Terraform, IAM, Docker, AWS, or deployment scripts.
+- chore: maintenance.
+- perf: performance improvement.
+
+Code Style
+- Format with Black.
+- Sort imports with isort.
+- Keep line length compatible with pyproject.toml.
+- Run flake8 and mypy before review.
+- Keep code comments concise and useful.
+- Avoid unrelated refactors in feature or bug-fix pull requests.
+
+Testing Requirements
+Run tests appropriate to the files changed.
+
+Core commands:
+pytest tests/unit -v
+pytest tests/integration -m integration
+pytest tests/security -m security
+pytest tests/performance/test_latency.py -m performance
+pytest tests/data_quality -m data_quality
+pytest tests/ml_validation -m ml_validation
+pytest tests --cov=src --cov-report=html --cov-report=term-missing
+
+Change-specific requirements:
+- API changes require request/response, auth, error, and schema tests.
+- Storage changes require mocked unit tests and integration coverage when dependencies are available.
+- Fraud scoring changes require scoring pipeline tests and ML validation checks.
+- Rule changes require known positive and negative examples.
+- Alerting changes require deduplication, suppression, throttling, SLA, and escalation tests.
+- Dashboard changes require component tests and role/access checks.
+- Security changes require security regression tests.
+- Deployment changes require script syntax checks, compose validation, and dry runs.
+
+Security Rules
+- Use AWS Secrets Manager for runtime credentials.
+- Use least-privilege IAM policies.
+- Use parameterized queries and allowlisted filter columns.
+- Sanitize user-controlled strings and metadata.
+- Preserve correlation IDs in logs.
+- Scrub PII before logging.
+- Never bypass authentication or rate limiting in production routes.
+
+Documentation Rules
+- This workspace is using text documentation for new production docs.
+- Do not create new Markdown files when a task explicitly says not to add .md files.
+- Update docs/runbook.txt for operational changes.
+- Update docs/deployment_guide.txt for deployment, infrastructure, or rollback changes.
+- Update docs/onboarding.txt for developer setup changes.
+- Update README.txt for project overview or command changes.
+- Update CHANGELOG.txt for release-visible changes.
+
+Pull Request Checklist
+- The change is scoped to the issue or task.
+- Tests were added or updated.
+- Relevant checks pass locally.
+- CI passes.
+- Documentation is updated when needed.
+- No credentials or production data are included.
+- Rollback or mitigation path is understood for production-impacting work.
+- Observability is present for new production behavior.
+
+Review Expectations
+- Reviewers should prioritize correctness, security, data quality, resilience, and operational clarity.
+- Ask for tests when behavior changes.
+- Ask for documentation when operational behavior changes.
+- Block merges that weaken auth, secrets handling, PII scrubbing, SQL safety, or auditability.
+
+Release Expectations
+- Merge to develop deploys staging.
+- Production requires protected environment approval.
+- Use immutable image tags.
+- Capture rollback task definition state before production deployment.
+- Validate API health, worker lag, data quality, ML validation, dashboards, CloudWatch alarms, and smoke tests after deployment.

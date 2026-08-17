@@ -1,0 +1,215 @@
+RiskPulse Developer Onboarding Guide
+
+Welcome
+RiskPulse is a real-time fraud analytics and risk intelligence platform. New
+contributors should understand event ingestion, validation, transformation,
+enrichment, storage, fraud scoring, alerting, dashboards, monitoring, security,
+and CI/CD before making production changes.
+
+System Overview
+The platform ingests transaction events through the FastAPI API and Kafka,
+validates schema and business rules, transforms and enriches records, computes
+fraud scores through rules, anomaly detection, and ML models, stores operational
+and analytical data, and exposes fraud operations dashboards.
+
+Main Code Areas
+- src/api: FastAPI application, middleware, routes, OpenAPI customization.
+- src/ingestion: Kafka producer, consumer, schema registry, admin helpers.
+- src/validation: schema validation, quarantine handling, rules engine.
+- src/transformation: cleaning, normalization, feature engineering, aggregations.
+- src/enrichment: geo, device, merchant, and velocity enrichment.
+- src/fraud_detection: rules, anomaly detector, risk scorer, scoring pipeline, model registry, model monitor.
+- src/alerting: alert manager, templates, notification service, escalation.
+- src/storage: PostgreSQL, Redis, S3, Snowflake, and storage orchestration.
+- src/monitoring: CloudWatch logging, metrics, and health checking.
+- dashboards/streamlit: operational monitoring dashboards.
+- dashboards/powerbi: executive analytics assets and Snowflake connection code.
+- airflow: orchestration DAGs and custom operators.
+- infrastructure: Docker, AWS policies, and Terraform modules.
+- tests: unit, integration, performance, security, data quality, and ML validation suites.
+
+Development Environment Setup
+
+1. Install prerequisites:
+- Python 3.11 or newer.
+- Git.
+- Docker Desktop.
+- Make, or run the commands from Makefile manually on Windows.
+- AWS CLI when testing cloud deployment flows.
+- PostgreSQL client tools when running migrations locally.
+
+2. Clone the repository:
+git clone <repository-url>
+cd riskpulse
+
+3. Create and activate a virtual environment:
+python -m venv .venv
+
+Windows PowerShell:
+.venv\Scripts\Activate.ps1
+
+Linux or macOS:
+source .venv/bin/activate
+
+4. Install dependencies:
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+
+5. Create local configuration:
+copy .env.example .env
+
+Linux or macOS:
+cp .env.example .env
+
+6. Start local infrastructure:
+docker compose -f docker-compose.yml up -d
+
+7. Validate running services:
+docker compose -f docker-compose.yml ps
+
+8. Run database migrations:
+make db-migrate
+
+9. Seed local test data:
+make db-seed
+
+10. Start API:
+make run
+
+11. Start Streamlit dashboard:
+make run-streamlit
+
+12. Open local services:
+- API docs: http://localhost:8000/docs
+- API health: http://localhost:8000/health/live
+- Streamlit: http://localhost:8501
+- Airflow: http://localhost:8080
+
+Quick Verification
+Run:
+make lint
+make test-unit
+pytest tests/security -m security
+pytest tests/data_quality -m data_quality
+pytest tests/ml_validation -m ml_validation
+
+If Docker is available:
+make docker-test
+
+Architecture Walkthrough
+1. API receives transaction submissions and validates request schemas.
+2. API publishes valid transaction events to Kafka topic txn.raw.events.
+3. Worker consumes raw events.
+4. Validation and rules engines enforce schema and business rules.
+5. Transformation normalizes currencies, timestamps, strings, and derived fields.
+6. Enrichment adds geo, merchant, device, and velocity context.
+7. Scoring combines fraud rules, anomaly detector, and ML scorer into a unified risk score.
+8. Alerts are deduplicated, suppressed, throttled, routed, and escalated.
+9. PostgreSQL stores operational entities.
+10. S3 stores data lake objects.
+11. Snowflake stores analytical and reporting tables.
+12. Streamlit supports operational users.
+13. Power BI supports executives.
+14. CloudWatch logs, metrics, dashboards, and alarms support production operations.
+
+Contribution Workflow
+1. Create a branch from develop.
+2. Keep changes scoped to the task.
+3. Add or update tests before opening a pull request.
+4. Run relevant checks locally.
+5. Open a pull request into develop.
+6. Wait for CI to pass.
+7. Request review from code owners or service owners.
+8. Merge only after review and CI success.
+
+Branch Naming
+- feature/<short-description>
+- fix/<short-description>
+- test/<short-description>
+- docs/<short-description>
+- infra/<short-description>
+
+Commit Types
+- feat: user-facing feature.
+- fix: bug fix.
+- test: tests or test framework.
+- docs: documentation.
+- ci: GitHub Actions or automation.
+- infra: infrastructure code.
+- chore: maintenance.
+- perf: performance improvement.
+
+Testing Requirements
+Every pull request should include the narrowest meaningful tests for the change.
+
+Required by change type:
+- API routes: unit tests, auth tests, schema validation tests.
+- Data validation or transformation: unit tests with edge cases.
+- Enrichment: unit tests with mocked external services.
+- Fraud rules: rule-engine tests and known fraud scenarios.
+- ML scoring: model validation tests and latency checks.
+- Alerting: alert-manager, routing, deduplication, suppression, and SLA tests.
+- Storage: unit tests with mocks and integration tests where feasible.
+- Dashboards: component tests and access-control checks.
+- Security: auth, injection, rate-limit, and audit tests.
+- Infrastructure: syntax/config validation and dry-run where possible.
+
+Useful Test Commands
+pytest tests/unit -v
+pytest tests/integration -m integration
+pytest tests/security -m security
+pytest tests/performance/test_latency.py -m performance
+pytest tests/data_quality -m data_quality
+pytest tests/ml_validation -m ml_validation
+pytest tests --cov=src --cov-report=html --cov-report=term-missing
+
+Code Style
+- Black formatting.
+- isort imports.
+- flake8 linting.
+- mypy type checking.
+- Keep files ASCII unless the file already requires Unicode.
+- Keep comments useful and sparse.
+- Do not commit secrets, credentials, tokens, or production data.
+
+Security Practices
+- Use AWS Secrets Manager for credentials.
+- Use JWT or API key auth for API routes.
+- Use parameterized queries.
+- Sanitize user-controlled input.
+- Preserve correlation IDs in logs.
+- Scrub PII before logging.
+- Keep IAM policies least privilege.
+
+Deployment Process Summary
+1. Pull request to develop triggers CI.
+2. Merge to develop deploys staging.
+3. Validate staging health, data quality, model validation, dashboards, and logs.
+4. Pull request to main triggers CI.
+5. Production deployment requires protected environment approval.
+6. Production smoke tests and monitoring run after deployment.
+7. Rollback automatically or manually if verification fails.
+
+Where To Start
+- API work: src/api/app.py and tests/unit/test_api.py.
+- Pipeline work: src/pipeline_orchestrator.py and tests/integration/test_full_pipeline.py.
+- Fraud scoring: src/fraud_detection/scoring_pipeline.py and tests/unit/test_scoring_pipeline.py.
+- Dashboard work: dashboards/streamlit/app.py and tests/unit/test_dashboard_components.py.
+- Cloud monitoring: src/monitoring and tests/unit/test_monitoring_cloudwatch.py.
+- Deployment: .github/workflows and scripts/deploy.sh.
+
+Definition of Ready
+- Acceptance criteria are clear.
+- Data contracts are known.
+- Required secrets and environment variables are identified.
+- Test scope is agreed.
+- Rollback or mitigation path exists for production-affecting work.
+
+Definition of Done
+- Code is implemented.
+- Tests pass locally for changed areas.
+- CI passes.
+- Documentation updated when behavior or operations change.
+- No secrets or production data committed.
+- Observability added for production-critical paths.
+- Rollback impact understood.

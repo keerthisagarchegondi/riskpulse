@@ -1,0 +1,42 @@
+RiskPulse Changelog
+
+Version 0.1.0 - Production Readiness Build
+
+Added
+- Real-time transaction ingestion API and Kafka producer/consumer flow.
+- Schema validation, quarantine handling, data cleaning, normalization, and feature engineering.
+- Geo, merchant, device, and velocity enrichment.
+- Fraud rule engine, anomaly detector, risk scorer, scoring pipeline, model registry, and model monitoring.
+- Alert manager, templates, notification service, and escalation engine.
+- PostgreSQL, Redis, S3, Snowflake, and storage orchestration handlers.
+- Streamlit dashboards for real-time monitoring, trends, investigation, model performance, and alert management.
+- Power BI executive dashboard assets, Snowflake queries, RLS setup, and refresh configuration.
+- CloudWatch structured logging, custom metrics, health checks, dashboard, and alarms.
+- IAM policies, IAM Terraform modules, secrets manager integration, JWT/API-key auth, rate limiting, SQL injection prevention, CORS, and security audit logging.
+- Dockerfiles for api, worker, streamlit, and airflow.
+- Development and production Docker Compose files with health checks and production resource constraints.
+- GitHub Actions CI, staging CD, and production CD workflows.
+- Deployment and rollback scripts.
+- Comprehensive unit, integration, performance, security, data quality, and ML validation tests.
+- Synthetic test data generator with anonymization, fixture versioning, data quality datasets, and ML validation datasets.
+- Production documentation in text format:
+  - docs/runbook.txt
+  - docs/onboarding.txt
+  - docs/deployment_guide.txt
+  - README.txt
+  - CONTRIBUTING.txt
+
+Changed
+- Expanded CI to run security, data quality, ML validation, integration, performance smoke, compose validation, Docker build, coverage, and security artifacts.
+- Added Hatch build package mapping for the src package layout.
+- Reworked documentation requests into .txt files to comply with the no-Markdown project constraint.
+
+Fixed
+- FeatureMetrics.to_dict no longer re-enters a non-reentrant lock while computing average latency.
+- Data quality generated fixture timestamps are normalized to avoid minute-boundary volume flakes.
+
+Operational Notes
+- Production deployment should use immutable image tags.
+- Production deployment requires GitHub protected environment approval.
+- Rollback state must be retained for each deployed service.
+- Data quality and ML validation checks should run before production releases.
