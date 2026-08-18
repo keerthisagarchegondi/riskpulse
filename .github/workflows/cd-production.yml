@@ -103,20 +103,35 @@ jobs:
       - name: Run smoke tests
         env:
           PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
-        run: |
-          test -n "${PRODUCTION_BASE_URL}"
-          curl --fail --retry 10 --retry-delay 15 "${PRODUCTION_BASE_URL}/health/live"
-          curl --fail --retry 10 --retry-delay 15 "${PRODUCTION_BASE_URL}/health/ready"
+          PRODUCTION_STREAMLIT_URL: ${{ vars.PRODUCTION_STREAMLIT_URL }}
+          PRODUCTION_AIRFLOW_URL: ${{ vars.PRODUCTION_AIRFLOW_URL }}
+        run: >
+          python3 scripts/smoke_test.py
+          --retries 10
+          --retry-delay 15
+          --timeout 10
+          --report-file smoke-production.json
 
       - name: Monitor production for 5 minutes
         env:
           PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
-        run: |
-          for attempt in $(seq 1 20); do
-            curl --fail --max-time 10 "${PRODUCTION_BASE_URL}/health/live"
-            curl --fail --max-time 10 "${PRODUCTION_BASE_URL}/health/ready"
-            sleep 15
-          done
+          PRODUCTION_STREAMLIT_URL: ${{ vars.PRODUCTION_STREAMLIT_URL }}
+          PRODUCTION_AIRFLOW_URL: ${{ vars.PRODUCTION_AIRFLOW_URL }}
+        run: >
+          python3 scripts/smoke_test.py
+          --monitor-seconds 300
+          --monitor-interval 15
+          --timeout 10
+          --skip-openapi
+          --report-file smoke-production-monitor.json
+
+      - name: Upload smoke reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-smoke-reports
+          path: smoke-production*.json
+          if-no-files-found: ignore
 
       - name: Rollback on failure
         if: failure()

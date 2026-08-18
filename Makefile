@@ -1,4 +1,4 @@
-.PHONY: install install-dev lint format test test-unit test-integration test-coverage run docker-up docker-down docker-build docker-test clean help
+.PHONY: install install-dev lint format test test-unit test-integration test-coverage run docker-up docker-down docker-build docker-test smoke-test verify-deployment clean help
 
 # Default target
 help: ## Show this help message
@@ -97,6 +97,12 @@ docker-test: ## Validate compose files and run container health smoke checks
 	docker compose -f docker-compose.yml up -d --build
 	docker compose -f docker-compose.yml ps
 	docker compose -f docker-compose.yml down
+
+smoke-test: ## Run API/dashboard deployment smoke tests
+	python scripts/smoke_test.py --base-url $${RISKPULSE_BASE_URL:-http://127.0.0.1:8000}
+
+verify-deployment: ## Run production deployment verification gates
+	./scripts/verify_deployment.sh production
 
 docker-logs: ## View Docker service logs
 	docker compose -f docker-compose.yml logs -f

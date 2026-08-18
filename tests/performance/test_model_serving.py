@@ -23,6 +23,12 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+from src.fraud_detection.model_monitor import (
+    DataQualityChecker,
+    FeatureDriftDetector,
+    ModelMonitor,
+    PredictionDistributionTracker,
+)
 from src.fraud_detection.model_registry import (
     ABTestConfig,
     ModelMetadata,
@@ -31,13 +37,6 @@ from src.fraud_detection.model_registry import (
     ModelStage,
     ModelVersion,
 )
-from src.fraud_detection.model_monitor import (
-    DataQualityChecker,
-    FeatureDriftDetector,
-    ModelMonitor,
-    PredictionDistributionTracker,
-)
-
 
 # --- Fixtures ---
 
@@ -321,9 +320,7 @@ class TestModelServer:
             raise RuntimeError("Model crashed")
 
         good_model = MagicMock()
-        good_model.predict_proba = MagicMock(
-            return_value=np.array([[0.3, 0.7]])
-        )
+        good_model.predict_proba = MagicMock(return_value=np.array([[0.3, 0.7]]))
 
         bad_model = MagicMock()
         bad_model.predict_proba = MagicMock(side_effect=failing_model_predict_proba)
@@ -403,7 +400,9 @@ class TestModelServingPerformance:
 
         throughput = total_predictions / elapsed
         assert throughput >= 1000, f"Throughput {throughput:.0f} predictions/s below 1000 target"
-        print(f"\nBatch throughput: {throughput:.0f} predictions/second ({total_predictions} in {elapsed:.2f}s)")
+        print(
+            f"\nBatch throughput: {throughput:.0f} predictions/second ({total_predictions} in {elapsed:.2f}s)"
+        )
 
     @pytest.mark.performance
     def test_concurrent_predictions(self, model_server, feature_names):
@@ -451,7 +450,9 @@ class TestModelServingPerformance:
         )
 
     @pytest.mark.performance
-    def test_hot_reload_no_dropped_requests(self, registry_with_model, mock_model, tmp_path, feature_names):
+    def test_hot_reload_no_dropped_requests(
+        self, registry_with_model, mock_model, tmp_path, feature_names
+    ):
         """Hot-reload should not drop any requests."""
         registry, model_path = registry_with_model
 
@@ -558,11 +559,13 @@ class TestModelMonitor:
 
         # Record shifted data for first feature
         for _ in range(500):
-            detector.record({
-                feature_names[0]: np.random.normal(200, 20),  # shifted!
-                feature_names[1]: np.random.normal(5, 2),
-                feature_names[2]: np.random.normal(10, 3),
-            })
+            detector.record(
+                {
+                    feature_names[0]: np.random.normal(200, 20),  # shifted!
+                    feature_names[1]: np.random.normal(5, 2),
+                    feature_names[2]: np.random.normal(10, 3),
+                }
+            )
 
         drifted = detector.get_drifted_features(method="psi")
         drifted_names = [r.feature_name for r in drifted]

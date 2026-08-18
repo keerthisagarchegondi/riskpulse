@@ -13,7 +13,6 @@ from src.api.schemas.transaction_schema import TransactionCreate
 from src.utils.security import SecurityValidationError, sanitize_mapping, sanitize_string
 from src.utils.sql_security import SqlFilter, UnsafeQueryError, build_where_clause
 
-
 AUTH_HEADERS = {"X-API-Key": "dev-api-key-riskpulse-2024"}
 
 

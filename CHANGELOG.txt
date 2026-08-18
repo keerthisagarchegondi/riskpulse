@@ -19,15 +19,18 @@ Added
 - Deployment and rollback scripts.
 - Comprehensive unit, integration, performance, security, data quality, and ML validation tests.
 - Synthetic test data generator with anonymization, fixture versioning, data quality datasets, and ML validation datasets.
+- Production smoke test runner, deployment verification gate script, and production readiness checklist.
 - Production documentation in text format:
   - docs/runbook.txt
   - docs/onboarding.txt
   - docs/deployment_guide.txt
+  - docs/production_readiness_checklist.txt
   - README.txt
   - CONTRIBUTING.txt
 
 Changed
 - Expanded CI to run security, data quality, ML validation, integration, performance smoke, compose validation, Docker build, coverage, and security artifacts.
+- Production CD now stores structured smoke reports and monitors API, Streamlit, and Airflow health during the post-deploy watch window.
 - Added Hatch build package mapping for the src package layout.
 - Reworked documentation requests into .txt files to comply with the no-Markdown project constraint.
 

@@ -43,7 +43,6 @@ from src.transformation.normalizer import DataNormalizer
 from src.validation.quarantine_handler import QuarantineHandler
 from src.validation.schema_validator import SchemaValidator
 
-
 # ============================================================================
 # Test Data Generation
 # ============================================================================
@@ -72,9 +71,7 @@ def _generate_transaction(idx: int = 0) -> dict[str, Any]:
     """Generate a realistic synthetic transaction for throughput testing."""
     merchant = random.choice(MERCHANTS)
     location = random.choice(LOCATIONS)
-    base_time = datetime.now(timezone.utc) - timedelta(
-        minutes=random.randint(0, 60)
-    )
+    base_time = datetime.now(timezone.utc) - timedelta(minutes=random.randint(0, 60))
 
     return {
         "external_transaction_id": f"TXN-PERF-{uuid.uuid4().hex[:12].upper()}",
@@ -128,9 +125,7 @@ def _generate_fraud_transaction() -> dict[str, Any]:
         "geo_country": "RU",
         "geo_city": "Moscow",
         "is_international": True,
-        "transaction_timestamp": datetime.now(timezone.utc)
-        .replace(hour=3)
-        .isoformat(),
+        "transaction_timestamp": datetime.now(timezone.utc).replace(hour=3).isoformat(),
     }
 
 
@@ -279,12 +274,14 @@ class TestPipelineThroughput:
             elapsed = time.perf_counter() - start
 
             throughput = result.succeeded / elapsed if elapsed > 0 else 0
-            batch_results.append({
-                "batch": i + 1,
-                "succeeded": result.succeeded,
-                "elapsed": elapsed,
-                "throughput": throughput,
-            })
+            batch_results.append(
+                {
+                    "batch": i + 1,
+                    "succeeded": result.succeeded,
+                    "elapsed": elapsed,
+                    "throughput": throughput,
+                }
+            )
 
             pipeline.reset_metrics()
 
@@ -294,17 +291,15 @@ class TestPipelineThroughput:
         sustained_throughput = total_succeeded / total_elapsed
 
         # Must sustain > 166 events/sec across all batches
-        assert sustained_throughput > 166, (
-            f"Sustained throughput {sustained_throughput:.1f} events/sec is below 166 target"
-        )
+        assert (
+            sustained_throughput > 166
+        ), f"Sustained throughput {sustained_throughput:.1f} events/sec is below 166 target"
 
         # No significant degradation between first and last batch
         first_throughput = batch_results[0]["throughput"]
         last_throughput = batch_results[-1]["throughput"]
         degradation = (first_throughput - last_throughput) / first_throughput
-        assert degradation < 0.30, (
-            f"Throughput degraded {degradation:.1%} from first to last batch"
-        )
+        assert degradation < 0.30, f"Throughput degraded {degradation:.1%} from first to last batch"
 
         print(f"\n{'='*70}")
         print(f"  SUSTAINED THROUGHPUT: {num_batches} x {batch_size} Events")
@@ -347,9 +342,9 @@ class TestPipelineThroughput:
         aggregate_throughput = total_succeeded / total_elapsed
 
         assert total_records == num_threads * records_per_thread
-        assert aggregate_throughput > 100, (
-            f"Concurrent throughput {aggregate_throughput:.1f} events/sec too low"
-        )
+        assert (
+            aggregate_throughput > 100
+        ), f"Concurrent throughput {aggregate_throughput:.1f} events/sec too low"
 
         print(f"\n{'='*70}")
         print(f"  CONCURRENT THROUGHPUT: {num_threads} Threads x {records_per_thread} Events")
@@ -376,9 +371,9 @@ class TestLatencyBenchmarks:
         result = pipeline.process_batch(batch)
 
         avg_latency = result.metrics.avg_per_record_ms
-        assert avg_latency < 10.0, (
-            f"Average per-record latency {avg_latency:.3f}ms exceeds 10ms target"
-        )
+        assert (
+            avg_latency < 10.0
+        ), f"Average per-record latency {avg_latency:.3f}ms exceeds 10ms target"
 
     def test_pipeline_latency_percentiles(self, pipeline):
         """P95 pipeline latency < 20ms, P99 < 50ms."""
@@ -420,9 +415,7 @@ class TestLatencyBenchmarks:
         val_metrics = stage_metrics.get(PipelineStage.VALIDATION.value, {})
         avg_latency = val_metrics.get("avg_latency_ms", 0)
 
-        assert avg_latency < 5.0, (
-            f"Validation latency {avg_latency:.3f}ms exceeds 5ms target"
-        )
+        assert avg_latency < 5.0, f"Validation latency {avg_latency:.3f}ms exceeds 5ms target"
 
     def test_enrichment_stage_latency(self, pipeline):
         """Enrichment stage < 5ms per record."""
@@ -433,9 +426,7 @@ class TestLatencyBenchmarks:
         enrich_metrics = stage_metrics.get(PipelineStage.ENRICHMENT.value, {})
         avg_latency = enrich_metrics.get("avg_latency_ms", 0)
 
-        assert avg_latency < 5.0, (
-            f"Enrichment latency {avg_latency:.3f}ms exceeds 5ms target"
-        )
+        assert avg_latency < 5.0, f"Enrichment latency {avg_latency:.3f}ms exceeds 5ms target"
 
     def test_feature_engineering_stage_latency(self, pipeline):
         """Feature engineering stage < 50ms per record."""
@@ -446,9 +437,9 @@ class TestLatencyBenchmarks:
         fe_metrics = stage_metrics.get(PipelineStage.FEATURE_ENGINEERING.value, {})
         avg_latency = fe_metrics.get("avg_latency_ms", 0)
 
-        assert avg_latency < 50.0, (
-            f"Feature engineering latency {avg_latency:.3f}ms exceeds 50ms target"
-        )
+        assert (
+            avg_latency < 50.0
+        ), f"Feature engineering latency {avg_latency:.3f}ms exceeds 50ms target"
 
 
 # ============================================================================
@@ -474,12 +465,10 @@ class TestScoringPerformance:
         p95 = sorted(latencies)[int(len(latencies) * 0.95)]
         p99 = sorted(latencies)[int(len(latencies) * 0.99)]
 
-        assert avg_latency < 100.0, (
-            f"Average scoring latency {avg_latency:.3f}ms exceeds 100ms target"
-        )
-        assert p99 < 200.0, (
-            f"P99 scoring latency {p99:.3f}ms exceeds 200ms target"
-        )
+        assert (
+            avg_latency < 100.0
+        ), f"Average scoring latency {avg_latency:.3f}ms exceeds 100ms target"
+        assert p99 < 200.0, f"P99 scoring latency {p99:.3f}ms exceeds 200ms target"
 
         print(f"\n{'='*70}")
         print(f"  SCORING LATENCY (100 transactions)")
@@ -502,9 +491,7 @@ class TestScoringPerformance:
         throughput = 200 / elapsed if elapsed > 0 else 0
         # With real Isolation Forest + Rule Engine, target 40+ scores/sec
         # (each score ~17ms = ~59/sec theoretical max)
-        assert throughput > 40, (
-            f"Scoring throughput {throughput:.0f}/sec is below 40 target"
-        )
+        assert throughput > 40, f"Scoring throughput {throughput:.0f}/sec is below 40 target"
 
         print(f"\n{'='*70}")
         print(f"  SCORING THROUGHPUT (200 transactions, real models)")
@@ -574,9 +561,7 @@ class TestAlertPerformance:
                     "method": "rule_engine",
                     "success": True,
                     "details": {
-                        "triggered_rules": [
-                            {"rule_id": "RULE-HIGH-AMOUNT", "severity": "high"}
-                        ]
+                        "triggered_rules": [{"rule_id": "RULE-HIGH-AMOUNT", "severity": "high"}]
                     },
                 },
             ],
@@ -595,12 +580,10 @@ class TestAlertPerformance:
         avg_latency = statistics.mean(latencies)
         p95 = sorted(latencies)[int(len(latencies) * 0.95)]
 
-        assert avg_latency < 5.0, (
-            f"Alert generation avg latency {avg_latency:.3f}ms exceeds 5ms target"
-        )
-        assert p95 < 10.0, (
-            f"Alert generation P95 latency {p95:.3f}ms exceeds 10ms target"
-        )
+        assert (
+            avg_latency < 5.0
+        ), f"Alert generation avg latency {avg_latency:.3f}ms exceeds 5ms target"
+        assert p95 < 10.0, f"Alert generation P95 latency {p95:.3f}ms exceeds 10ms target"
 
     def test_batch_alert_throughput(self, alert_manager):
         """Batch alert generation handles 100+ alerts/second."""
@@ -622,9 +605,7 @@ class TestAlertPerformance:
         elapsed = time.perf_counter() - start
 
         throughput = len(batch) / elapsed if elapsed > 0 else 0
-        assert throughput > 100, (
-            f"Alert batch throughput {throughput:.0f}/sec below 100 target"
-        )
+        assert throughput > 100, f"Alert batch throughput {throughput:.0f}/sec below 100 target"
 
 
 # ============================================================================
@@ -635,9 +616,7 @@ class TestAlertPerformance:
 class TestEndToEndLatency:
     """Test complete pipeline latency from ingestion to alert."""
 
-    def test_ingestion_to_alert_under_5_seconds(
-        self, pipeline, scoring_pipeline, alert_manager
-    ):
+    def test_ingestion_to_alert_under_5_seconds(self, pipeline, scoring_pipeline, alert_manager):
         """Complete flow: ingest → score → alert in < 5 seconds."""
         fraud_txns = [_generate_fraud_transaction() for _ in range(20)]
 
@@ -653,9 +632,7 @@ class TestEndToEndLatency:
                 continue
 
             # Stage 2: Scoring
-            score = scoring_pipeline.score_transaction_sync(
-                pipeline_result.record, use_cache=False
-            )
+            score = scoring_pipeline.score_transaction_sync(pipeline_result.record, use_cache=False)
 
             # Stage 3: Alert generation
             if score.alert_recommended:
@@ -672,12 +649,8 @@ class TestEndToEndLatency:
         p95 = sorted(latencies)[int(len(latencies) * 0.95)]
 
         # SLA: < 5000ms (5 seconds) end-to-end
-        assert max_latency < 5000, (
-            f"Max end-to-end latency {max_latency:.1f}ms exceeds 5000ms"
-        )
-        assert avg_latency < 1000, (
-            f"Average end-to-end latency {avg_latency:.1f}ms exceeds 1000ms"
-        )
+        assert max_latency < 5000, f"Max end-to-end latency {max_latency:.1f}ms exceeds 5000ms"
+        assert avg_latency < 1000, f"Average end-to-end latency {avg_latency:.1f}ms exceeds 1000ms"
 
         print(f"\n{'='*70}")
         print(f"  END-TO-END LATENCY: Ingestion → Score → Alert")
@@ -747,9 +720,9 @@ class TestStabilityUnderLoad:
         growth_rate = growth / initial_objects if initial_objects > 0 else 0
 
         # Growth should be less than 50%
-        assert growth_rate < 0.50, (
-            f"Object count grew {growth_rate:.1%} ({growth:,} objects), possible leak"
-        )
+        assert (
+            growth_rate < 0.50
+        ), f"Object count grew {growth_rate:.1%} ({growth:,} objects), possible leak"
 
     def test_pipeline_recovers_from_large_invalid_batch(self, pipeline):
         """Pipeline recovers and performs normally after processing invalid data."""
@@ -781,12 +754,20 @@ class TestStabilityUnderLoad:
         for _ in range(5):
             batch = _generate_batch(100, fraud_ratio=0.0)
             # Add some invalid records
-            batch.extend([
-                {"external_transaction_id": "", "account_id": "", "transaction_amount": -1,
-                 "transaction_currency": "BAD", "transaction_type": "x",
-                 "channel": "y", "transaction_timestamp": "z"}
-                for _ in range(10)
-            ])
+            batch.extend(
+                [
+                    {
+                        "external_transaction_id": "",
+                        "account_id": "",
+                        "transaction_amount": -1,
+                        "transaction_currency": "BAD",
+                        "transaction_type": "x",
+                        "channel": "y",
+                        "transaction_timestamp": "z",
+                    }
+                    for _ in range(10)
+                ]
+            )
             random.shuffle(batch)
             pipeline.process_batch(batch)
 

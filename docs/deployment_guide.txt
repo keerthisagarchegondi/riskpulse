@@ -284,6 +284,12 @@ Metrics to verify:
 - Kafka consumer lag.
 
 Post-Deployment Verification
+Reusable smoke suite:
+python scripts/smoke_test.py --base-url https://api.example.com --streamlit-url https://dashboard.example.com --airflow-url https://airflow.example.com --retries 10 --retry-delay 15 --report-file deployment-reports/smoke-production.json
+
+Production gate runner:
+PRODUCTION_BASE_URL=https://api.example.com RUN_AWS_CHECKS=true RUN_TERRAFORM=false scripts/verify_deployment.sh production
+
 API:
 - GET /health/live returns status 200.
 - GET /health/ready returns ready true and dependencies healthy.

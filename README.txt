@@ -125,6 +125,8 @@ Common Commands
 - make docker-build
 - make docker-build-prod
 - make docker-test
+- make smoke-test
+- make verify-deployment
 - make db-migrate
 - make db-seed
 - make generate-data
@@ -152,6 +154,7 @@ Operational Documentation
 - docs/deployment_guide.txt
 - docs/security_architecture.txt
 - docs/testing_strategy.txt
+- docs/production_readiness_checklist.txt
 - docs/powerbi_deployment.txt
 - docs/user_guides/api_guide.txt
 - docs/user_guides/streamlit_guide.txt

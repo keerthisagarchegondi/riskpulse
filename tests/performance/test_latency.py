@@ -16,7 +16,6 @@ from src.fraud_detection.rule_engine import RuleEvaluationResult
 from src.fraud_detection.scoring_pipeline import ScoringPipeline
 from src.utils.security import sanitize_string
 
-
 P99_SCORING_BUDGET_MS = 500.0
 P99_VALIDATION_BUDGET_MS = 20.0
 
@@ -126,10 +125,7 @@ def test_async_batch_scoring_preserves_latency_budget(
 @pytest.mark.performance
 def test_validation_hot_path_p99_latency_under_20ms() -> None:
     latencies_ms: list[float] = []
-    payloads = [
-        f"TXN-{index:05d}-ACC-{index % 100:03d}-merchant-note"
-        for index in range(500)
-    ]
+    payloads = [f"TXN-{index:05d}-ACC-{index % 100:03d}-merchant-note" for index in range(500)]
 
     for payload in payloads:
         started = time.perf_counter()

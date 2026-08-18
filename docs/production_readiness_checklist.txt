@@ -1,0 +1,145 @@
+RiskPulse Production Readiness Checklist
+
+Release
+- Release name:
+- Git commit SHA:
+- Image tag:
+- Environment:
+- Deployment window:
+- Incident channel:
+- Release owner:
+- Approval owner:
+
+Final Integration Verification
+- [ ] Docker Compose development config validates.
+- [ ] Docker Compose production config validates.
+- [ ] API image builds.
+- [ ] Worker image builds.
+- [ ] Streamlit image builds.
+- [ ] Airflow image builds.
+- [ ] API service starts and /health/live returns 200.
+- [ ] API readiness returns status ready.
+- [ ] Worker connects to Kafka.
+- [ ] Kafka raw, validated, enriched, scored, alerts, metrics, audit, and DLQ topics are reachable.
+- [ ] End-to-end transaction flow verified with synthetic transaction.
+- [ ] Synthetic high-risk fraud pattern generates a risk score above alert threshold.
+- [ ] Alert manager creates, deduplicates, routes, and exposes the synthetic fraud alert.
+- [ ] Streamlit real-time monitor loads.
+- [ ] Streamlit model performance dashboard loads.
+- [ ] Streamlit alert management dashboard loads.
+- [ ] Role-based dashboard access verified for admin, analyst, executive, and viewer roles.
+- [ ] Power BI Snowflake connection assets verified.
+- [ ] Power BI RLS configuration verified.
+- [ ] Airflow ingestion DAG is enabled and scheduled.
+- [ ] Airflow transformation DAG is enabled and scheduled.
+- [ ] Airflow enrichment DAG is enabled and scheduled.
+- [ ] Airflow fraud detection DAG is enabled and scheduled.
+- [ ] Airflow snowflake load DAG is enabled and scheduled.
+- [ ] Airflow reporting DAG is enabled and scheduled.
+- [ ] CloudWatch log groups receive API logs.
+- [ ] CloudWatch log groups receive worker logs.
+- [ ] CloudWatch log groups receive Streamlit logs.
+- [ ] CloudWatch log groups receive Airflow logs.
+- [ ] CloudWatch custom metrics receive transaction, latency, fraud, alert, error, and lag data.
+
+Production Infrastructure
+- [ ] Terraform S3 module planned and applied.
+- [ ] Terraform IAM module planned and applied.
+- [ ] Terraform CloudWatch module planned and applied.
+- [ ] S3 raw bucket encryption enabled.
+- [ ] S3 processed bucket encryption enabled.
+- [ ] S3 models bucket encryption enabled.
+- [ ] S3 lifecycle policies enabled.
+- [ ] IAM api role exists and is least privilege.
+- [ ] IAM worker role exists and is least privilege.
+- [ ] IAM airflow role exists and is least privilege.
+- [ ] IAM dashboard role exists and is read-only for analytics.
+- [ ] IAM admin role exists and is restricted to approved principals.
+- [ ] Secrets Manager contains database, API key, JWT, Snowflake, and notification secrets.
+- [ ] Database secret rotation policy verified.
+- [ ] ECR repositories exist for api, worker, streamlit, and airflow.
+- [ ] ECS services exist for api, worker, streamlit, and airflow.
+- [ ] ECS services use dedicated task roles.
+- [ ] ECS services use immutable image tag.
+- [ ] Load balancer target groups healthy.
+- [ ] DNS points to production load balancer.
+- [ ] TLS certificate valid.
+
+Production Deployment
+- [ ] CI passed on release commit.
+- [ ] Security regression tests passed.
+- [ ] Data quality tests passed.
+- [ ] ML validation tests passed.
+- [ ] Performance latency smoke tests passed.
+- [ ] Docker images pushed to ECR.
+- [ ] Rollback task definitions captured.
+- [ ] PostgreSQL migrations applied in order.
+- [ ] Snowflake schemas applied.
+- [ ] Snowflake external stages configured.
+- [ ] Snowflake load and refresh procedures applied.
+- [ ] ECS api service deployed.
+- [ ] ECS worker service deployed.
+- [ ] ECS Streamlit service deployed.
+- [ ] ECS Airflow service deployed.
+- [ ] CloudWatch alarms enabled.
+- [ ] Power BI refresh schedule enabled.
+
+Post-Deployment Verification
+- [ ] scripts/smoke_test.py passes against production API.
+- [ ] /health/live returns 200.
+- [ ] /health/ready returns status ready.
+- [ ] /openapi.json contains health and transaction paths.
+- [ ] Authenticated synthetic transaction accepted when synthetic writes are approved.
+- [ ] Fraud alert delivery verified in staging or production-safe path.
+- [ ] API error rate below 1 percent.
+- [ ] Pipeline P99 latency below 5 seconds.
+- [ ] Kafka consumer lag below 10,000 messages.
+- [ ] Fraud rate alarm threshold active.
+- [ ] Pipeline failure alarm threshold active.
+- [ ] CloudWatch platform dashboard renders data.
+- [ ] Streamlit dashboards show populated data.
+- [ ] Power BI dashboard refresh completes.
+- [ ] Analyst account can access alert management.
+- [ ] Executive account can access read-only analytics.
+- [ ] Admin account can access admin-only dashboard areas.
+
+Security Review
+- [ ] No high or critical security findings remain open.
+- [ ] Bandit source scan passed.
+- [ ] Dependency vulnerability scan passed or exceptions approved.
+- [ ] API rejects missing API key or bearer token.
+- [ ] API rejects invalid API key.
+- [ ] JWT expiration and signature checks verified.
+- [ ] Rate limiting returns 429 after threshold breach.
+- [ ] SQL injection regression tests pass.
+- [ ] XSS/input sanitization regression tests pass.
+- [ ] CORS configuration matches approved origins.
+- [ ] PII scrubbing verified in logs.
+- [ ] Security audit logging records access events.
+- [ ] IAM policies reviewed for wildcard actions and resources.
+- [ ] Secrets are not present in source, container images, logs, or test reports.
+- [ ] Production test data is synthetic and clearly marked.
+
+Rollback Readiness
+- [ ] scripts/rollback.sh dry run succeeds.
+- [ ] Deployment-state task definition files exist for all services.
+- [ ] Database rollback or restore path documented for this release.
+- [ ] Feature flag or rule rollback path documented where relevant.
+- [ ] On-call owner knows rollback trigger criteria.
+
+Team Access
+- [ ] On-call engineer can access AWS console.
+- [ ] On-call engineer can access CloudWatch logs and alarms.
+- [ ] On-call engineer can access ECS service status.
+- [ ] Data owner can access PostgreSQL and Snowflake monitoring.
+- [ ] Fraud ops can access Streamlit dashboards.
+- [ ] Executives can access Power BI dashboards.
+- [ ] Security owner can access IAM, Secrets Manager, and audit logs.
+
+Final Signoff
+- [ ] Engineering signoff:
+- [ ] Fraud operations signoff:
+- [ ] Data platform signoff:
+- [ ] Security signoff:
+- [ ] Product/business signoff:
+- [ ] Production deployment approved:

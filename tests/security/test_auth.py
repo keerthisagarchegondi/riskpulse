@@ -12,9 +12,13 @@ from jose import jwt
 from src.api.app import create_app
 from src.api.middleware.auth import require_permission, reset_key_manager
 from src.api.middleware.rate_limiter import InMemoryRateLimiter, RateLimitMiddleware
-from src.utils.security import JWT_ALGORITHM, JWT_ISSUER, SecurityValidationError
-from src.utils.security import create_jwt_token, verify_jwt_token
-
+from src.utils.security import (
+    JWT_ALGORITHM,
+    JWT_ISSUER,
+    SecurityValidationError,
+    create_jwt_token,
+    verify_jwt_token,
+)
 
 DEV_API_KEY = "dev-api-key-riskpulse-2024"
 
