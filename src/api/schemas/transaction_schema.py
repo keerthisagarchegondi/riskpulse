@@ -9,7 +9,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from src.utils.security import SecurityValidationError, sanitize_mapping, sanitize_string
 from src.utils.constants import (
     CARD_TYPES,
     CHANNELS,
@@ -18,6 +17,7 @@ from src.utils.constants import (
     SUPPORTED_CURRENCIES,
     TRANSACTION_TYPES,
 )
+from src.utils.security import SecurityValidationError, sanitize_mapping, sanitize_string
 
 
 class TransactionCreate(BaseModel):
@@ -26,14 +26,19 @@ class TransactionCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     external_transaction_id: str = Field(
-        ..., min_length=1, max_length=64, description="Unique external identifier for the transaction"
+        ...,
+        min_length=1,
+        max_length=64,
+        description="Unique external identifier for the transaction",
     )
     account_id: str = Field(..., min_length=1, max_length=64, description="Account identifier")
     customer_id: str = Field(..., min_length=1, max_length=64, description="Customer identifier")
     merchant_id: str | None = Field(None, max_length=64, description="Merchant identifier")
     merchant_name: str | None = Field(None, max_length=255, description="Merchant name")
     merchant_category_code: str | None = Field(None, max_length=10, description="MCC code")
-    transaction_amount: Decimal = Field(..., gt=0, max_digits=15, decimal_places=2, description="Transaction amount")
+    transaction_amount: Decimal = Field(
+        ..., gt=0, max_digits=15, decimal_places=2, description="Transaction amount"
+    )
     transaction_currency: str = Field("USD", max_length=3, description="ISO 4217 currency code")
     transaction_type: str = Field(..., description="Type of transaction")
     channel: str = Field(..., description="Transaction channel")
@@ -43,10 +48,16 @@ class TransactionCreate(BaseModel):
     device_id: str | None = Field(None, max_length=128, description="Device fingerprint")
     device_type: str | None = Field(None, max_length=50, description="Device type")
     geo_latitude: Decimal | None = Field(None, ge=-90, le=90, description="Transaction latitude")
-    geo_longitude: Decimal | None = Field(None, ge=-180, le=180, description="Transaction longitude")
-    geo_country: str | None = Field(None, max_length=3, description="ISO 3166-1 alpha-3 country code")
+    geo_longitude: Decimal | None = Field(
+        None, ge=-180, le=180, description="Transaction longitude"
+    )
+    geo_country: str | None = Field(
+        None, max_length=3, description="ISO 3166-1 alpha-3 country code"
+    )
     geo_city: str | None = Field(None, max_length=100, description="City name")
-    is_international: bool = Field(False, description="Whether this is an international transaction")
+    is_international: bool = Field(
+        False, description="Whether this is an international transaction"
+    )
     transaction_timestamp: datetime = Field(..., description="When the transaction occurred")
     metadata: dict[str, Any] | None = Field(None, description="Additional metadata")
 
@@ -55,7 +66,9 @@ class TransactionCreate(BaseModel):
     def validate_currency(cls, v: str) -> str:
         v_upper = v.upper()
         if v_upper not in SUPPORTED_CURRENCIES:
-            raise ValueError(f"Unsupported currency: {v}. Supported: {', '.join(SUPPORTED_CURRENCIES)}")
+            raise ValueError(
+                f"Unsupported currency: {v}. Supported: {', '.join(SUPPORTED_CURRENCIES)}"
+            )
         return v_upper
 
     @field_validator("transaction_type")
@@ -63,7 +76,9 @@ class TransactionCreate(BaseModel):
     def validate_transaction_type(cls, v: str) -> str:
         v_lower = v.lower()
         if v_lower not in TRANSACTION_TYPES:
-            raise ValueError(f"Invalid transaction type: {v}. Allowed: {', '.join(TRANSACTION_TYPES)}")
+            raise ValueError(
+                f"Invalid transaction type: {v}. Allowed: {', '.join(TRANSACTION_TYPES)}"
+            )
         return v_lower
 
     @field_validator(

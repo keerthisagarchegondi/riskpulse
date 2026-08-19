@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import jwt
 import pytest
 from fastapi import Depends, FastAPI, status
 from fastapi.testclient import TestClient
-from jose import jwt
 
 from src.api.app import create_app
 from src.api.middleware.auth import require_permission, reset_key_manager
@@ -21,6 +21,10 @@ from src.utils.security import (
 )
 
 DEV_API_KEY = "dev-api-key-riskpulse-2024"
+UNIT_SECRET = "unit-secret-for-hs256-tests-32-bytes"
+CORRECT_SECRET = "correct-secret-for-hs256-tests-32-bytes"
+WRONG_SECRET = "wrong-secret-for-hs256-tests-32-bytes"
+DEV_JWT_SECRET = "dev-jwt-secret-for-hs256-tests-32-bytes"
 
 
 @pytest.fixture(autouse=True)
@@ -81,12 +85,12 @@ def test_expired_jwt_is_rejected() -> None:
             "iat": int((now - timedelta(hours=2)).timestamp()),
             "exp": int((now - timedelta(hours=1)).timestamp()),
         },
-        "unit-secret",
+        UNIT_SECRET,
         algorithm=JWT_ALGORITHM,
     )
 
     with pytest.raises(SecurityValidationError):
-        verify_jwt_token(token, secret="unit-secret")
+        verify_jwt_token(token, secret=UNIT_SECRET)
 
 
 @pytest.mark.security
@@ -94,15 +98,16 @@ def test_tampered_jwt_signature_is_rejected() -> None:
     token = create_jwt_token(
         subject="service:worker",
         permissions=["read", "write"],
-        secret="correct-secret",
+        secret=CORRECT_SECRET,
     )
 
     with pytest.raises(SecurityValidationError):
-        verify_jwt_token(token, secret="wrong-secret")
+        verify_jwt_token(token, secret=WRONG_SECRET)
 
 
 @pytest.mark.security
-def test_permission_dependency_denies_read_only_identity() -> None:
+def test_permission_dependency_denies_read_only_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RISKPULSE_JWT_SECRET", DEV_JWT_SECRET)
     app = FastAPI()
 
     @app.post("/admin-only")
@@ -112,7 +117,7 @@ def test_permission_dependency_denies_read_only_identity() -> None:
     token = create_jwt_token(
         subject="readonly@example.com",
         permissions=["read"],
-        secret="dev-jwt-secret",
+        secret=DEV_JWT_SECRET,
     )
     response = TestClient(app).post(
         "/admin-only",
@@ -124,7 +129,8 @@ def test_permission_dependency_denies_read_only_identity() -> None:
 
 
 @pytest.mark.security
-def test_permission_dependency_allows_admin_identity() -> None:
+def test_permission_dependency_allows_admin_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RISKPULSE_JWT_SECRET", DEV_JWT_SECRET)
     app = FastAPI()
 
     @app.post("/admin-only")
@@ -134,7 +140,7 @@ def test_permission_dependency_allows_admin_identity() -> None:
     token = create_jwt_token(
         subject="admin@example.com",
         permissions=["read", "write", "admin"],
-        secret="dev-jwt-secret",
+        secret=DEV_JWT_SECRET,
     )
     response = TestClient(app).post(
         "/admin-only",
@@ -180,3 +186,18 @@ def test_rate_limit_middleware_returns_retry_headers() -> None:
 
     assert response_1.status_code == status.HTTP_200_OK
     assert response_2.status_code in {status.HTTP_200_OK, status.HTTP_429_TOO_MANY_REQUESTS}
+
+
+@pytest.mark.security
+def test_rate_limit_key_uses_hashed_api_key_header() -> None:
+    app = FastAPI()
+    app.add_middleware(RateLimitMiddleware)
+
+    @app.get("/limited")
+    async def limited():
+        return {"ok": True}
+
+    with TestClient(app) as test_client:
+        response = test_client.get("/limited", headers={"X-API-Key": "rp-secret"})
+
+    assert response.status_code == status.HTTP_200_OK

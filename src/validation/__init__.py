@@ -1,6 +1,6 @@
 """Data validation module - Schema validation, quality checks, and rules engine."""
 
-from src.validation.quarantine_handler import QuarantineHandler, QuarantinedRecord
+from src.validation.quarantine_handler import QuarantinedRecord, QuarantineHandler
 from src.validation.rules_engine import (
     RuleAction,
     RuleAuditTrail,

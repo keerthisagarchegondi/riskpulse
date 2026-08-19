@@ -190,9 +190,7 @@ class TestTransactionCRUD:
         assert len(results) == 5
 
     @pytest.mark.asyncio
-    async def test_query_transactions_with_amount_filter(
-        self, pg_handler: PostgresHandler
-    ) -> None:
+    async def test_query_transactions_with_amount_filter(self, pg_handler: PostgresHandler) -> None:
         for i, amount in enumerate([50, 150, 250, 350, 450]):
             data = _make_transaction_data(f"amount-{i}")
             data["customer_id"] = "CUST-AMT"
@@ -207,9 +205,7 @@ class TestTransactionCRUD:
         assert len(results) == 2
 
     @pytest.mark.asyncio
-    async def test_query_transactions_with_time_filter(
-        self, pg_handler: PostgresHandler
-    ) -> None:
+    async def test_query_transactions_with_time_filter(self, pg_handler: PostgresHandler) -> None:
         now = datetime.now(timezone.utc)
         for i in range(5):
             data = _make_transaction_data(f"time-{i}")
@@ -576,9 +572,7 @@ class TestTransactionManagement:
             session.add(txn)
 
         # Verify committed
-        fetched = await pg_handler.get_transaction_by_external_id(
-            txn.external_transaction_id
-        )
+        fetched = await pg_handler.get_transaction_by_external_id(txn.external_transaction_id)
         assert fetched is not None
 
     @pytest.mark.asyncio

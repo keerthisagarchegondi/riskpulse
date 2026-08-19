@@ -97,7 +97,11 @@ class DataQualityReport:
 
     @property
     def is_healthy(self) -> bool:
-        return self.missing_count == 0 and self.out_of_range_count == 0 and self.type_mismatch_count == 0
+        return (
+            self.missing_count == 0
+            and self.out_of_range_count == 0
+            and self.type_mismatch_count == 0
+        )
 
     @property
     def quality_score(self) -> float:
@@ -409,11 +413,13 @@ class DataQualityChecker:
         for name in self._required_features:
             if name not in features or features[name] is None:
                 report.missing_count += 1
-                issues.append({
-                    "type": "missing",
-                    "feature": name,
-                    "message": f"Required feature '{name}' is missing or null",
-                })
+                issues.append(
+                    {
+                        "type": "missing",
+                        "feature": name,
+                        "message": f"Required feature '{name}' is missing or null",
+                    }
+                )
 
         # Check ranges and types
         for name, value in features.items():
@@ -425,12 +431,14 @@ class DataQualityChecker:
             # Type check
             if not isinstance(value, (int, float, np.integer, np.floating)):
                 report.type_mismatch_count += 1
-                issues.append({
-                    "type": "type_mismatch",
-                    "feature": name,
-                    "expected": "numeric",
-                    "got": type(value).__name__,
-                })
+                issues.append(
+                    {
+                        "type": "type_mismatch",
+                        "feature": name,
+                        "expected": "numeric",
+                        "got": type(value).__name__,
+                    }
+                )
                 continue
 
             # Range check
@@ -438,12 +446,14 @@ class DataQualityChecker:
                 low, high = self._feature_ranges[name]
                 if value < low or value > high:
                     report.out_of_range_count += 1
-                    issues.append({
-                        "type": "out_of_range",
-                        "feature": name,
-                        "value": float(value),
-                        "expected_range": [low, high],
-                    })
+                    issues.append(
+                        {
+                            "type": "out_of_range",
+                            "feature": name,
+                            "value": float(value),
+                            "expected_range": [low, high],
+                        }
+                    )
 
         report.issues = issues
         return report
@@ -467,21 +477,25 @@ class DataQualityChecker:
         for i, name in enumerate(self._feature_names):
             if i >= feature_matrix.shape[1]:
                 report.missing_count += 1
-                issues.append({
-                    "type": "missing",
-                    "feature": name,
-                    "message": f"Feature column {i} missing from input matrix",
-                })
+                issues.append(
+                    {
+                        "type": "missing",
+                        "feature": name,
+                        "message": f"Feature column {i} missing from input matrix",
+                    }
+                )
                 continue
 
             if nan_counts[i] > 0:
                 report.missing_count += 1
-                issues.append({
-                    "type": "missing",
-                    "feature": name,
-                    "nan_count": int(nan_counts[i]),
-                    "nan_fraction": float(nan_counts[i] / feature_matrix.shape[0]),
-                })
+                issues.append(
+                    {
+                        "type": "missing",
+                        "feature": name,
+                        "nan_count": int(nan_counts[i]),
+                        "nan_fraction": float(nan_counts[i] / feature_matrix.shape[0]),
+                    }
+                )
 
             # Range check
             if name in self._feature_ranges:
@@ -490,13 +504,15 @@ class DataQualityChecker:
                 valid = col[~np.isnan(col)]
                 if len(valid) > 0 and (valid.min() < low or valid.max() > high):
                     report.out_of_range_count += 1
-                    issues.append({
-                        "type": "out_of_range",
-                        "feature": name,
-                        "actual_min": float(valid.min()),
-                        "actual_max": float(valid.max()),
-                        "expected_range": [low, high],
-                    })
+                    issues.append(
+                        {
+                            "type": "out_of_range",
+                            "feature": name,
+                            "actual_min": float(valid.min()),
+                            "actual_max": float(valid.max()),
+                            "expected_range": [low, high],
+                        }
+                    )
 
         report.issues = issues
         return report
@@ -530,9 +546,7 @@ class ModelMonitor:
         self._alert_callback = alert_callback
 
         # Sub-components
-        self._prediction_tracker = PredictionDistributionTracker(
-            window_size=prediction_window_size
-        )
+        self._prediction_tracker = PredictionDistributionTracker(window_size=prediction_window_size)
         self._drift_detector = FeatureDriftDetector(
             feature_names=feature_names,
             window_size=feature_window_size,
@@ -699,10 +713,7 @@ class ModelMonitor:
         alerts: list[MonitoringAlert] = []
 
         for result in drifted:
-            severity = (
-                AlertSeverity.CRITICAL if result.drift_score > 0.5
-                else AlertSeverity.WARNING
-            )
+            severity = AlertSeverity.CRITICAL if result.drift_score > 0.5 else AlertSeverity.WARNING
             alert = self._create_alert(
                 severity=severity,
                 drift_type=DriftType.FEATURE,
@@ -842,7 +853,9 @@ class ModelMonitor:
             "p95_latency_ms": round(float(np.percentile(latencies, 95)), 3) if latencies else 0.0,
             "error_rate": round(error_rate, 4),
             "total_predictions": pred_stats.get("count", 0),
-            "active_alerts": len([a for a in self._alert_history[-100:] if a.severity == AlertSeverity.CRITICAL]),
+            "active_alerts": len(
+                [a for a in self._alert_history[-100:] if a.severity == AlertSeverity.CRITICAL]
+            ),
         }
 
     def get_alerts(self, limit: int = 50) -> list[dict[str, Any]]:

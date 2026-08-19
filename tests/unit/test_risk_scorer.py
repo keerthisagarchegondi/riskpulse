@@ -27,7 +27,6 @@ from src.fraud_detection.feature_store import (
 )
 from src.fraud_detection.risk_scorer import RiskScore, RiskScorer
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -84,9 +83,7 @@ def mock_model_dir(tmp_path):
     X_train = rng.standard_normal((500, n_features))
     y_train = rng.integers(0, 2, size=500)
 
-    model = GradientBoostingClassifier(
-        n_estimators=10, max_depth=3, random_state=42
-    )
+    model = GradientBoostingClassifier(n_estimators=10, max_depth=3, random_state=42)
     model.fit(X_train, y_train)
 
     scaler = StandardScaler()
@@ -95,13 +92,16 @@ def mock_model_dir(tmp_path):
     # Save artifacts
     joblib.dump(model, model_dir / "model.joblib")
     joblib.dump(scaler, model_dir / "scaler.joblib")
-    joblib.dump({
-        "model_version": "1.0.0-test",
-        "model_type": "gradient_boosting",
-        "feature_names": FEATURE_CATALOG,
-        "thresholds": {"low": 0.3, "medium": 0.5, "high": 0.8, "critical": 0.95},
-        "n_features": n_features,
-    }, model_dir / "metadata.joblib")
+    joblib.dump(
+        {
+            "model_version": "1.0.0-test",
+            "model_type": "gradient_boosting",
+            "feature_names": FEATURE_CATALOG,
+            "thresholds": {"low": 0.3, "medium": 0.5, "high": 0.8, "critical": 0.95},
+            "n_features": n_features,
+        },
+        model_dir / "metadata.joblib",
+    )
 
     return model_dir
 
@@ -340,7 +340,8 @@ class TestRiskScorer:
     def test_feature_quality_assessment(self, risk_scorer):
         """Feature quality correctly assessed based on missing/stale ratios."""
         good_vector = FeatureVector(
-            transaction_id="X", customer_id="C",
+            transaction_id="X",
+            customer_id="C",
             features={f: 1.0 for f in FEATURE_CATALOG},
             missing_features=[],
             stale_features=[],
@@ -348,7 +349,8 @@ class TestRiskScorer:
         assert risk_scorer._assess_feature_quality(good_vector) == "good"
 
         degraded_vector = FeatureVector(
-            transaction_id="X", customer_id="C",
+            transaction_id="X",
+            customer_id="C",
             features={f: 1.0 for f in FEATURE_CATALOG},
             missing_features=FEATURE_CATALOG[:8],  # ~15% missing
             stale_features=[],
@@ -356,7 +358,8 @@ class TestRiskScorer:
         assert risk_scorer._assess_feature_quality(degraded_vector) == "degraded"
 
         poor_vector = FeatureVector(
-            transaction_id="X", customer_id="C",
+            transaction_id="X",
+            customer_id="C",
             features={f: 1.0 for f in FEATURE_CATALOG},
             missing_features=FEATURE_CATALOG[:20],  # >30% missing
             stale_features=[],
@@ -415,6 +418,7 @@ class TestRiskScorer:
     def test_predict_latency_under_sla(self, risk_scorer, sample_transaction):
         """Single prediction completes under 20ms SLA (generous for test env)."""
         import time
+
         start = time.perf_counter()
         risk_scorer.predict(sample_transaction)
         elapsed_ms = (time.perf_counter() - start) * 1000
@@ -511,14 +515,22 @@ class TestTrainingPipeline:
     def test_train_model_xgboost(self):
         """XGBoost model trains and produces valid metrics."""
         pytest.importorskip("xgboost")
-        from ml.training.train_risk_scorer import generate_synthetic_data, get_feature_columns, time_based_split, train_model
+        from ml.training.train_risk_scorer import (
+            generate_synthetic_data,
+            get_feature_columns,
+            time_based_split,
+            train_model,
+        )
 
         X, y = generate_synthetic_data(n_samples=2000, fraud_ratio=0.05, random_state=42)
         X_train, X_val, _, y_train, y_val, _ = time_based_split(X, y)
         feature_cols = get_feature_columns(X_train)
 
         model, scaler, metrics = train_model(
-            X_train, y_train, X_val, y_val,
+            X_train,
+            y_train,
+            X_val,
+            y_val,
             feature_cols=feature_cols,
             model_type="xgboost",
             class_weight_strategy="balanced",
@@ -533,14 +545,22 @@ class TestTrainingPipeline:
     def test_train_model_lightgbm(self):
         """LightGBM model trains and produces valid metrics."""
         pytest.importorskip("lightgbm")
-        from ml.training.train_risk_scorer import generate_synthetic_data, get_feature_columns, time_based_split, train_model
+        from ml.training.train_risk_scorer import (
+            generate_synthetic_data,
+            get_feature_columns,
+            time_based_split,
+            train_model,
+        )
 
         X, y = generate_synthetic_data(n_samples=2000, fraud_ratio=0.05, random_state=42)
         X_train, X_val, _, y_train, y_val, _ = time_based_split(X, y)
         feature_cols = get_feature_columns(X_train)
 
         model, scaler, metrics = train_model(
-            X_train, y_train, X_val, y_val,
+            X_train,
+            y_train,
+            X_val,
+            y_val,
             feature_cols=feature_cols,
             model_type="lightgbm",
             class_weight_strategy="balanced",

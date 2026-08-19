@@ -50,13 +50,17 @@ class RuleCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=128, description="Human-readable rule name")
     description: str = Field(default="", max_length=512, description="Rule description")
     version: str = Field(default="1.0.0", max_length=20, description="Rule version (semver)")
-    priority: int = Field(default=100, ge=1, le=1000, description="Execution priority (lower = higher)")
+    priority: int = Field(
+        default=100, ge=1, le=1000, description="Execution priority (lower = higher)"
+    )
     enabled: bool = Field(default=True, description="Whether the rule is active")
     severity: str = Field(default="medium", description="Rule severity level")
     category: str = Field(default="custom", max_length=64, description="Rule category")
     condition: dict[str, Any] = Field(..., description="Rule condition definition")
     action: str = Field(default="flag", description="Action on trigger: block, flag, allow")
-    schedule: dict[str, Any] | None = Field(default=None, description="Time-based activation schedule")
+    schedule: dict[str, Any] | None = Field(
+        default=None, description="Time-based activation schedule"
+    )
     tags: list[str] = Field(default_factory=list, description="Rule tags for filtering")
 
 

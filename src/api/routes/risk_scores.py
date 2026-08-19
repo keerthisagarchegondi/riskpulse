@@ -255,18 +255,22 @@ async def predict_batch(
     scores: list[RiskScoreResponse] = []
     for i, txn in enumerate(request_body.transactions):
         score = float(predictions[i])
-        scores.append(RiskScoreResponse(
-            transaction_id=txn.transaction_id,
-            risk_score=round(score, 6),
-            risk_level=_classify_risk(score),
-            confidence=_compute_confidence(score),
-            model_version=server.active_version,
-            prediction_latency_ms=round(elapsed_ms / len(request_body.transactions), 3),
-        ))
+        scores.append(
+            RiskScoreResponse(
+                transaction_id=txn.transaction_id,
+                risk_score=round(score, 6),
+                risk_level=_classify_risk(score),
+                confidence=_compute_confidence(score),
+                model_version=server.active_version,
+                prediction_latency_ms=round(elapsed_ms / len(request_body.transactions), 3),
+            )
+        )
 
     # Record batch in monitor
     if monitor:
-        monitor.record_batch(scores=predictions, feature_matrix=feature_matrix, latency_ms=elapsed_ms)
+        monitor.record_batch(
+            scores=predictions, feature_matrix=feature_matrix, latency_ms=elapsed_ms
+        )
 
     return BatchRiskScoreResponse(
         scores=scores,

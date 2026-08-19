@@ -19,7 +19,6 @@ from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-
 # Nonce size for AES-GCM (96 bits recommended by NIST)
 _NONCE_SIZE = 12
 
@@ -40,7 +39,7 @@ def _get_encryption_key() -> bytes:
     if not key_b64:
         raise ValueError(
             "RISKPULSE_ENCRYPTION_KEY environment variable is not set. "
-            "Generate one with: python -c \"import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())\""
+            'Generate one with: python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"'
         )
     key = base64.b64decode(key_b64)
     if len(key) != _KEY_SIZE:

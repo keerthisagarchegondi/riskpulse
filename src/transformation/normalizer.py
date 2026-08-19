@@ -171,7 +171,7 @@ class DataNormalizer:
             with open(self._mappings_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            config_hash = hashlib.md5(content.encode()).hexdigest()
+            config_hash = hashlib.sha256(content.encode()).hexdigest()
             if config_hash == self._config_hash:
                 return
 
@@ -190,9 +190,7 @@ class DataNormalizer:
 
                 # Country codes — build lowercase lookup
                 raw_countries = data.get("country_codes", {})
-                self._country_codes = {
-                    str(k).lower().strip(): v for k, v in raw_countries.items()
-                }
+                self._country_codes = {str(k).lower().strip(): v for k, v in raw_countries.items()}
 
                 # MCC categories
                 self._mcc_categories = {
@@ -205,16 +203,13 @@ class DataNormalizer:
                     for k, v in data.get("transaction_type_aliases", {}).items()
                 }
                 self._channel_aliases = {
-                    str(k).lower().strip(): v
-                    for k, v in data.get("channel_aliases", {}).items()
+                    str(k).lower().strip(): v for k, v in data.get("channel_aliases", {}).items()
                 }
                 self._card_type_aliases = {
-                    str(k).lower().strip(): v
-                    for k, v in data.get("card_type_aliases", {}).items()
+                    str(k).lower().strip(): v for k, v in data.get("card_type_aliases", {}).items()
                 }
                 self._currency_aliases = {
-                    str(k).lower().strip(): v
-                    for k, v in data.get("currency_aliases", {}).items()
+                    str(k).lower().strip(): v for k, v in data.get("currency_aliases", {}).items()
                 }
                 self._pii_fields = data.get("pii_fields", [])
 

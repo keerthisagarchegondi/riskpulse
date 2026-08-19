@@ -151,7 +151,9 @@ def test_health_checker_marks_critical_failure_degraded() -> None:
     health = checker.build_health(
         [
             DependencyCheckResult("kafka", "healthy", 2.0, critical=True),
-            DependencyCheckResult("postgresql", "unhealthy", 500.0, critical=True, detail="timeout"),
+            DependencyCheckResult(
+                "postgresql", "unhealthy", 500.0, critical=True, detail="timeout"
+            ),
             DependencyCheckResult("redis", "healthy", 1.0, critical=False),
         ]
     )

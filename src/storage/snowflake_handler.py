@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import tempfile
 import time
 import uuid
@@ -45,6 +46,7 @@ try:
     )
 except ImportError:
     snowflake = None  # type: ignore[assignment]
+
     # Define stub exception classes so the module can be imported without snowflake installed
     class OperationalError(Exception):  # type: ignore[no-redef]
         pass
@@ -64,6 +66,7 @@ except ImportError:
     class SnowflakeConnection:  # type: ignore[no-redef]
         pass
 
+
 from src.utils.config import get_settings
 
 logger = structlog.get_logger(__name__)
@@ -74,6 +77,46 @@ SCHEMA_RAW = "RAW"
 SCHEMA_STAGING = "STAGING"
 SCHEMA_ANALYTICS = "ANALYTICS"
 SCHEMA_REPORTING = "REPORTING"
+
+_SNOWFLAKE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
+_TRANSFORM_SQL_BLOCKLIST_RE = re.compile(
+    r"\b(ALTER|CALL|COPY|CREATE|DELETE|DROP|GRANT|INSERT|MERGE|REVOKE|TRUNCATE|UPDATE)\b",
+    re.IGNORECASE,
+)
+
+
+def _validate_identifier(identifier: str, *, name: str = "identifier") -> str:
+    """Validate a Snowflake identifier before interpolating it into SQL."""
+    if not isinstance(identifier, str) or not _SNOWFLAKE_IDENTIFIER_RE.fullmatch(identifier):
+        raise SnowflakeQueryError(f"Unsafe Snowflake {name}: {identifier!r}")
+    return identifier
+
+
+def _validate_qualified_name(schema: str, table: str) -> str:
+    return (
+        f"{_validate_identifier(schema, name='schema')}.{_validate_identifier(table, name='table')}"
+    )
+
+
+def _validate_transform_sql(transform_sql: str | None) -> str:
+    if transform_sql is None:
+        return "*"
+
+    normalized = transform_sql.strip()
+    if not normalized:
+        raise SnowflakeQueryError("Transform SQL cannot be empty")
+    if any(token in normalized for token in (";", "--", "/*", "*/")):
+        raise SnowflakeQueryError("Transform SQL contains unsafe SQL delimiters")
+    if _TRANSFORM_SQL_BLOCKLIST_RE.search(normalized):
+        raise SnowflakeQueryError("Transform SQL must be a SELECT expression only")
+    return normalized
+
+
+def _bounded_int(value: int, *, name: str, minimum: int, maximum: int) -> int:
+    bounded = int(value)
+    if bounded < minimum or bounded > maximum:
+        raise SnowflakeQueryError(f"{name} must be between {minimum} and {maximum}")
+    return bounded
 
 
 class LoadStrategy(str, Enum):
@@ -743,9 +786,7 @@ class SnowflakeHandler:
 
         return None
 
-    def update_watermark(
-        self, table_name: str, column_name: str, value: str
-    ) -> None:
+    def update_watermark(self, table_name: str, column_name: str, value: str) -> None:
         """Update the watermark after successful incremental load.
 
         Args:
@@ -814,27 +855,35 @@ class SnowflakeHandler:
         batch_id = batch_id or uuid.uuid4().hex[:16]
         start_time = time.perf_counter()
 
+        source_name = _validate_qualified_name(source_schema, source_table)
+        target_name = _validate_qualified_name(target_schema, target_table)
+        watermark_column = _validate_identifier(watermark_column, name="watermark column")
+        select_expr = _validate_transform_sql(transform_sql)
+
         watermark = self.get_watermark(f"{target_schema}.{target_table}", watermark_column)
         watermark_filter = ""
+        query_params: dict[str, Any] = {}
         if watermark:
-            watermark_filter = f"WHERE {watermark_column} > '{watermark}'"
+            watermark_filter = f"WHERE {watermark_column} > %(watermark)s"
+            query_params["watermark"] = watermark
 
-        select_expr = transform_sql or "*"
+        # Identifiers and optional transform SQL are validated before interpolation.
         query = f"""
-            INSERT INTO {target_schema}.{target_table}
-            SELECT {select_expr}
-            FROM {source_schema}.{source_table}
-            {watermark_filter}
-            ORDER BY {watermark_column}
-        """
+                INSERT INTO {target_name}
+                SELECT {select_expr}
+                FROM {source_name}
+                {watermark_filter}
+                ORDER BY {watermark_column}
+            """  # nosec B608
 
         try:
-            rows_affected = self.execute_non_query(query)
+            rows_affected = self.execute_non_query(query, params=query_params)
 
             # Update watermark to max value in loaded batch
             new_watermark_result = self.execute_query(
-                f"SELECT MAX({watermark_column})::VARCHAR AS max_val "
-                f"FROM {source_schema}.{source_table} {watermark_filter}"
+                f"SELECT MAX({watermark_column})::VARCHAR AS max_val "  # nosec B608
+                f"FROM {source_name} {watermark_filter}",
+                params=query_params,
             )
             if new_watermark_result.rows and new_watermark_result.rows[0].get("MAX_VAL"):
                 self.update_watermark(
@@ -880,9 +929,7 @@ class SnowflakeHandler:
         start_time = time.perf_counter()
 
         # Load transactions
-        proc_result = self.call_procedure(
-            "STAGING.LOAD_TRANSACTIONS", [batch_id]
-        )
+        proc_result = self.call_procedure("STAGING.LOAD_TRANSACTIONS", [batch_id])
         duration_ms = (time.perf_counter() - start_time) * 1000
         results["STG_TRANSACTIONS"] = LoadMetrics(
             batch_id=batch_id,
@@ -897,9 +944,7 @@ class SnowflakeHandler:
 
         # Load fraud alerts
         start_time = time.perf_counter()
-        proc_result = self.call_procedure(
-            "STAGING.LOAD_FRAUD_ALERTS", [batch_id]
-        )
+        proc_result = self.call_procedure("STAGING.LOAD_FRAUD_ALERTS", [batch_id])
         duration_ms = (time.perf_counter() - start_time) * 1000
         results["STG_FRAUD_ALERTS"] = LoadMetrics(
             batch_id=batch_id,
@@ -914,9 +959,7 @@ class SnowflakeHandler:
 
         # Load risk scores
         start_time = time.perf_counter()
-        proc_result = self.call_procedure(
-            "STAGING.LOAD_RISK_SCORES", [batch_id]
-        )
+        proc_result = self.call_procedure("STAGING.LOAD_RISK_SCORES", [batch_id])
         duration_ms = (time.perf_counter() - start_time) * 1000
         results["STG_RISK_SCORES"] = LoadMetrics(
             batch_id=batch_id,
@@ -953,9 +996,7 @@ class SnowflakeHandler:
 
         # Update customer dimension (SCD Type 2)
         start_time = time.perf_counter()
-        proc_result = self.call_procedure(
-            "ANALYTICS.UPDATE_DIM_CUSTOMER", [batch_id]
-        )
+        proc_result = self.call_procedure("ANALYTICS.UPDATE_DIM_CUSTOMER", [batch_id])
         duration_ms = (time.perf_counter() - start_time) * 1000
         results["DIM_CUSTOMER"] = LoadMetrics(
             batch_id=batch_id,
@@ -1000,9 +1041,7 @@ class SnowflakeHandler:
 
         # Load fact transactions
         start_time = time.perf_counter()
-        proc_result = self.call_procedure(
-            "ANALYTICS.LOAD_FACT_TRANSACTIONS", [batch_id]
-        )
+        proc_result = self.call_procedure("ANALYTICS.LOAD_FACT_TRANSACTIONS", [batch_id])
         duration_ms = (time.perf_counter() - start_time) * 1000
         results["FACT_TRANSACTIONS"] = LoadMetrics(
             batch_id=batch_id,
@@ -1036,9 +1075,7 @@ class SnowflakeHandler:
         results: dict[str, LoadMetrics] = {}
 
         start_time = time.perf_counter()
-        proc_result = self.call_procedure(
-            "REPORTING.REFRESH_ALL", [summary_date]
-        )
+        proc_result = self.call_procedure("REPORTING.REFRESH_ALL", [summary_date])
         duration_ms = (time.perf_counter() - start_time) * 1000
 
         results["REPORTING_ALL"] = LoadMetrics(
@@ -1088,9 +1125,7 @@ class SnowflakeHandler:
         pipeline_results["reporting"] = self.refresh_reporting(summary_date)
 
         total_rows = sum(
-            m.rows_loaded
-            for layer in pipeline_results.values()
-            for m in layer.values()
+            m.rows_loaded for layer in pipeline_results.values() for m in layer.values()
         )
 
         logger.info(
@@ -1129,21 +1164,25 @@ class SnowflakeHandler:
         Returns:
             Number of new dimension records created
         """
-        change_conditions = " OR ".join(
-            f"dim.{col} != stg.{col}" for col in tracked_columns
-        )
+        staging_table = _validate_identifier(staging_table, name="staging table")
+        dimension_table = _validate_identifier(dimension_table, name="dimension table")
+        business_key = _validate_identifier(business_key, name="business key")
+        tracked_columns = [
+            _validate_identifier(column, name="tracked column") for column in tracked_columns
+        ]
+        change_conditions = " OR ".join(f"dim.{col} != stg.{col}" for col in tracked_columns)
 
         # Step 1: Close existing records that have changed
         close_query = f"""
-            UPDATE {SCHEMA_ANALYTICS}.{dimension_table} dim
-            SET EFFECTIVE_TO = CURRENT_TIMESTAMP(),
-                IS_CURRENT = FALSE
-            FROM {SCHEMA_STAGING}.{staging_table} stg
-            WHERE dim.{business_key} = stg.{business_key}
-              AND dim.IS_CURRENT = TRUE
-              AND stg.BATCH_ID = %(batch_id)s
-              AND ({change_conditions})
-        """
+                UPDATE {SCHEMA_ANALYTICS}.{dimension_table} dim
+                SET EFFECTIVE_TO = CURRENT_TIMESTAMP(),
+                    IS_CURRENT = FALSE
+                FROM {SCHEMA_STAGING}.{staging_table} stg
+                WHERE dim.{business_key} = stg.{business_key}
+                  AND dim.IS_CURRENT = TRUE
+                  AND stg.BATCH_ID = %(batch_id)s
+                  AND ({change_conditions})
+            """  # nosec B608
         closed_count = self.execute_non_query(close_query, params={"batch_id": batch_id})
 
         # Step 2: Insert new current records for changed/new entries
@@ -1151,20 +1190,20 @@ class SnowflakeHandler:
         stg_columns = ", ".join(f"stg.{col}" for col in tracked_columns)
 
         insert_query = f"""
-            INSERT INTO {SCHEMA_ANALYTICS}.{dimension_table}
-                ({business_key}, {insert_columns}, EFFECTIVE_FROM, EFFECTIVE_TO, IS_CURRENT)
-            SELECT
-                stg.{business_key},
-                {stg_columns},
-                CURRENT_TIMESTAMP(),
-                '9999-12-31'::TIMESTAMPTZ,
-                TRUE
-            FROM {SCHEMA_STAGING}.{staging_table} stg
-            LEFT JOIN {SCHEMA_ANALYTICS}.{dimension_table} dim
-                ON stg.{business_key} = dim.{business_key} AND dim.IS_CURRENT = TRUE
-            WHERE stg.BATCH_ID = %(batch_id)s
-              AND (dim.{business_key} IS NULL OR {change_conditions})
-        """
+                INSERT INTO {SCHEMA_ANALYTICS}.{dimension_table}
+                    ({business_key}, {insert_columns}, EFFECTIVE_FROM, EFFECTIVE_TO, IS_CURRENT)
+                SELECT
+                    stg.{business_key},
+                    {stg_columns},
+                    CURRENT_TIMESTAMP(),
+                    '9999-12-31'::TIMESTAMPTZ,
+                    TRUE
+                FROM {SCHEMA_STAGING}.{staging_table} stg
+                LEFT JOIN {SCHEMA_ANALYTICS}.{dimension_table} dim
+                    ON stg.{business_key} = dim.{business_key} AND dim.IS_CURRENT = TRUE
+                WHERE stg.BATCH_ID = %(batch_id)s
+                  AND (dim.{business_key} IS NULL OR {change_conditions})
+            """  # nosec B608
         inserted_count = self.execute_non_query(insert_query, params={"batch_id": batch_id})
 
         logger.info(
@@ -1183,6 +1222,7 @@ class SnowflakeHandler:
 
     def ensure_schema_exists(self, schema_name: str) -> None:
         """Create schema if it does not exist."""
+        schema_name = _validate_identifier(schema_name, name="schema")
         self.execute_non_query(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
     def ensure_table_exists(self, schema: str, table_name: str, ddl: str) -> None:
@@ -1235,8 +1275,7 @@ class SnowflakeHandler:
             self.ensure_schema_exists(schema)
 
         # Create watermark tracking table
-        self.execute_non_query(
-            """
+        self.execute_non_query("""
             CREATE TABLE IF NOT EXISTS RAW.LOAD_WATERMARKS (
                 TABLE_NAME VARCHAR(200) NOT NULL,
                 COLUMN_NAME VARCHAR(100) NOT NULL,
@@ -1244,8 +1283,7 @@ class SnowflakeHandler:
                 UPDATED_AT TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP(),
                 PRIMARY KEY (TABLE_NAME, COLUMN_NAME)
             )
-            """
-        )
+            """)
 
         logger.info("schemas_initialized")
 
@@ -1444,9 +1482,7 @@ class SnowflakeHandler:
     # PERFORMANCE UTILITIES
     # =========================================================================
 
-    def get_load_history(
-        self, table_name: str, days: int = 7
-    ) -> list[dict[str, Any]]:
+    def get_load_history(self, table_name: str, days: int = 7) -> list[dict[str, Any]]:
         """Get recent COPY INTO load history for a table.
 
         Args:
@@ -1456,16 +1492,19 @@ class SnowflakeHandler:
         Returns:
             List of load history records
         """
+        table_name = _validate_identifier(table_name, name="table")
+        days = _bounded_int(days, name="days", minimum=1, maximum=90)
         result = self.execute_query(
-            f"""
+            """
             SELECT *
             FROM TABLE(INFORMATION_SCHEMA.COPY_HISTORY(
-                TABLE_NAME => '{table_name}',
-                START_TIME => DATEADD(DAYS, -{days}, CURRENT_TIMESTAMP())
+                TABLE_NAME => %(table_name)s,
+                START_TIME => DATEADD(DAYS, -%(days)s, CURRENT_TIMESTAMP())
             ))
             ORDER BY LAST_LOAD_TIME DESC
             LIMIT 50
-            """
+            """,
+            params={"table_name": table_name, "days": days},
         )
         return result.rows
 
@@ -1479,18 +1518,21 @@ class SnowflakeHandler:
         Returns:
             List of query history records
         """
+        hours = _bounded_int(hours, name="hours", minimum=1, maximum=168)
+        limit = _bounded_int(limit, name="limit", minimum=1, maximum=1000)
         result = self.execute_query(
-            f"""
-            SELECT QUERY_ID, QUERY_TEXT, DATABASE_NAME, SCHEMA_NAME,
-                   EXECUTION_STATUS, TOTAL_ELAPSED_TIME, ROWS_PRODUCED,
-                   BYTES_SCANNED, START_TIME, END_TIME
-            FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(
-                DATEADD(HOURS, -{hours}, CURRENT_TIMESTAMP()),
-                CURRENT_TIMESTAMP()
-            ))
-            ORDER BY START_TIME DESC
-            LIMIT {limit}
             """
+                SELECT QUERY_ID, QUERY_TEXT, DATABASE_NAME, SCHEMA_NAME,
+                       EXECUTION_STATUS, TOTAL_ELAPSED_TIME, ROWS_PRODUCED,
+                       BYTES_SCANNED, START_TIME, END_TIME
+                FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(
+                    DATEADD(HOURS, %(hours_offset)s, CURRENT_TIMESTAMP()),
+                    CURRENT_TIMESTAMP()
+                ))
+                ORDER BY START_TIME DESC
+                LIMIT %(limit)s
+            """,
+            params={"hours_offset": -hours, "limit": limit},
         )
         return result.rows
 

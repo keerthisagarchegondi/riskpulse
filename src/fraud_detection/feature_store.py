@@ -357,7 +357,8 @@ class FeatureStore:
         return {
             **self._stats,
             "cache_hit_rate": self._stats["cache_hits"] / total,
-            "default_fallback_rate": self._stats["fallbacks_to_default"] / (total * len(self._feature_names)),
+            "default_fallback_rate": self._stats["fallbacks_to_default"]
+            / (total * len(self._feature_names)),
         }
 
     def _get_from_cache(self, transaction_id: str, customer_id: str) -> dict[str, float]:
@@ -385,7 +386,9 @@ class FeatureStore:
         try:
             result = self._db.get_transaction_features(transaction_id)
             if result and isinstance(result, dict):
-                return {k: float(v) for k, v in result.items() if k in feature_names and v is not None}
+                return {
+                    k: float(v) for k, v in result.items() if k in feature_names and v is not None
+                }
         except Exception as e:
             logger.debug("DB retrieval failed: %s", e)
         return {}
@@ -402,8 +405,12 @@ class FeatureStore:
             computed["transaction_amount"] = amount
             computed["amount_log"] = float(np.log1p(amount))
 
-            avg = existing.get("account_avg_amount", self._feature_defaults.get("account_avg_amount", 50.0))
-            std = existing.get("account_std_amount", self._feature_defaults.get("account_std_amount", 30.0))
+            avg = existing.get(
+                "account_avg_amount", self._feature_defaults.get("account_avg_amount", 50.0)
+            )
+            std = existing.get(
+                "account_std_amount", self._feature_defaults.get("account_std_amount", 30.0)
+            )
             if std > 0:
                 computed["amount_zscore"] = (amount - avg) / std
             else:
@@ -419,6 +426,7 @@ class FeatureStore:
             if isinstance(timestamp, str):
                 try:
                     from datetime import datetime as dt
+
                     ts = dt.fromisoformat(timestamp.replace("Z", "+00:00"))
                     computed["hour_of_day"] = float(ts.hour)
                     computed["day_of_week"] = float(ts.weekday())
@@ -475,6 +483,7 @@ class FeatureStore:
             now = datetime.now(timezone.utc)
             if isinstance(last_update, str):
                 from datetime import datetime as dt
+
                 last_update_dt = dt.fromisoformat(last_update)
             elif isinstance(last_update, (int, float)):
                 last_update_dt = datetime.fromtimestamp(float(last_update), tz=timezone.utc)

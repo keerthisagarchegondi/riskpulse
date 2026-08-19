@@ -24,14 +24,13 @@ from src.transformation.aggregator import (
     WindowType,
 )
 from src.transformation.feature_engineer import (
+    WINDOW_1H,
+    WINDOW_7D,
+    WINDOW_24H,
     FeatureEngineer,
     FeatureMetrics,
     FeatureResult,
-    WINDOW_1H,
-    WINDOW_24H,
-    WINDOW_7D,
 )
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -243,24 +242,32 @@ class TestVelocityFeatures:
         # All 5 are within 7 days
         assert result.features["txn_count_7d"] == 5
 
-    def test_txn_amount_sum_1h(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_txn_amount_sum_1h(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Amount sum within 1 hour window."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         assert result.features["txn_amount_sum_1h"] == 50.0
 
-    def test_txn_amount_sum_24h(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_txn_amount_sum_24h(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Amount sum within 24 hour window."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         # 50 + 200 + 75 = 325
         assert result.features["txn_amount_sum_24h"] == 325.0
 
-    def test_unique_merchants_24h(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_unique_merchants_24h(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Unique merchants within 24 hours."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         # MERCH-500, MERCH-200, MERCH-300
         assert result.features["unique_merchants_24h"] == 3
 
-    def test_unique_countries_24h(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_unique_countries_24h(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Unique countries within 24 hours."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         # US, US, CA -> {US, CA}
@@ -305,7 +312,9 @@ class TestVelocityFeatures:
 class TestBehavioralFeatures:
     """Tests for behavioral deviation features."""
 
-    def test_new_merchant_flag_known(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_new_merchant_flag_known(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Known merchant should not be flagged as new."""
         # MERCH-500 is in h1 and h4
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
@@ -339,7 +348,9 @@ class TestBehavioralFeatures:
         result = engineer.compute_features(txn, customer_profile)
         assert result.features["unusual_hour_flag"] is True
 
-    def test_amount_percentile_high(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_amount_percentile_high(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Amount higher than most history should have high percentile."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         # 150 > 50, 75, 120 but < 200, 300 => 3/5 = 0.6
@@ -350,7 +361,9 @@ class TestBehavioralFeatures:
         result = engineer.compute_features(base_transaction, customer_profile, [])
         assert result.features["amount_percentile"] == 0.5
 
-    def test_channel_switch_flag_same(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_channel_switch_flag_same(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Same channel as last txn should not flag."""
         # base uses "online", h1 uses "online"
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
@@ -377,7 +390,9 @@ class TestBehavioralFeatures:
 class TestSequenceFeatures:
     """Tests for sequence-based features."""
 
-    def test_consecutive_declined_none(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_consecutive_declined_none(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """No consecutive declines when last txn was approved."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         assert result.features["consecutive_declined_count"] == 0
@@ -391,10 +406,26 @@ class TestSequenceFeatures:
             "channel": "online",
         }
         history = [
-            {"status": "declined", "transaction_timestamp": "2026-06-15T14:20:00Z", "transaction_amount": 100.0},
-            {"status": "declined", "transaction_timestamp": "2026-06-15T14:15:00Z", "transaction_amount": 100.0},
-            {"status": "declined", "transaction_timestamp": "2026-06-15T14:10:00Z", "transaction_amount": 100.0},
-            {"status": "approved", "transaction_timestamp": "2026-06-15T14:00:00Z", "transaction_amount": 100.0},
+            {
+                "status": "declined",
+                "transaction_timestamp": "2026-06-15T14:20:00Z",
+                "transaction_amount": 100.0,
+            },
+            {
+                "status": "declined",
+                "transaction_timestamp": "2026-06-15T14:15:00Z",
+                "transaction_amount": 100.0,
+            },
+            {
+                "status": "declined",
+                "transaction_timestamp": "2026-06-15T14:10:00Z",
+                "transaction_amount": 100.0,
+            },
+            {
+                "status": "approved",
+                "transaction_timestamp": "2026-06-15T14:00:00Z",
+                "transaction_amount": 100.0,
+            },
         ]
         result = engineer.compute_features(txn, customer_profile, history)
         assert result.features["consecutive_declined_count"] == 3
@@ -417,7 +448,9 @@ class TestSequenceFeatures:
         result = engineer.compute_features(txn, customer_profile, history)
         assert result.features["rapid_succession_flag"] is True
 
-    def test_rapid_succession_flag_false(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_rapid_succession_flag_false(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Transaction > 60s from previous should not be flagged."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         # h1 is 10 min ago
@@ -432,7 +465,9 @@ class TestSequenceFeatures:
 class TestFeatureEngineerGeneral:
     """General tests for the feature engineering pipeline."""
 
-    def test_all_features_present(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_all_features_present(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """All 20 expected features should be present."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         expected_names = FeatureEngineer.get_feature_names()
@@ -440,7 +475,9 @@ class TestFeatureEngineerGeneral:
         for name in expected_names:
             assert name in result.features, f"Missing feature: {name}"
 
-    def test_feature_count_minimum(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_feature_count_minimum(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """At least 20 features should be computed (satisfies 25+ with aggregator)."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         assert len(result.features) >= 20
@@ -464,7 +501,9 @@ class TestFeatureEngineerGeneral:
         # Should still succeed with defaults
         assert result.is_success
 
-    def test_batch_processing(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_batch_processing(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Batch computation should process all transactions."""
         transactions = [base_transaction.copy() for _ in range(10)]
         profiles = {base_transaction["customer_id"]: customer_profile}
@@ -498,12 +537,16 @@ class TestFeatureEngineerGeneral:
 class TestFeaturePerformance:
     """Performance benchmarks for feature computation."""
 
-    def test_single_transaction_under_50ms(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_single_transaction_under_50ms(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """Single transaction feature computation must be < 50ms."""
         result = engineer.compute_features(base_transaction, customer_profile, transaction_history)
         assert result.latency_ms < 50.0
 
-    def test_batch_100_performance(self, engineer, base_transaction, customer_profile, transaction_history):
+    def test_batch_100_performance(
+        self, engineer, base_transaction, customer_profile, transaction_history
+    ):
         """100 transactions should complete in reasonable time."""
         transactions = [base_transaction.copy() for _ in range(100)]
         profiles = {base_transaction["customer_id"]: customer_profile}
@@ -575,19 +618,33 @@ class TestTimeWindowAggregator:
 
     @pytest.fixture
     def aggregator(self):
-        return TimeWindowAggregator(window_specs=[
-            WindowSpec("1h", 3600, WindowType.SLIDING),
-            WindowSpec("24h", 86400, WindowType.SLIDING),
-        ])
+        return TimeWindowAggregator(
+            window_specs=[
+                WindowSpec("1h", 3600, WindowType.SLIDING),
+                WindowSpec("24h", 86400, WindowType.SLIDING),
+            ]
+        )
 
     @pytest.fixture
     def events(self):
         base = datetime(2026, 6, 15, 14, 0, 0, tzinfo=timezone.utc)
         return [
-            {"transaction_amount": 100.0, "transaction_timestamp": (base - timedelta(minutes=30)).isoformat()},
-            {"transaction_amount": 200.0, "transaction_timestamp": (base - timedelta(minutes=45)).isoformat()},
-            {"transaction_amount": 50.0, "transaction_timestamp": (base - timedelta(hours=3)).isoformat()},
-            {"transaction_amount": 300.0, "transaction_timestamp": (base - timedelta(hours=20)).isoformat()},
+            {
+                "transaction_amount": 100.0,
+                "transaction_timestamp": (base - timedelta(minutes=30)).isoformat(),
+            },
+            {
+                "transaction_amount": 200.0,
+                "transaction_timestamp": (base - timedelta(minutes=45)).isoformat(),
+            },
+            {
+                "transaction_amount": 50.0,
+                "transaction_timestamp": (base - timedelta(hours=3)).isoformat(),
+            },
+            {
+                "transaction_amount": 300.0,
+                "transaction_timestamp": (base - timedelta(hours=20)).isoformat(),
+            },
         ]
 
     def test_1h_window(self, aggregator, events):
@@ -621,10 +678,26 @@ class TestTimeWindowAggregator:
         """Distinct count should count unique values in window."""
         ref = datetime(2026, 6, 15, 14, 0, 0, tzinfo=timezone.utc)
         events = [
-            {"merchant_id": "M1", "transaction_amount": 10, "transaction_timestamp": (ref - timedelta(minutes=10)).isoformat()},
-            {"merchant_id": "M1", "transaction_amount": 20, "transaction_timestamp": (ref - timedelta(minutes=20)).isoformat()},
-            {"merchant_id": "M2", "transaction_amount": 30, "transaction_timestamp": (ref - timedelta(minutes=30)).isoformat()},
-            {"merchant_id": "M3", "transaction_amount": 40, "transaction_timestamp": (ref - timedelta(hours=10)).isoformat()},
+            {
+                "merchant_id": "M1",
+                "transaction_amount": 10,
+                "transaction_timestamp": (ref - timedelta(minutes=10)).isoformat(),
+            },
+            {
+                "merchant_id": "M1",
+                "transaction_amount": 20,
+                "transaction_timestamp": (ref - timedelta(minutes=20)).isoformat(),
+            },
+            {
+                "merchant_id": "M2",
+                "transaction_amount": 30,
+                "transaction_timestamp": (ref - timedelta(minutes=30)).isoformat(),
+            },
+            {
+                "merchant_id": "M3",
+                "transaction_amount": 40,
+                "transaction_timestamp": (ref - timedelta(hours=10)).isoformat(),
+            },
         ]
         counts = aggregator.compute_distinct_counts(events, ref, "merchant_id")
         assert counts["1h"] == 2  # M1, M2
@@ -633,9 +706,7 @@ class TestTimeWindowAggregator:
     def test_multiple_fields(self, aggregator, events):
         """Aggregating multiple fields should return results per field."""
         ref = datetime(2026, 6, 15, 14, 0, 0, tzinfo=timezone.utc)
-        results = aggregator.aggregate_multiple_fields(
-            events, ref, ["transaction_amount"]
-        )
+        results = aggregator.aggregate_multiple_fields(events, ref, ["transaction_amount"])
         assert "transaction_amount" in results
         assert results["transaction_amount"]["1h"].count == 2
 

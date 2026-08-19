@@ -98,7 +98,7 @@ class Settings:
         for key, value in os.environ.items():
             if not key.startswith(prefix):
                 continue
-            config_path = key[len(prefix):].lower().split("__")
+            config_path = key[len(prefix) :].lower().split("__")
             target = self._config
             for part in config_path[:-1]:
                 target = target.setdefault(part, {})

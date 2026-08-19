@@ -294,7 +294,10 @@ class TransactionConsumer:
         self._consumer = Consumer(config)
         self._consumer.subscribe(self._topics, on_assign=self._on_assign, on_revoke=self._on_revoke)
 
-        logger.info("Kafka consumer created", config={k: v for k, v in config.items() if "password" not in k})
+        logger.info(
+            "Kafka consumer created",
+            config={k: v for k, v in config.items() if "password" not in k},
+        )
 
     def _consume_loop(self) -> None:
         """Main consumption loop."""

@@ -22,7 +22,6 @@ from typing import Any, Callable
 import structlog
 from confluent_kafka import KafkaError, KafkaException, Producer
 
-
 from src.ingestion.schema_registry import SchemaRegistry, SchemaValidationError, get_schema_registry
 from src.utils.config import get_settings
 from src.utils.constants import TOPIC_RAW_EVENTS
@@ -143,9 +142,7 @@ class TransactionProducer:
             topic=self._topic,
         )
 
-    def _build_config(
-        self, settings: Any, overrides: dict[str, Any] | None
-    ) -> dict[str, Any]:
+    def _build_config(self, settings: Any, overrides: dict[str, Any] | None) -> dict[str, Any]:
         """Build confluent-kafka producer configuration."""
         config = {
             "bootstrap.servers": self._bootstrap_servers,
@@ -190,6 +187,7 @@ class TransactionProducer:
                 )
                 if attempt < max_attempts:
                     import time as _time
+
                     _time.sleep(min(2 ** (attempt - 1), 10))
 
         raise last_exc  # type: ignore[misc]
@@ -409,5 +407,3 @@ class TransactionProducer:
 
     def __exit__(self, *args: Any) -> None:
         self.close()
-
-

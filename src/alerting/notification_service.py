@@ -142,9 +142,7 @@ class WebhookProvider(Protocol):
 
 
 class WebSocketProvider(Protocol):
-    async def push_notification(
-        self, user_id: str, payload: dict[str, Any]
-    ) -> dict[str, Any]: ...
+    async def push_notification(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]: ...
 
 
 # ── Default Provider Implementations ────────────────────────────────────────
@@ -161,6 +159,7 @@ class SESEmailProvider:
     def _get_client(self):
         if self._client is None:
             import boto3
+
             self._client = boto3.client("ses", region_name=self._region)
         return self._client
 
@@ -197,6 +196,7 @@ class SNSSMSProvider:
     def _get_client(self):
         if self._client is None:
             import boto3
+
             self._client = boto3.client("sns", region_name=self._region)
         return self._client
 
@@ -254,9 +254,7 @@ class InAppWebSocketProvider:
     def remove_connection(self, user_id: str) -> None:
         self._connections.pop(user_id, None)
 
-    async def push_notification(
-        self, user_id: str, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def push_notification(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Push notification to connected WebSocket client."""
         import json
 
@@ -418,9 +416,7 @@ class DeliveryTracker:
                 stats[record.status.value] += 1
             return dict(stats)
 
-    def get_failed_notifications(
-        self, since: datetime | None = None
-    ) -> list[NotificationRecord]:
+    def get_failed_notifications(self, since: datetime | None = None) -> list[NotificationRecord]:
         """Get all failed notifications, optionally since a given time."""
         with self._lock:
             failed = []
@@ -820,9 +816,8 @@ class NotificationService:
             return record
 
         # Check quiet hours (skip for critical)
-        if (
-            alert.severity != AlertSeverity.CRITICAL
-            and self._preferences.is_in_quiet_hours(recipient)
+        if alert.severity != AlertSeverity.CRITICAL and self._preferences.is_in_quiet_hours(
+            recipient
         ):
             self._tracker.mark_failed(record.notification_id, "quiet_hours")
             logger.debug("notification_skipped_quiet_hours", recipient=recipient)

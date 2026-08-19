@@ -29,10 +29,21 @@ _BUSINESS_HOUR_END = 22
 _UNUSUAL_HOURS = frozenset(range(0, 6))  # midnight to 6am
 
 # US federal holidays (month, day) - simplified; production would use a calendar lib
-_HOLIDAYS: frozenset[tuple[int, int]] = frozenset({
-    (1, 1), (1, 20), (2, 17), (5, 26), (6, 19),
-    (7, 4), (9, 1), (10, 13), (11, 11), (11, 27), (12, 25),
-})
+_HOLIDAYS: frozenset[tuple[int, int]] = frozenset(
+    {
+        (1, 1),
+        (1, 20),
+        (2, 17),
+        (5, 26),
+        (6, 19),
+        (7, 4),
+        (9, 1),
+        (10, 13),
+        (11, 11),
+        (11, 27),
+        (12, 25),
+    }
+)
 
 # Velocity windows in seconds
 WINDOW_1H = 3600
@@ -75,15 +86,15 @@ class FeatureMetrics:
     def to_dict(self) -> dict[str, Any]:
         with self._lock:
             avg_latency_ms = (
-                self.total_latency_ms / self.total_computed
-                if self.total_computed
-                else 0.0
+                self.total_latency_ms / self.total_computed if self.total_computed else 0.0
             )
             return {
                 "total_computed": self.total_computed,
                 "total_errors": self.total_errors,
                 "avg_latency_ms": round(avg_latency_ms, 4),
-                "min_latency_ms": round(self.min_latency_ms, 4) if self.min_latency_ms != float("inf") else 0.0,
+                "min_latency_ms": (
+                    round(self.min_latency_ms, 4) if self.min_latency_ms != float("inf") else 0.0
+                ),
                 "max_latency_ms": round(self.max_latency_ms, 4),
             }
 
@@ -162,7 +173,9 @@ class FeatureEngineer:
             FeatureResult with 25+ computed features.
         """
         start = time.perf_counter()
-        txn_id = transaction.get("external_transaction_id", transaction.get("transaction_id", "unknown"))
+        txn_id = transaction.get(
+            "external_transaction_id", transaction.get("transaction_id", "unknown")
+        )
 
         try:
             profile = customer_profile or {}

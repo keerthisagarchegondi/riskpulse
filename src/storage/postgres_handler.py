@@ -159,7 +159,7 @@ class PostgresHandler:
         )
         self._metrics.append(metric)
         if len(self._metrics) > self._max_metrics_history:
-            self._metrics = self._metrics[-self._max_metrics_history:]
+            self._metrics = self._metrics[-self._max_metrics_history :]
         if duration_ms > 500:
             logger.warning(
                 "slow_query_detected",
@@ -197,18 +197,14 @@ class PostgresHandler:
         """Retrieve a transaction by external transaction ID."""
         start = time.perf_counter()
         async with self.session() as session:
-            stmt = select(Transaction).where(
-                Transaction.external_transaction_id == external_id
-            )
+            stmt = select(Transaction).where(Transaction.external_transaction_id == external_id)
             result = await session.execute(stmt)
             txn = result.scalar_one_or_none()
             duration_ms = (time.perf_counter() - start) * 1000
             self._record_metric("get_transaction_by_external_id", duration_ms, 1 if txn else 0)
             return txn
 
-    async def update_transaction_status(
-        self, transaction_id: uuid.UUID, status: str
-    ) -> bool:
+    async def update_transaction_status(self, transaction_id: uuid.UUID, status: str) -> bool:
         """Update transaction status."""
         start = time.perf_counter()
         async with self.session() as session:
@@ -338,9 +334,7 @@ class PostgresHandler:
             if status in ("resolved", "false_positive"):
                 values["resolved_at"] = func.now()
 
-            stmt = (
-                update(FraudAlert).where(FraudAlert.alert_id == alert_id).values(**values)
-            )
+            stmt = update(FraudAlert).where(FraudAlert.alert_id == alert_id).values(**values)
             result = await session.execute(stmt)
             duration_ms = (time.perf_counter() - start) * 1000
             self._record_metric("update_alert_status", duration_ms, result.rowcount)
@@ -444,9 +438,7 @@ class PostgresHandler:
         start = time.perf_counter()
         async with self.session() as session:
             stmt = pg_insert(CustomerProfile).values(**data)
-            update_cols = {
-                k: v for k, v in data.items() if k != "customer_id"
-            }
+            update_cols = {k: v for k, v in data.items() if k != "customer_id"}
             update_cols["updated_at"] = func.now()
             stmt = stmt.on_conflict_do_update(
                 index_elements=["customer_id"],
@@ -713,16 +705,16 @@ class PostgresHandler:
         start = time.perf_counter()
         async with self.session() as session:
             # By severity
-            severity_stmt = select(
-                FraudAlert.severity, func.count(FraudAlert.alert_id)
-            ).group_by(FraudAlert.severity)
+            severity_stmt = select(FraudAlert.severity, func.count(FraudAlert.alert_id)).group_by(
+                FraudAlert.severity
+            )
             severity_result = await session.execute(severity_stmt)
             by_severity = {row[0]: row[1] for row in severity_result.all()}
 
             # By status
-            status_stmt = select(
-                FraudAlert.status, func.count(FraudAlert.alert_id)
-            ).group_by(FraudAlert.status)
+            status_stmt = select(FraudAlert.status, func.count(FraudAlert.alert_id)).group_by(
+                FraudAlert.status
+            )
             status_result = await session.execute(status_stmt)
             by_status = {row[0]: row[1] for row in status_result.all()}
 

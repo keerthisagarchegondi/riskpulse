@@ -11,12 +11,11 @@ from src.fraud_detection.risk_scorer import RiskScore
 from src.fraud_detection.rule_engine import RuleEvaluationResult, RuleMatch
 from src.fraud_detection.scoring_pipeline import (
     RiskClassification,
-    ScoringPipeline,
     ScoringMethodResult,
+    ScoringPipeline,
     UnifiedScore,
     _LRUCache,
 )
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 
@@ -134,20 +133,14 @@ class TestWeightValidation:
 
     def test_invalid_weights_not_sum_to_one(self):
         with pytest.raises(ValueError, match="must sum to 1.0"):
-            ScoringPipeline(
-                weights={"rule_score": 0.5, "anomaly_score": 0.5, "ml_score": 0.5}
-            )
+            ScoringPipeline(weights={"rule_score": 0.5, "anomaly_score": 0.5, "ml_score": 0.5})
 
     def test_negative_weight_rejected(self):
         with pytest.raises(ValueError, match="must be between 0 and 1"):
-            ScoringPipeline(
-                weights={"rule_score": -0.1, "anomaly_score": 0.5, "ml_score": 0.6}
-            )
+            ScoringPipeline(weights={"rule_score": -0.1, "anomaly_score": 0.5, "ml_score": 0.6})
 
     def test_update_weights(self, scoring_pipeline):
-        scoring_pipeline.update_weights(
-            {"rule_score": 0.2, "anomaly_score": 0.3, "ml_score": 0.5}
-        )
+        scoring_pipeline.update_weights({"rule_score": 0.2, "anomaly_score": 0.3, "ml_score": 0.5})
         assert scoring_pipeline.weights["ml_score"] == 0.5
 
     def test_update_weights_invalid_sum(self, scoring_pipeline):
@@ -189,16 +182,31 @@ class TestEnsembleScore:
     def test_all_methods_succeed(self, scoring_pipeline):
         results = [
             ScoringMethodResult(
-                method="rule_engine", raw_score=0.7, normalized_score=0.7,
-                weight=0.3, weighted_score=0.21, latency_ms=5.0, success=True,
+                method="rule_engine",
+                raw_score=0.7,
+                normalized_score=0.7,
+                weight=0.3,
+                weighted_score=0.21,
+                latency_ms=5.0,
+                success=True,
             ),
             ScoringMethodResult(
-                method="anomaly_detector", raw_score=-0.5, normalized_score=0.75,
-                weight=0.3, weighted_score=0.225, latency_ms=8.0, success=True,
+                method="anomaly_detector",
+                raw_score=-0.5,
+                normalized_score=0.75,
+                weight=0.3,
+                weighted_score=0.225,
+                latency_ms=8.0,
+                success=True,
             ),
             ScoringMethodResult(
-                method="ml_model", raw_score=0.8, normalized_score=0.8,
-                weight=0.4, weighted_score=0.32, latency_ms=12.0, success=True,
+                method="ml_model",
+                raw_score=0.8,
+                normalized_score=0.8,
+                weight=0.4,
+                weighted_score=0.32,
+                latency_ms=12.0,
+                success=True,
             ),
         ]
         score = scoring_pipeline._compute_ensemble_score(results)
@@ -208,17 +216,32 @@ class TestEnsembleScore:
     def test_one_method_fails_renormalize(self, scoring_pipeline):
         results = [
             ScoringMethodResult(
-                method="rule_engine", raw_score=0.7, normalized_score=0.7,
-                weight=0.3, weighted_score=0.21, latency_ms=5.0, success=True,
+                method="rule_engine",
+                raw_score=0.7,
+                normalized_score=0.7,
+                weight=0.3,
+                weighted_score=0.21,
+                latency_ms=5.0,
+                success=True,
             ),
             ScoringMethodResult(
-                method="anomaly_detector", raw_score=0.0, normalized_score=0.0,
-                weight=0.3, weighted_score=0.0, latency_ms=0.0, success=False,
+                method="anomaly_detector",
+                raw_score=0.0,
+                normalized_score=0.0,
+                weight=0.3,
+                weighted_score=0.0,
+                latency_ms=0.0,
+                success=False,
                 error="Not initialized",
             ),
             ScoringMethodResult(
-                method="ml_model", raw_score=0.8, normalized_score=0.8,
-                weight=0.4, weighted_score=0.32, latency_ms=12.0, success=True,
+                method="ml_model",
+                raw_score=0.8,
+                normalized_score=0.8,
+                weight=0.4,
+                weighted_score=0.32,
+                latency_ms=12.0,
+                success=True,
             ),
         ]
         score = scoring_pipeline._compute_ensemble_score(results)
@@ -229,16 +252,31 @@ class TestEnsembleScore:
     def test_all_methods_fail(self, scoring_pipeline):
         results = [
             ScoringMethodResult(
-                method="rule_engine", raw_score=0.0, normalized_score=0.0,
-                weight=0.3, weighted_score=0.0, latency_ms=0.0, success=False,
+                method="rule_engine",
+                raw_score=0.0,
+                normalized_score=0.0,
+                weight=0.3,
+                weighted_score=0.0,
+                latency_ms=0.0,
+                success=False,
             ),
             ScoringMethodResult(
-                method="anomaly_detector", raw_score=0.0, normalized_score=0.0,
-                weight=0.3, weighted_score=0.0, latency_ms=0.0, success=False,
+                method="anomaly_detector",
+                raw_score=0.0,
+                normalized_score=0.0,
+                weight=0.3,
+                weighted_score=0.0,
+                latency_ms=0.0,
+                success=False,
             ),
             ScoringMethodResult(
-                method="ml_model", raw_score=0.0, normalized_score=0.0,
-                weight=0.4, weighted_score=0.0, latency_ms=0.0, success=False,
+                method="ml_model",
+                raw_score=0.0,
+                normalized_score=0.0,
+                weight=0.4,
+                weighted_score=0.0,
+                latency_ms=0.0,
+                success=False,
             ),
         ]
         score = scoring_pipeline._compute_ensemble_score(results)
@@ -247,16 +285,31 @@ class TestEnsembleScore:
     def test_score_bounded_zero_to_one(self, scoring_pipeline):
         results = [
             ScoringMethodResult(
-                method="rule_engine", raw_score=1.0, normalized_score=1.0,
-                weight=0.3, weighted_score=0.3, latency_ms=5.0, success=True,
+                method="rule_engine",
+                raw_score=1.0,
+                normalized_score=1.0,
+                weight=0.3,
+                weighted_score=0.3,
+                latency_ms=5.0,
+                success=True,
             ),
             ScoringMethodResult(
-                method="anomaly_detector", raw_score=1.0, normalized_score=1.0,
-                weight=0.3, weighted_score=0.3, latency_ms=8.0, success=True,
+                method="anomaly_detector",
+                raw_score=1.0,
+                normalized_score=1.0,
+                weight=0.3,
+                weighted_score=0.3,
+                latency_ms=8.0,
+                success=True,
             ),
             ScoringMethodResult(
-                method="ml_model", raw_score=1.0, normalized_score=1.0,
-                weight=0.4, weighted_score=0.4, latency_ms=12.0, success=True,
+                method="ml_model",
+                raw_score=1.0,
+                normalized_score=1.0,
+                weight=0.4,
+                weighted_score=0.4,
+                latency_ms=12.0,
+                success=True,
             ),
         ]
         score = scoring_pipeline._compute_ensemble_score(results)
@@ -462,9 +515,7 @@ class TestCaching:
         # First call
         scoring_pipeline.score_transaction_sync(sample_transaction)
         # Second call with cache disabled
-        result = scoring_pipeline.score_transaction_sync(
-            sample_transaction, use_cache=False
-        )
+        result = scoring_pipeline.score_transaction_sync(sample_transaction, use_cache=False)
         assert not result.cached
 
     def test_cache_invalidation(self, scoring_pipeline, sample_transaction):
@@ -484,21 +535,25 @@ class TestCaching:
         cache.put("key1", score)
         # TTL=0 means immediately expired
         import time
+
         time.sleep(0.01)
         assert cache.get("key1") is None
 
     def test_lru_cache_eviction(self):
         cache = _LRUCache(max_entries=2, ttl_seconds=300)
         s1 = UnifiedScore(
-            transaction_id="T1", final_score=0.1,
+            transaction_id="T1",
+            final_score=0.1,
             risk_classification=RiskClassification.LOW,
         )
         s2 = UnifiedScore(
-            transaction_id="T2", final_score=0.2,
+            transaction_id="T2",
+            final_score=0.2,
             risk_classification=RiskClassification.LOW,
         )
         s3 = UnifiedScore(
-            transaction_id="T3", final_score=0.3,
+            transaction_id="T3",
+            final_score=0.3,
             risk_classification=RiskClassification.LOW,
         )
         cache.put("k1", s1)
@@ -632,21 +687,31 @@ class TestAlertRecommendations:
     def test_alert_recommended_above_threshold(self, sample_transaction):
         rule_engine = MagicMock()
         rule_engine.evaluate.return_value = RuleEvaluationResult(
-            transaction_id="TXN-001", rule_score=0.9,
-            combined_severity="critical", combined_confidence=0.95,
-            evaluation_time_ms=3.0, total_rules_evaluated=10,
+            transaction_id="TXN-001",
+            rule_score=0.9,
+            combined_severity="critical",
+            combined_confidence=0.95,
+            evaluation_time_ms=3.0,
+            total_rules_evaluated=10,
         )
         anomaly = MagicMock()
         anomaly.predict.return_value = AnomalyResult(
-            transaction_id="TXN-001", anomaly_score=-0.9,
-            is_anomaly=True, confidence=0.95,
-            prediction_latency_ms=5.0, model_version="v1",
+            transaction_id="TXN-001",
+            anomaly_score=-0.9,
+            is_anomaly=True,
+            confidence=0.95,
+            prediction_latency_ms=5.0,
+            model_version="v1",
         )
         scorer = MagicMock()
         scorer.predict.return_value = RiskScore(
-            transaction_id="TXN-001", risk_score=0.95,
-            risk_level="critical", raw_score=0.97, confidence=0.98,
-            prediction_latency_ms=8.0, model_version="v2",
+            transaction_id="TXN-001",
+            risk_score=0.95,
+            risk_level="critical",
+            raw_score=0.97,
+            confidence=0.98,
+            prediction_latency_ms=8.0,
+            model_version="v2",
         )
         pipeline = ScoringPipeline(
             rule_engine=rule_engine,
@@ -661,21 +726,31 @@ class TestAlertRecommendations:
     def test_no_alert_for_low_risk(self, sample_transaction):
         rule_engine = MagicMock()
         rule_engine.evaluate.return_value = RuleEvaluationResult(
-            transaction_id="TXN-001", rule_score=0.0,
-            combined_severity="low", combined_confidence=0.0,
-            evaluation_time_ms=2.0, total_rules_evaluated=10,
+            transaction_id="TXN-001",
+            rule_score=0.0,
+            combined_severity="low",
+            combined_confidence=0.0,
+            evaluation_time_ms=2.0,
+            total_rules_evaluated=10,
         )
         anomaly = MagicMock()
         anomaly.predict.return_value = AnomalyResult(
-            transaction_id="TXN-001", anomaly_score=0.9,
-            is_anomaly=False, confidence=0.1,
-            prediction_latency_ms=4.0, model_version="v1",
+            transaction_id="TXN-001",
+            anomaly_score=0.9,
+            is_anomaly=False,
+            confidence=0.1,
+            prediction_latency_ms=4.0,
+            model_version="v1",
         )
         scorer = MagicMock()
         scorer.predict.return_value = RiskScore(
-            transaction_id="TXN-001", risk_score=0.02,
-            risk_level="low", raw_score=0.01, confidence=0.95,
-            prediction_latency_ms=6.0, model_version="v2",
+            transaction_id="TXN-001",
+            risk_score=0.02,
+            risk_level="low",
+            raw_score=0.01,
+            confidence=0.95,
+            prediction_latency_ms=6.0,
+            model_version="v2",
         )
         pipeline = ScoringPipeline(
             rule_engine=rule_engine,

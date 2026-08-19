@@ -45,6 +45,7 @@ _DEFAULT_RULES_PATH = _CONFIG_DIR / "fraud_rules.yaml"
 
 # ── Data Classes ─────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class RuleMatch:
     """A single rule that fired against a transaction."""
@@ -132,10 +133,7 @@ class RulePerformanceMetrics:
     @property
     def total_evaluated(self) -> int:
         return (
-            self.true_positives
-            + self.false_positives
-            + self.true_negatives
-            + self.false_negatives
+            self.true_positives + self.false_positives + self.true_negatives + self.false_negatives
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -183,6 +181,7 @@ class EngineMetrics:
 
 # ── Rule Definitions (loaded from YAML) ─────────────────────────────
 
+
 @dataclass
 class FraudRule:
     """Internal parsed representation of a single fraud rule."""
@@ -215,6 +214,7 @@ class FraudRule:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
+
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
     try:
@@ -253,6 +253,7 @@ def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
 
 
 # ── Rule Engine ──────────────────────────────────────────────────────
+
 
 class FraudRuleEngine:
     """Configurable, priority-ordered fraud rule evaluation engine.
@@ -866,9 +867,7 @@ class FraudRuleEngine:
         if in_burst < burst_count - 1:
             return None
 
-        pre_burst = [
-            ts for ts in timestamps if (txn_ts - ts).total_seconds() > burst_window_sec
-        ]
+        pre_burst = [ts for ts in timestamps if (txn_ts - ts).total_seconds() > burst_window_sec]
         if pre_burst:
             gap_seconds = (txn_ts - max(pre_burst)).total_seconds() - burst_window_sec
             if gap_seconds < silence_sec:
@@ -911,7 +910,7 @@ class FraudRuleEngine:
         # Noisy-OR combination: P(fraud) = 1 - ∏(1 - p_i)
         combined = 1.0
         for c in confidences:
-            combined *= (1.0 - c)
+            combined *= 1.0 - c
         return round(1.0 - combined, 4)
 
     def _compute_rule_score(self, matches: List[RuleMatch]) -> float:
@@ -920,11 +919,7 @@ class FraudRuleEngine:
         combined_conf = self._compute_combined_confidence(matches)
         severity_weight = max(_SEVERITY_ORDER.get(m.severity, 0) for m in matches) / 3.0
         category_diversity = len({m.category for m in matches}) / 5.0
-        score = (
-            0.50 * combined_conf
-            + 0.30 * severity_weight
-            + 0.20 * min(category_diversity, 1.0)
-        )
+        score = 0.50 * combined_conf + 0.30 * severity_weight + 0.20 * min(category_diversity, 1.0)
         return round(min(score, 1.0), 4)
 
     # ── Backtesting ──────────────────────────────────────────────────
@@ -947,9 +942,7 @@ class FraudRuleEngine:
         """
         ctxs = contexts or [None] * len(transactions)
         metrics: Dict[str, RulePerformanceMetrics] = {
-            r.id: RulePerformanceMetrics(rule_id=r.id)
-            for r in self._rules
-            if r.enabled
+            r.id: RulePerformanceMetrics(rule_id=r.id) for r in self._rules if r.enabled
         }
 
         for txn, label, ctx in zip(transactions, labels, ctxs):

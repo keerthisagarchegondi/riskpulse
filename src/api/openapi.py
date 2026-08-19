@@ -10,7 +10,6 @@ from fastapi.openapi.utils import get_openapi
 
 from src.utils.constants import APP_NAME, APP_VERSION, DEFAULT_RATE_LIMIT
 
-
 AUTHENTICATION_DESCRIPTION = (
     "RiskPulse uses API key authentication. Send the key in the `X-API-Key` header. "
     "Development and test environments include `dev-api-key-riskpulse-2024` by default. "
@@ -95,11 +94,26 @@ def install_custom_openapi(app: FastAPI) -> None:
             description=_build_description(),
             routes=app.routes,
             tags=[
-                {"name": "Health", "description": "Service liveness, readiness, and dependency status."},
-                {"name": "Transactions", "description": "Transaction ingestion and transaction lookup APIs."},
-                {"name": "Scoring", "description": "Unified rule, anomaly, and ML fraud scoring APIs."},
-                {"name": "Risk Scores", "description": "Model serving, model health, and monitoring APIs."},
-                {"name": "Rules Engine", "description": "Rule management, rule evaluation, and rule audit APIs."},
+                {
+                    "name": "Health",
+                    "description": "Service liveness, readiness, and dependency status.",
+                },
+                {
+                    "name": "Transactions",
+                    "description": "Transaction ingestion and transaction lookup APIs.",
+                },
+                {
+                    "name": "Scoring",
+                    "description": "Unified rule, anomaly, and ML fraud scoring APIs.",
+                },
+                {
+                    "name": "Risk Scores",
+                    "description": "Model serving, model health, and monitoring APIs.",
+                },
+                {
+                    "name": "Rules Engine",
+                    "description": "Rule management, rule evaluation, and rule audit APIs.",
+                },
             ],
         )
 
@@ -127,7 +141,9 @@ def install_custom_openapi(app: FastAPI) -> None:
 
 def _build_description() -> str:
     """Return rich API documentation used by Swagger UI."""
-    error_lines = "\n".join(f"- `{code}`: {description}" for code, description in ERROR_CODES.items())
+    error_lines = "\n".join(
+        f"- `{code}`: {description}" for code, description in ERROR_CODES.items()
+    )
     return (
         "Fraud Analytics & Risk Intelligence Platform API.\n\n"
         "## Authentication\n"
@@ -195,7 +211,12 @@ def _apply_examples(schema: dict[str, Any]) -> None:
         "post",
         "batchTransactions",
         "Two transaction batch",
-        {"transactions": [TRANSACTION_EXAMPLE, {**TRANSACTION_EXAMPLE, "external_transaction_id": "EXT-20260806-0002"}]},
+        {
+            "transactions": [
+                TRANSACTION_EXAMPLE,
+                {**TRANSACTION_EXAMPLE, "external_transaction_id": "EXT-20260806-0002"},
+            ]
+        },
     )
     _set_json_example(
         schema,

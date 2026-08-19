@@ -172,7 +172,9 @@ class EscalationRecord:
             "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
             "acknowledged_by": self.acknowledged_by,
             "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
-            "next_escalation_at": self.next_escalation_at.isoformat() if self.next_escalation_at else None,
+            "next_escalation_at": (
+                self.next_escalation_at.isoformat() if self.next_escalation_at else None
+            ),
             "history": self.history,
             "metadata": self.metadata,
         }
@@ -278,7 +280,12 @@ class EscalationEngine:
             "page": EscalationAction.PAGE,
             "conference": EscalationAction.CONFERENCE,
         }
-        level_map = {1: EscalationLevel.L1, 2: EscalationLevel.L2, 3: EscalationLevel.L3, 4: EscalationLevel.L4}
+        level_map = {
+            1: EscalationLevel.L1,
+            2: EscalationLevel.L2,
+            3: EscalationLevel.L3,
+            4: EscalationLevel.L4,
+        }
 
         levels = []
         for level_cfg in cfg.get("levels", []):
@@ -331,7 +338,9 @@ class EscalationEngine:
                 return policy
         return None
 
-    def start_escalation(self, alert: Alert, policy_id: str | None = None) -> EscalationRecord | None:
+    def start_escalation(
+        self, alert: Alert, policy_id: str | None = None
+    ) -> EscalationRecord | None:
         """Start the escalation process for an alert.
 
         Args:
@@ -428,12 +437,14 @@ class EscalationEngine:
             record.acknowledged_by = acknowledged_by
             record.next_escalation_at = None
 
-            record.history.append({
-                "timestamp": now.isoformat(),
-                "action": "acknowledged",
-                "by": acknowledged_by,
-                "level_at_ack": record.current_level.value,
-            })
+            record.history.append(
+                {
+                    "timestamp": now.isoformat(),
+                    "action": "acknowledged",
+                    "by": acknowledged_by,
+                    "level_at_ack": record.current_level.value,
+                }
+            )
 
         self._record_audit(
             action="escalation_acknowledged",
@@ -467,10 +478,12 @@ class EscalationEngine:
             record.resolved_at = now
             record.next_escalation_at = None
 
-            record.history.append({
-                "timestamp": now.isoformat(),
-                "action": "resolved",
-            })
+            record.history.append(
+                {
+                    "timestamp": now.isoformat(),
+                    "action": "resolved",
+                }
+            )
 
             # Move to completed
             del self._escalation_by_alert[alert_id]
@@ -521,11 +534,13 @@ class EscalationEngine:
             # Max level reached
             record.status = EscalationStatus.TIMED_OUT
             record.next_escalation_at = None
-            record.history.append({
-                "timestamp": now.isoformat(),
-                "action": "max_level_reached",
-                "level": record.current_level.value,
-            })
+            record.history.append(
+                {
+                    "timestamp": now.isoformat(),
+                    "action": "max_level_reached",
+                    "level": record.current_level.value,
+                }
+            )
             self._record_audit(
                 action="escalation_max_level",
                 alert_id=record.alert_id,
@@ -549,14 +564,16 @@ class EscalationEngine:
         record.escalated_to = recipients
         record.next_escalation_at = now + timedelta(minutes=next_config.timeout_minutes)
 
-        record.history.append({
-            "timestamp": now.isoformat(),
-            "action": "escalated",
-            "from_level": (next_level.value - 1),
-            "to_level": next_level.value,
-            "recipients": recipients,
-            "timeout_minutes": next_config.timeout_minutes,
-        })
+        record.history.append(
+            {
+                "timestamp": now.isoformat(),
+                "action": "escalated",
+                "from_level": (next_level.value - 1),
+                "to_level": next_level.value,
+                "recipients": recipients,
+                "timeout_minutes": next_config.timeout_minutes,
+            }
+        )
 
         self._record_audit(
             action="escalation_level_up",
@@ -630,9 +647,7 @@ class EscalationEngine:
                 return self._active_escalations.get(escalation_id)
         return None
 
-    def get_audit_log(
-        self, alert_id: str | None = None, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    def get_audit_log(self, alert_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
         """Get escalation audit trail, optionally filtered by alert."""
         if alert_id:
             entries = [e for e in self._audit_log if e.get("alert_id") == alert_id]
@@ -644,19 +659,23 @@ class EscalationEngine:
         """Get escalation engine statistics."""
         with self._lock:
             active = [
-                r for r in self._active_escalations.values()
+                r
+                for r in self._active_escalations.values()
                 if r.status in (EscalationStatus.PENDING, EscalationStatus.ESCALATED)
             ]
             acknowledged = [
-                r for r in self._active_escalations.values()
+                r
+                for r in self._active_escalations.values()
                 if r.status == EscalationStatus.ACKNOWLEDGED
             ]
             resolved = [
-                r for r in self._active_escalations.values()
+                r
+                for r in self._active_escalations.values()
                 if r.status == EscalationStatus.RESOLVED
             ]
             timed_out = [
-                r for r in self._active_escalations.values()
+                r
+                for r in self._active_escalations.values()
                 if r.status == EscalationStatus.TIMED_OUT
             ]
 

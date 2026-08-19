@@ -28,9 +28,7 @@ _NEW_MERCHANT_THRESHOLD_DAYS = 30
 
 def _load_merchant_risk_categories() -> dict[str, dict[str, Any]]:
     """Load merchant risk category configuration from YAML."""
-    config_path = (
-        Path(__file__).resolve().parents[2] / "config" / "merchant_risk_categories.yaml"
-    )
+    config_path = Path(__file__).resolve().parents[2] / "config" / "merchant_risk_categories.yaml"
     if not config_path.exists():
         logger.warning("merchant_risk_categories.yaml not found, using defaults")
         return {}
@@ -145,18 +143,14 @@ class InMemoryMerchantStore(MerchantStore):
             record["last_seen"] = timestamp
             record["total_transactions"] += 1
             if record["total_transactions"] > 0:
-                record["fraud_rate"] = (
-                    record["fraud_count"] / record["total_transactions"]
-                )
+                record["fraud_rate"] = record["fraud_count"] / record["total_transactions"]
 
     def record_merchant_fraud(self, merchant_id: str) -> None:
         if merchant_id in self._merchants:
             record = self._merchants[merchant_id]
             record["fraud_count"] += 1
             if record["total_transactions"] > 0:
-                record["fraud_rate"] = (
-                    record["fraud_count"] / record["total_transactions"]
-                )
+                record["fraud_rate"] = record["fraud_count"] / record["total_transactions"]
 
 
 class MerchantEnricher:
@@ -258,12 +252,8 @@ class MerchantEnricher:
             result.merchant_risk_score = self._compute_risk_score(result)
 
             # Record this transaction
-            txn_timestamp = self._parse_timestamp(
-                transaction.get("transaction_timestamp")
-            )
-            self._store.record_merchant_transaction(
-                merchant_id, merchant_name, mcc, txn_timestamp
-            )
+            txn_timestamp = self._parse_timestamp(transaction.get("transaction_timestamp"))
+            self._store.record_merchant_transaction(merchant_id, merchant_name, mcc, txn_timestamp)
 
         except Exception as e:
             result.error = str(e)
@@ -336,9 +326,7 @@ class MerchantEnricher:
             return datetime.fromisoformat(ts.replace("Z", "+00:00"))
         return datetime.now(timezone.utc)
 
-    def enrich_batch(
-        self, transactions: list[dict[str, Any]]
-    ) -> list[MerchantEnrichmentResult]:
+    def enrich_batch(self, transactions: list[dict[str, Any]]) -> list[MerchantEnrichmentResult]:
         """Enrich a batch of transactions with merchant intelligence.
 
         Args:

@@ -259,9 +259,7 @@ class ScoringPipeline:
     def _validate_weights(self) -> None:
         total = sum(self._weights.values())
         if abs(total - 1.0) > 1e-6:
-            raise ValueError(
-                f"Ensemble weights must sum to 1.0, got {total}: {self._weights}"
-            )
+            raise ValueError(f"Ensemble weights must sum to 1.0, got {total}: {self._weights}")
         for name, w in self._weights.items():
             if w < 0.0 or w > 1.0:
                 raise ValueError(f"Weight '{name}' must be between 0 and 1, got {w}")
@@ -278,9 +276,7 @@ class ScoringPipeline:
     def metrics(self) -> dict[str, Any]:
         with self._metrics_lock:
             avg_latency = (
-                self._total_latency_ms / self._total_scored
-                if self._total_scored > 0
-                else 0.0
+                self._total_latency_ms / self._total_scored if self._total_scored > 0 else 0.0
             )
             return {
                 "total_scored": self._total_scored,
@@ -316,9 +312,7 @@ class ScoringPipeline:
                     error="Rule engine not initialized",
                 )
 
-            result: RuleEvaluationResult = self._rule_engine.evaluate(
-                transaction, context
-            )
+            result: RuleEvaluationResult = self._rule_engine.evaluate(transaction, context)
 
             # Normalize rule score to [0, 1]
             # Use the rule_score already computed by the engine
@@ -474,9 +468,7 @@ class ScoringPipeline:
 
     # ── Ensemble Scoring ─────────────────────────────────────────────
 
-    def _compute_ensemble_score(
-        self, method_results: list[ScoringMethodResult]
-    ) -> float:
+    def _compute_ensemble_score(self, method_results: list[ScoringMethodResult]) -> float:
         """Compute weighted ensemble score from individual method results.
 
         If some methods fail, re-normalizes weights across successful methods.
@@ -490,9 +482,7 @@ class ScoringPipeline:
         if total_weight <= 0:
             return 0.0
 
-        ensemble_score = sum(
-            r.normalized_score * (r.weight / total_weight) for r in successful
-        )
+        ensemble_score = sum(r.normalized_score * (r.weight / total_weight) for r in successful)
         return max(0.0, min(1.0, ensemble_score))
 
     def _classify_risk(self, score: float) -> RiskClassification:
@@ -507,9 +497,7 @@ class ScoringPipeline:
 
     def _generate_cache_key(self, transaction: dict[str, Any]) -> str:
         """Generate a deterministic cache key for a transaction."""
-        txn_id = transaction.get("external_transaction_id") or transaction.get(
-            "transaction_id", ""
-        )
+        txn_id = transaction.get("external_transaction_id") or transaction.get("transaction_id", "")
         amount = str(transaction.get("transaction_amount", ""))
         ts = str(transaction.get("transaction_timestamp", ""))
         raw = f"{txn_id}:{amount}:{ts}"
@@ -641,12 +629,8 @@ class ScoringPipeline:
 
         # Execute scoring methods in parallel using asyncio
         loop = asyncio.get_event_loop()
-        rule_task = loop.run_in_executor(
-            None, self._score_rules, transaction, context
-        )
-        anomaly_task = loop.run_in_executor(
-            None, self._score_anomaly, transaction
-        )
+        rule_task = loop.run_in_executor(None, self._score_rules, transaction, context)
+        anomaly_task = loop.run_in_executor(None, self._score_anomaly, transaction)
         ml_task = loop.run_in_executor(None, self._score_ml, transaction)
 
         # Apply timeout
@@ -676,25 +660,40 @@ class ScoringPipeline:
         if "rule_engine" not in method_names_present:
             method_results.append(
                 ScoringMethodResult(
-                    method="rule_engine", raw_score=0.0, normalized_score=0.0,
-                    weight=self._weights["rule_score"], weighted_score=0.0,
-                    latency_ms=0.0, success=False, error="Timed out",
+                    method="rule_engine",
+                    raw_score=0.0,
+                    normalized_score=0.0,
+                    weight=self._weights["rule_score"],
+                    weighted_score=0.0,
+                    latency_ms=0.0,
+                    success=False,
+                    error="Timed out",
                 )
             )
         if "anomaly_detector" not in method_names_present:
             method_results.append(
                 ScoringMethodResult(
-                    method="anomaly_detector", raw_score=0.0, normalized_score=0.0,
-                    weight=self._weights["anomaly_score"], weighted_score=0.0,
-                    latency_ms=0.0, success=False, error="Timed out",
+                    method="anomaly_detector",
+                    raw_score=0.0,
+                    normalized_score=0.0,
+                    weight=self._weights["anomaly_score"],
+                    weighted_score=0.0,
+                    latency_ms=0.0,
+                    success=False,
+                    error="Timed out",
                 )
             )
         if "ml_model" not in method_names_present:
             method_results.append(
                 ScoringMethodResult(
-                    method="ml_model", raw_score=0.0, normalized_score=0.0,
-                    weight=self._weights["ml_score"], weighted_score=0.0,
-                    latency_ms=0.0, success=False, error="Timed out",
+                    method="ml_model",
+                    raw_score=0.0,
+                    normalized_score=0.0,
+                    weight=self._weights["ml_score"],
+                    weighted_score=0.0,
+                    latency_ms=0.0,
+                    success=False,
+                    error="Timed out",
                 )
             )
 
@@ -769,9 +768,7 @@ class ScoringPipeline:
         chunk_size = batch_cfg.get("chunk_size", 100)
 
         if len(transactions) > max_batch:
-            raise ValueError(
-                f"Batch size {len(transactions)} exceeds maximum {max_batch}"
-            )
+            raise ValueError(f"Batch size {len(transactions)} exceeds maximum {max_batch}")
 
         if contexts is None:
             contexts = [None] * len(transactions)
@@ -818,9 +815,7 @@ class ScoringPipeline:
         max_batch = batch_cfg.get("max_batch_size", 1000)
 
         if len(transactions) > max_batch:
-            raise ValueError(
-                f"Batch size {len(transactions)} exceeds maximum {max_batch}"
-            )
+            raise ValueError(f"Batch size {len(transactions)} exceeds maximum {max_batch}")
 
         if contexts is None:
             contexts = [None] * len(transactions)

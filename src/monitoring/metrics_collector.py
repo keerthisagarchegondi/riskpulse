@@ -166,13 +166,17 @@ class CloudWatchMetricsCollector:
             dimensions={"ModelName": model_name},
         )
 
-    def record_error(self, *, error_count: int = 1, total_count: int | None = None, severity: str = "high") -> None:
+    def record_error(
+        self, *, error_count: int = 1, total_count: int | None = None, severity: str = "high"
+    ) -> None:
         self.put_metric(METRIC_ERROR_COUNT, error_count, unit="Count", severity=severity)
         if total_count is not None:
             rate = (error_count / total_count) * 100 if total_count else 0.0
             self.put_metric(METRIC_ERROR_RATE, rate, unit="Percent", severity=severity)
 
-    def record_kafka_consumer_lag(self, lag_messages: int, *, topic: str, consumer_group: str) -> None:
+    def record_kafka_consumer_lag(
+        self, lag_messages: int, *, topic: str, consumer_group: str
+    ) -> None:
         self.put_metric(
             METRIC_KAFKA_CONSUMER_LAG,
             lag_messages,

@@ -183,9 +183,7 @@ class AnomalyDetector:
             is_anomaly = prediction == -1
 
         confidence = self._compute_confidence(anomaly_score)
-        contributing = self._identify_contributing_features(
-            feature_vector, X_scaled[0]
-        )
+        contributing = self._identify_contributing_features(feature_vector, X_scaled[0])
 
         latency_ms = (time.perf_counter() - start) * 1000
 
@@ -199,9 +197,7 @@ class AnomalyDetector:
             model_version=self._model_version,
         )
 
-    def predict_batch(
-        self, X: pd.DataFrame
-    ) -> list[AnomalyResult]:
+    def predict_batch(self, X: pd.DataFrame) -> list[AnomalyResult]:
         """Score a batch of transactions.
 
         Args:
@@ -404,9 +400,7 @@ class AnomalyDetector:
                 best_f1 = f1
                 best_contamination = c
 
-        logger.info(
-            "Best contamination=%.4f (F1=%.4f)", best_contamination, best_f1
-        )
+        logger.info("Best contamination=%.4f (F1=%.4f)", best_contamination, best_f1)
         self._contamination = best_contamination
         return best_contamination
 

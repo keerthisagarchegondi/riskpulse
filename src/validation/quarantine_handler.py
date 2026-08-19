@@ -72,7 +72,9 @@ class QuarantineMetrics:
                 "total_quarantined": self.total_quarantined,
                 "total_reprocessed": self.total_reprocessed,
                 "total_discarded": self.total_discarded,
-                "active_quarantined": self.total_quarantined - self.total_reprocessed - self.total_discarded,
+                "active_quarantined": self.total_quarantined
+                - self.total_reprocessed
+                - self.total_discarded,
                 "reasons_breakdown": dict(self.reasons_breakdown),
             }
 
@@ -219,9 +221,9 @@ class QuarantineHandler:
                 candidates = [c for c in candidates if c is not None]
             else:
                 candidates = [
-                    r for r in self._store.values()
-                    if r.status == "quarantined"
-                    and r.retry_count < self._max_retry_attempts
+                    r
+                    for r in self._store.values()
+                    if r.status == "quarantined" and r.retry_count < self._max_retry_attempts
                 ]
 
         for entry in candidates:
@@ -311,9 +313,7 @@ class QuarantineHandler:
     def count(self) -> int:
         """Number of currently quarantined (active) records."""
         with self._lock:
-            return sum(
-                1 for r in self._store.values() if r.status == "quarantined"
-            )
+            return sum(1 for r in self._store.values() if r.status == "quarantined")
 
     @property
     def total_count(self) -> int:

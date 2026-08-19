@@ -25,7 +25,6 @@ from src.api.app import create_app
 from src.api.middleware.auth import reset_key_manager
 from src.api.middleware.rate_limiter import InMemoryRateLimiter
 
-
 # --- Fixtures ---
 
 
@@ -174,7 +173,9 @@ class TestTransactionSubmission:
         uuid.UUID(data["transaction_id"])
 
     @patch("src.api.routes.transactions._get_kafka_producer")
-    def test_submit_minimal_transaction(self, mock_producer, client, auth_headers, minimal_transaction):
+    def test_submit_minimal_transaction(
+        self, mock_producer, client, auth_headers, minimal_transaction
+    ):
         """Transaction with only required fields should be accepted."""
         mock_producer.return_value = MagicMock()
 
@@ -187,7 +188,9 @@ class TestTransactionSubmission:
         assert response.status_code == status.HTTP_202_ACCEPTED
 
     @patch("src.api.routes.transactions._get_kafka_producer")
-    def test_submit_publishes_to_kafka(self, mock_producer, client, auth_headers, valid_transaction):
+    def test_submit_publishes_to_kafka(
+        self, mock_producer, client, auth_headers, valid_transaction
+    ):
         """Submitted transaction should be published to Kafka."""
         mock_prod_instance = MagicMock()
         mock_producer.return_value = mock_prod_instance
@@ -206,7 +209,9 @@ class TestTransactionSubmission:
         assert call_args[1]["topic"] == "txn.raw.events"
 
     @patch("src.api.routes.transactions._get_kafka_producer")
-    def test_kafka_failure_returns_503(self, mock_producer, client, auth_headers, valid_transaction):
+    def test_kafka_failure_returns_503(
+        self, mock_producer, client, auth_headers, valid_transaction
+    ):
         """Kafka publish failure should return 503."""
         mock_prod_instance = MagicMock()
         mock_prod_instance.produce.side_effect = Exception("Kafka broker unavailable")
@@ -222,7 +227,9 @@ class TestTransactionSubmission:
         assert "retry" in response.json()["detail"].lower()
 
     @patch("src.api.routes.transactions._get_kafka_producer")
-    def test_kafka_unavailable_graceful(self, mock_producer, client, auth_headers, valid_transaction):
+    def test_kafka_unavailable_graceful(
+        self, mock_producer, client, auth_headers, valid_transaction
+    ):
         """When Kafka producer returns None, should still log warning and succeed."""
         mock_producer.return_value = None
 
@@ -714,9 +721,15 @@ class TestHealthEndpoints:
             patch("src.api.routes.health._check_postgres") as mock_pg,
             patch("src.api.routes.health._check_redis") as mock_redis,
         ):
-            mock_kafka.return_value = DependencyStatus(name="kafka", status="healthy", latency_ms=5.0)
-            mock_pg.return_value = DependencyStatus(name="postgresql", status="healthy", latency_ms=3.0)
-            mock_redis.return_value = DependencyStatus(name="redis", status="healthy", latency_ms=1.0)
+            mock_kafka.return_value = DependencyStatus(
+                name="kafka", status="healthy", latency_ms=5.0
+            )
+            mock_pg.return_value = DependencyStatus(
+                name="postgresql", status="healthy", latency_ms=3.0
+            )
+            mock_redis.return_value = DependencyStatus(
+                name="redis", status="healthy", latency_ms=1.0
+            )
 
             response = client.get("/health")
 
@@ -738,9 +751,15 @@ class TestHealthEndpoints:
             patch("src.api.routes.health._check_postgres") as mock_pg,
             patch("src.api.routes.health._check_redis") as mock_redis,
         ):
-            mock_kafka.return_value = DependencyStatus(name="kafka", status="unhealthy", latency_ms=5000.0, detail="timeout")
-            mock_pg.return_value = DependencyStatus(name="postgresql", status="healthy", latency_ms=3.0)
-            mock_redis.return_value = DependencyStatus(name="redis", status="healthy", latency_ms=1.0)
+            mock_kafka.return_value = DependencyStatus(
+                name="kafka", status="unhealthy", latency_ms=5000.0, detail="timeout"
+            )
+            mock_pg.return_value = DependencyStatus(
+                name="postgresql", status="healthy", latency_ms=3.0
+            )
+            mock_redis.return_value = DependencyStatus(
+                name="redis", status="healthy", latency_ms=1.0
+            )
 
             response = client.get("/health")
 

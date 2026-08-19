@@ -272,21 +272,25 @@ class AlertTemplateRenderer:
         # Add transaction details
         txn_details = alert.details.get("transaction", {})
         if txn_details:
-            body_lines.extend([
-                f"{s('amount_label')}: {txn_details.get('amount', 'N/A')} "
-                f"{txn_details.get('currency', 'USD')}",
-                f"{s('merchant_label')}: {txn_details.get('merchant', 'N/A')}",
-                f"{s('channel_label')}: {txn_details.get('channel', 'N/A')}",
-                f"{s('timestamp_label')}: {txn_details.get('timestamp', 'N/A')}",
-                "",
-            ])
+            body_lines.extend(
+                [
+                    f"{s('amount_label')}: {txn_details.get('amount', 'N/A')} "
+                    f"{txn_details.get('currency', 'USD')}",
+                    f"{s('merchant_label')}: {txn_details.get('merchant', 'N/A')}",
+                    f"{s('channel_label')}: {txn_details.get('channel', 'N/A')}",
+                    f"{s('timestamp_label')}: {txn_details.get('timestamp', 'N/A')}",
+                    "",
+                ]
+            )
 
-        body_lines.extend([
-            f"{s('description_label')}: {alert.description}",
-            "",
-            f"--- {s('action_required')} ---",
-            severity_msg,
-        ])
+        body_lines.extend(
+            [
+                f"{s('description_label')}: {alert.description}",
+                "",
+                f"--- {s('action_required')} ---",
+                severity_msg,
+            ]
+        )
 
         body = "\n".join(body_lines)
 
@@ -364,6 +368,7 @@ class AlertTemplateRenderer:
         }
 
         import json
+
         body = json.dumps(body_data, indent=2, default=str)
 
         return RenderedAlert(

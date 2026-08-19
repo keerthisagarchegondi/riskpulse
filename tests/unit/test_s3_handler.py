@@ -26,30 +26,29 @@ import pyarrow.parquet as pq
 import pytest
 from moto import mock_aws
 
-from src.storage.s3_handler import (
-    S3_BUCKET_RAW,
-    S3_BUCKET_PROCESSED,
-    S3Handler,
-    S3Metrics,
-    S3UploadError,
-    S3DownloadError,
-    StorageLayer,
-    _build_partition_path,
-    _generate_file_key,
-    MULTIPART_THRESHOLD,
-)
 from src.ingestion.api_ingestion import (
+    REQUIRED_TRANSACTION_FIELDS,
     BatchIngestionHandler,
     DetectedSchema,
     FileFormat,
+    IngestionError,
     IngestionResult,
     IngestionStatus,
-    IngestionError,
     SchemaDetectionError,
     ValidationError,
-    REQUIRED_TRANSACTION_FIELDS,
 )
-
+from src.storage.s3_handler import (
+    MULTIPART_THRESHOLD,
+    S3_BUCKET_PROCESSED,
+    S3_BUCKET_RAW,
+    S3DownloadError,
+    S3Handler,
+    S3Metrics,
+    S3UploadError,
+    StorageLayer,
+    _build_partition_path,
+    _generate_file_key,
+)
 
 # ============================================================================
 # Fixtures
@@ -136,10 +135,7 @@ def sample_transactions():
 def sample_csv_data():
     """Generate sample CSV content."""
     header = "account_id,transaction_amount,transaction_currency,transaction_type,transaction_timestamp\n"
-    rows = [
-        f"ACC-{i:05d},{10.0 + i},USD,purchase,2026-06-15T10:30:00Z\n"
-        for i in range(50)
-    ]
+    rows = [f"ACC-{i:05d},{10.0 + i},USD,purchase,2026-06-15T10:30:00Z\n" for i in range(50)]
     return (header + "".join(rows)).encode("utf-8")
 
 
@@ -163,13 +159,15 @@ def sample_json_data():
 def sample_jsonl_data():
     """Generate sample JSONL content."""
     lines = [
-        json.dumps({
-            "account_id": f"ACC-{i:05d}",
-            "transaction_amount": 10.0 + i,
-            "transaction_currency": "USD",
-            "transaction_type": "purchase",
-            "transaction_timestamp": "2026-06-15T10:30:00Z",
-        })
+        json.dumps(
+            {
+                "account_id": f"ACC-{i:05d}",
+                "transaction_amount": 10.0 + i,
+                "transaction_currency": "USD",
+                "transaction_type": "purchase",
+                "transaction_timestamp": "2026-06-15T10:30:00Z",
+            }
+        )
         for i in range(50)
     ]
     return "\n".join(lines).encode("utf-8")
@@ -278,7 +276,9 @@ class TestS3HandlerUpload:
         assert "account_id" in table.column_names
         assert "transaction_amount" in table.column_names
 
-    def test_upload_transactions_snappy_compression(self, s3_handler, s3_setup, sample_transactions):
+    def test_upload_transactions_snappy_compression(
+        self, s3_handler, s3_setup, sample_transactions
+    ):
         ts = datetime(2026, 6, 15, 14, 0, 0, tzinfo=timezone.utc)
         key = s3_handler.upload_transactions(sample_transactions, timestamp=ts)
 
@@ -411,9 +411,7 @@ class TestS3HandlerUtilities:
         key1 = s3_handler.upload_transactions(sample_transactions[:10], timestamp=ts)
         key2 = s3_handler.upload_transactions(sample_transactions[10:20], timestamp=ts)
 
-        keys = s3_handler.list_partition(
-            S3_BUCKET_RAW, "transactions", timestamp=ts
-        )
+        keys = s3_handler.list_partition(S3_BUCKET_RAW, "transactions", timestamp=ts)
         assert len(keys) == 2
         assert key1 in keys
         assert key2 in keys
@@ -510,9 +508,7 @@ class TestBatchIngestionCSV:
     """Tests for CSV file ingestion."""
 
     def test_ingest_csv(self, batch_handler, s3_setup, sample_csv_data):
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="incoming/data.csv", Body=sample_csv_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="incoming/data.csv", Body=sample_csv_data)
 
         result = batch_handler.ingest_file(S3_BUCKET_RAW, "incoming/data.csv")
 
@@ -522,9 +518,7 @@ class TestBatchIngestionCSV:
         assert "account_id" in result.schema_fields
 
     def test_ingest_csv_creates_parquet_output(self, batch_handler, s3_setup, sample_csv_data):
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="incoming/data.csv", Body=sample_csv_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="incoming/data.csv", Body=sample_csv_data)
 
         result = batch_handler.ingest_file(S3_BUCKET_RAW, "incoming/data.csv")
 
@@ -532,9 +526,7 @@ class TestBatchIngestionCSV:
         assert result.destination_key.endswith(".parquet")
 
         # Verify the output is readable
-        response = s3_setup.get_object(
-            Bucket=S3_BUCKET_PROCESSED, Key=result.destination_key
-        )
+        response = s3_setup.get_object(Bucket=S3_BUCKET_PROCESSED, Key=result.destination_key)
         body = response["Body"].read()
         table = pq.read_table(io.BytesIO(body))
         assert table.num_rows == 50
@@ -549,9 +541,7 @@ class TestBatchIngestionJSON:
     """Tests for JSON file ingestion."""
 
     def test_ingest_json_array(self, batch_handler, s3_setup, sample_json_data):
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="incoming/data.json", Body=sample_json_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="incoming/data.json", Body=sample_json_data)
 
         result = batch_handler.ingest_file(S3_BUCKET_RAW, "incoming/data.json")
 
@@ -560,29 +550,27 @@ class TestBatchIngestionJSON:
         assert result.file_format == FileFormat.JSON
 
     def test_ingest_json_wrapped(self, batch_handler, s3_setup):
-        wrapped = json.dumps({
-            "data": [
-                {
-                    "account_id": "ACC-001",
-                    "transaction_amount": 100.0,
-                    "transaction_currency": "USD",
-                    "transaction_type": "purchase",
-                    "transaction_timestamp": "2026-06-15T10:00:00Z",
-                }
-            ]
-        }).encode("utf-8")
+        wrapped = json.dumps(
+            {
+                "data": [
+                    {
+                        "account_id": "ACC-001",
+                        "transaction_amount": 100.0,
+                        "transaction_currency": "USD",
+                        "transaction_type": "purchase",
+                        "transaction_timestamp": "2026-06-15T10:00:00Z",
+                    }
+                ]
+            }
+        ).encode("utf-8")
 
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="incoming/wrapped.json", Body=wrapped
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="incoming/wrapped.json", Body=wrapped)
 
         result = batch_handler.ingest_file(S3_BUCKET_RAW, "incoming/wrapped.json")
         assert result.records_processed == 1
 
     def test_ingest_jsonl(self, batch_handler, s3_setup, sample_jsonl_data):
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="incoming/data.jsonl", Body=sample_jsonl_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="incoming/data.jsonl", Body=sample_jsonl_data)
 
         result = batch_handler.ingest_file(S3_BUCKET_RAW, "incoming/data.jsonl")
 
@@ -602,9 +590,7 @@ class TestBatchIngestionValidation:
     def test_missing_required_fields(self, batch_handler, s3_setup):
         # CSV missing required fields
         csv_data = b"name,email\nJohn,john@test.com\nJane,jane@test.com\n"
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="incoming/bad.csv", Body=csv_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="incoming/bad.csv", Body=csv_data)
 
         result = batch_handler.ingest_file(S3_BUCKET_RAW, "incoming/bad.csv")
 
@@ -613,9 +599,7 @@ class TestBatchIngestionValidation:
 
     def test_skip_validation(self, batch_handler, s3_setup):
         csv_data = b"name,email\nJohn,john@test.com\n"
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="incoming/no_validate.csv", Body=csv_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="incoming/no_validate.csv", Body=csv_data)
 
         result = batch_handler.ingest_file(
             S3_BUCKET_RAW, "incoming/no_validate.csv", validate=False
@@ -633,9 +617,7 @@ class TestBatchIngestionValidation:
             "ACC-003,300.0,USD,purchase,2026-06-15T12:00:00Z\n"
         ).encode("utf-8")
 
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="incoming/nulls.csv", Body=csv_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="incoming/nulls.csv", Body=csv_data)
 
         result = batch_handler.ingest_file(S3_BUCKET_RAW, "incoming/nulls.csv")
 
@@ -652,9 +634,7 @@ class TestSchemaDetection:
     """Tests for schema detection."""
 
     def test_detect_csv_schema(self, batch_handler, s3_setup, sample_csv_data):
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="detect/data.csv", Body=sample_csv_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="detect/data.csv", Body=sample_csv_data)
 
         schema = batch_handler.detect_schema(S3_BUCKET_RAW, "detect/data.csv")
 
@@ -665,9 +645,7 @@ class TestSchemaDetection:
         assert schema.row_count_estimate == 50
 
     def test_detect_json_schema(self, batch_handler, s3_setup, sample_json_data):
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="detect/data.json", Body=sample_json_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="detect/data.json", Body=sample_json_data)
 
         schema = batch_handler.detect_schema(S3_BUCKET_RAW, "detect/data.json")
 
@@ -676,9 +654,7 @@ class TestSchemaDetection:
         assert schema.row_count_estimate == 50
 
     def test_detect_jsonl_schema(self, batch_handler, s3_setup, sample_jsonl_data):
-        s3_setup.put_object(
-            Bucket=S3_BUCKET_RAW, Key="detect/data.jsonl", Body=sample_jsonl_data
-        )
+        s3_setup.put_object(Bucket=S3_BUCKET_RAW, Key="detect/data.jsonl", Body=sample_jsonl_data)
 
         schema = batch_handler.detect_schema(S3_BUCKET_RAW, "detect/data.jsonl")
 
@@ -703,20 +679,15 @@ class TestPartitionIngestion:
             Bucket=S3_BUCKET_RAW, Key="incoming/2026/06/15/file2.json", Body=sample_json_data
         )
 
-        results = batch_handler.ingest_partition(
-            S3_BUCKET_RAW, "incoming/2026/06/15/"
-        )
+        results = batch_handler.ingest_partition(S3_BUCKET_RAW, "incoming/2026/06/15/")
 
         assert len(results) == 2
         assert all(
-            r.status in (IngestionStatus.COMPLETED, IngestionStatus.PARTIAL)
-            for r in results
+            r.status in (IngestionStatus.COMPLETED, IngestionStatus.PARTIAL) for r in results
         )
 
     def test_ingest_empty_partition(self, batch_handler, s3_setup):
-        results = batch_handler.ingest_partition(
-            S3_BUCKET_RAW, "empty/partition/"
-        )
+        results = batch_handler.ingest_partition(S3_BUCKET_RAW, "empty/partition/")
         assert results == []
 
 

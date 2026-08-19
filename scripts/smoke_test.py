@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 DEFAULT_API_KEY = "dev-api-key-riskpulse-2024"
@@ -49,6 +49,9 @@ class CheckResult:
 
 
 def _normalize_base_url(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError(f"Unsupported URL scheme for smoke check: {parsed.scheme!r}")
     return url.rstrip("/") + "/"
 
 
@@ -75,7 +78,7 @@ def _request_json(
 ) -> tuple[int, dict[str, Any] | list[Any] | str]:
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     request = Request(url, data=data, method=method, headers=headers or {})
-    with urlopen(request, timeout=timeout) as response:
+    with urlopen(request, timeout=timeout) as response:  # nosec B310
         body = response.read().decode("utf-8")
         try:
             parsed: dict[str, Any] | list[Any] | str = json.loads(body) if body else {}

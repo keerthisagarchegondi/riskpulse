@@ -247,9 +247,7 @@ class SchemaValidator:
         self._metrics.record(result)
         return result
 
-    def validate_batch(
-        self, records: list[dict[str, Any]]
-    ) -> list[ValidationResult]:
+    def validate_batch(self, records: list[dict[str, Any]]) -> list[ValidationResult]:
         """Validate a batch of transaction records.
 
         Args:
@@ -264,9 +262,7 @@ class SchemaValidator:
     # Required fields
     # -------------------------------------------------------------------------
 
-    def _check_required_fields(
-        self, record: dict[str, Any], errors: list[ValidationError]
-    ) -> None:
+    def _check_required_fields(self, record: dict[str, Any], errors: list[ValidationError]) -> None:
         required = self._rules.get("required_fields", [])
         for field_name in required:
             value = record.get(field_name)
@@ -532,7 +528,10 @@ class SchemaValidator:
             condition = rule.get("condition", "")
             name = rule["name"]
 
-            if condition == "geo_country is not None and geo_country != domestic_country and is_international is False":
+            if (
+                condition
+                == "geo_country is not None and geo_country != domestic_country and is_international is False"
+            ):
                 self._rule_international_flag(record, rule, name, severity, target)
             elif condition == "card_type is not None and card_last_four is None":
                 self._rule_card_last_four_required(record, name, severity, target)

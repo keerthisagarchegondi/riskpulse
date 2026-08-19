@@ -35,7 +35,6 @@ from src.enrichment.velocity_calculator import (
     VelocityResult,
 )
 
-
 # =============================================================================
 # Geo Enricher Tests
 # =============================================================================
@@ -529,9 +528,7 @@ class TestVelocityCalculator:
             result = calculator.evaluate(txn)
 
         assert result.has_warning is True
-        assert any(
-            b.metric_name == "transaction_count_1min" for b in result.breaches
-        )
+        assert any(b.metric_name == "transaction_count_1min" for b in result.breaches)
 
     def test_critical_breach_on_high_velocity(self, calculator):
         base_ts = datetime(2026, 6, 15, 10, 0, 0, tzinfo=timezone.utc)
@@ -561,9 +558,7 @@ class TestVelocityCalculator:
             }
             result = calculator.evaluate(txn)
 
-        assert any(
-            b.metric_name == "amount_sum_1min" for b in result.breaches
-        )
+        assert any(b.metric_name == "amount_sum_1min" for b in result.breaches)
 
     def test_risk_score_increases_with_breaches(self, calculator):
         base_ts = datetime(2026, 6, 15, 10, 0, 0, tzinfo=timezone.utc)

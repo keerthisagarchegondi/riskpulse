@@ -12,9 +12,19 @@ from fastapi.testclient import TestClient
 
 from src.api.app import create_app
 from src.api.middleware.auth import reset_key_manager
-from src.utils.secrets_manager import SecretsManager
-from src.utils.security import SecurityValidationError, create_jwt_token, sanitize_string, verify_jwt_token
+from src.utils.config import get_settings
+from src.utils.secrets_manager import SecretsManager, SecretsManagerError
+from src.utils.security import (
+    SecurityValidationError,
+    create_jwt_token,
+    sanitize_string,
+    verify_jwt_token,
+)
 from src.utils.sql_security import SqlFilter, UnsafeQueryError, build_where_clause
+
+UNIT_SECRET = "unit-secret-for-hs256-tests-32-bytes"
+PROD_SECRET = "prod-unit-secret-for-hs256-tests-32-bytes"
+DEV_JWT_SECRET = "dev-jwt-secret-for-hs256-tests-32-bytes"
 
 
 class FakeSecretsClient:
@@ -34,11 +44,21 @@ class FakeSecretsClient:
                             "rate_limit": 500,
                         }
                     ],
-                    "jwt_secret": "unit-secret",
+                    "jwt_secret": UNIT_SECRET,
                 }
             ),
             "VersionId": "v1",
         }
+
+
+class FakeBoto3:
+    def __init__(self) -> None:
+        self.region_name = None
+
+    def client(self, service_name: str, *, region_name: str | None = None):
+        self.region_name = region_name
+        assert service_name == "secretsmanager"
+        return FakeSecretsClient()
 
 
 @pytest.fixture(autouse=True)
@@ -75,30 +95,74 @@ def test_secrets_manager_parses_and_caches_json_secret() -> None:
     first = manager.get_secret("riskpulse/dev/api")
     second = manager.get_secret("riskpulse/dev/api")
 
-    assert first["jwt_secret"] == "unit-secret"
+    assert first["jwt_secret"] == UNIT_SECRET
     assert second["api_keys"][0]["name"] == "ci"
     assert fake.calls == 1
+
+
+def test_secrets_manager_passes_configured_region(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_boto3 = FakeBoto3()
+
+    with patch.dict("sys.modules", {"boto3": fake_boto3}):
+        manager = SecretsManager(enabled=True, region_name="us-west-2")
+
+    assert fake_boto3.region_name == "us-west-2"
+    assert manager.get_secret("riskpulse/dev/api")["jwt_secret"] == UNIT_SECRET
+
+
+def test_prod_jwt_secret_refuses_development_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.delenv("RISKPULSE_JWT_SECRET", raising=False)
+    get_settings.cache_clear()
+
+    try:
+        manager = SecretsManager(enabled=False)
+
+        with pytest.raises(SecretsManagerError, match="Production JWT secret"):
+            manager.get_jwt_secret()
+    finally:
+        get_settings.cache_clear()
+
+
+def test_prod_jwt_secret_accepts_explicit_environment_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.setenv("RISKPULSE_JWT_SECRET", PROD_SECRET)
+    get_settings.cache_clear()
+
+    try:
+        manager = SecretsManager(enabled=False)
+
+        assert manager.get_jwt_secret() == PROD_SECRET
+    finally:
+        get_settings.cache_clear()
 
 
 def test_jwt_token_round_trip_uses_permissions() -> None:
     token = create_jwt_token(
         subject="service:worker",
         permissions=["read", "write"],
-        secret="unit-secret",
+        secret=UNIT_SECRET,
     )
 
-    metadata = verify_jwt_token(token, secret="unit-secret")
+    metadata = verify_jwt_token(token, secret=UNIT_SECRET)
 
     assert metadata["name"] == "service:worker"
     assert metadata["permissions"] == ["read", "write"]
     assert metadata["auth_type"] == "jwt"
 
 
-def test_api_accepts_jwt_bearer_token(client, valid_transaction) -> None:
+def test_api_accepts_jwt_bearer_token(
+    client,
+    valid_transaction,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_JWT_SECRET", DEV_JWT_SECRET)
     token = create_jwt_token(
         subject="analyst@example.com",
         permissions=["read", "write"],
-        secret="dev-jwt-secret",
+        secret=DEV_JWT_SECRET,
     )
 
     with patch("src.api.routes.transactions._get_kafka_producer", return_value=None):
@@ -164,9 +228,14 @@ def test_sql_builder_rejects_unsafe_column() -> None:
 
 def test_iam_policy_artifacts_are_valid_json_and_least_privilege() -> None:
     policy_dir = Path("infrastructure/aws/iam_policies")
-    policies = {path.name: json.loads(path.read_text(encoding="utf-8")) for path in policy_dir.glob("*.json")}
+    policies = {
+        path.name: json.loads(path.read_text(encoding="utf-8"))
+        for path in policy_dir.glob("*.json")
+    }
 
-    assert {"s3_access_policy.json", "cloudwatch_policy.json", "snowflake_policy.json"}.issubset(policies)
+    assert {"s3_access_policy.json", "cloudwatch_policy.json", "snowflake_policy.json"}.issubset(
+        policies
+    )
     cloudwatch_actions = policies["cloudwatch_policy.json"]["Statement"][0]["Action"]
     assert "logs:PutLogEvents" in cloudwatch_actions
     assert "*" not in policies["s3_access_policy.json"]["Statement"][0]["Action"]

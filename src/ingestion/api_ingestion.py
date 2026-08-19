@@ -25,10 +25,10 @@ import pyarrow.parquet as pq
 import structlog
 
 from src.storage.s3_handler import (
-    S3Handler,
-    S3_BUCKET_RAW,
     S3_BUCKET_PROCESSED,
+    S3_BUCKET_RAW,
     S3DownloadError,
+    S3Handler,
     S3UploadError,
     get_s3_handler,
 )
@@ -38,13 +38,15 @@ logger = structlog.get_logger(__name__)
 
 
 # Required fields for transaction ingestion
-REQUIRED_TRANSACTION_FIELDS = frozenset({
-    "account_id",
-    "transaction_amount",
-    "transaction_currency",
-    "transaction_type",
-    "transaction_timestamp",
-})
+REQUIRED_TRANSACTION_FIELDS = frozenset(
+    {
+        "account_id",
+        "transaction_amount",
+        "transaction_currency",
+        "transaction_type",
+        "transaction_timestamp",
+    }
+)
 
 # Maximum chunk size for streaming reads (5 MB)
 STREAM_CHUNK_SIZE = 5 * 1024 * 1024
@@ -214,14 +216,10 @@ class BatchIngestionHandler:
 
             if file_size > MAX_IN_MEMORY_SIZE:
                 # Use streaming for large files
-                table = self._stream_ingest(
-                    source_bucket, source_key, detected_format, file_size
-                )
+                table = self._stream_ingest(source_bucket, source_key, detected_format, file_size)
             else:
                 # Standard in-memory processing
-                table = self._standard_ingest(
-                    source_bucket, source_key, detected_format
-                )
+                table = self._standard_ingest(source_bucket, source_key, detected_format)
 
             result.schema_fields = table.column_names
 
@@ -232,9 +230,7 @@ class BatchIngestionHandler:
                 if validation_errors:
                     result.errors.extend(validation_errors)
                     # Filter out invalid rows
-                    table, failed_count = self._filter_invalid_rows(
-                        table, fields_to_check
-                    )
+                    table, failed_count = self._filter_invalid_rows(table, fields_to_check)
                     result.records_failed = failed_count
 
             result.records_processed = table.num_rows
@@ -245,9 +241,7 @@ class BatchIngestionHandler:
                 result.destination_key = destination_key
 
             result.status = (
-                IngestionStatus.COMPLETED
-                if result.records_failed == 0
-                else IngestionStatus.PARTIAL
+                IngestionStatus.COMPLETED if result.records_failed == 0 else IngestionStatus.PARTIAL
             )
             result.completed_at = datetime.now(timezone.utc)
 
@@ -586,9 +580,7 @@ class BatchIngestionHandler:
     # Schema Detection
     # =========================================================================
 
-    def _download_sample(
-        self, bucket: str, key: str, sample_size: int
-    ) -> bytes:
+    def _download_sample(self, bucket: str, key: str, sample_size: int) -> bytes:
         """Download a sample of a file for schema detection."""
         # Read first chunk (enough for header + sample rows)
         try:
@@ -655,9 +647,7 @@ class BatchIngestionHandler:
             delimiter=delimiter,
         )
 
-    def _detect_json_schema(
-        self, sample: bytes, file_format: FileFormat
-    ) -> DetectedSchema:
+    def _detect_json_schema(self, sample: bytes, file_format: FileFormat) -> DetectedSchema:
         """Detect JSON/JSONL schema from sample bytes."""
         text = sample.decode("utf-8", errors="replace")
 
@@ -698,9 +688,7 @@ class BatchIngestionHandler:
             has_header=True,
         )
 
-    def _detect_parquet_schema(
-        self, bucket: str, key: str
-    ) -> DetectedSchema:
+    def _detect_parquet_schema(self, bucket: str, key: str) -> DetectedSchema:
         """Detect schema from a Parquet file (reads metadata only)."""
         table = self._s3.download_parquet(bucket, key)
         schema = table.schema
@@ -757,8 +745,7 @@ class BatchIngestionHandler:
         """
         now = datetime.now(timezone.utc)
         partition_path = (
-            f"{self._destination_prefix}/"
-            f"{now.year:04d}/{now.month:02d}/{now.day:02d}"
+            f"{self._destination_prefix}/" f"{now.year:04d}/{now.month:02d}/{now.day:02d}"
         )
 
         # Generate output key

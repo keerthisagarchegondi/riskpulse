@@ -174,9 +174,7 @@ class CacheHandler:
     ) -> None:
         settings = get_settings()
 
-        self._redis_url = redis_url or settings.get(
-            "redis.url", "redis://localhost:6379/0"
-        )
+        self._redis_url = redis_url or settings.get("redis.url", "redis://localhost:6379/0")
         self._ttl_customer_profile = ttl_customer_profile or settings.get(
             "redis.ttl.customer_profile", 300
         )
@@ -217,7 +215,7 @@ class CacheHandler:
         if "@" in url:
             scheme_end = url.index("://") + 3
             at_pos = url.index("@")
-            return url[:scheme_end] + "***@" + url[at_pos + 1:]
+            return url[:scheme_end] + "***@" + url[at_pos + 1 :]
         return url
 
     @property
@@ -327,7 +325,9 @@ class CacheHandler:
             return True
         except RedisError as e:
             self._metrics.record_error()
-            logger.error("customer_profile_invalidate_failed", customer_id=customer_id, error=str(e))
+            logger.error(
+                "customer_profile_invalidate_failed", customer_id=customer_id, error=str(e)
+            )
             return False
 
     # -------------------------------------------------------------------------
@@ -497,9 +497,7 @@ class CacheHandler:
             "channel",
             "geo_country",
         ]
-        feature_values = "|".join(
-            str(transaction.get(k, "")) for k in sorted(feature_keys)
-        )
+        feature_values = "|".join(str(transaction.get(k, "")) for k in sorted(feature_keys))
         return hashlib.sha256(feature_values.encode()).hexdigest()[:32]
 
     # -------------------------------------------------------------------------

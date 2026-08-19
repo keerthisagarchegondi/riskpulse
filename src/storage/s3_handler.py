@@ -33,7 +33,12 @@ from tenacity import (
 )
 
 from src.utils.config import get_settings
-from src.utils.constants import S3_RAW_PREFIX, S3_PROCESSED_PREFIX, S3_MODELS_PREFIX, S3_ARCHIVE_PREFIX
+from src.utils.constants import (
+    S3_ARCHIVE_PREFIX,
+    S3_MODELS_PREFIX,
+    S3_PROCESSED_PREFIX,
+    S3_RAW_PREFIX,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -304,9 +309,7 @@ class S3Handler:
                 bucket=bucket,
                 key=s3_key,
             )
-            raise S3UploadError(
-                f"Failed to upload to s3://{bucket}/{s3_key}: {e}"
-            ) from e
+            raise S3UploadError(f"Failed to upload to s3://{bucket}/{s3_key}: {e}") from e
 
     @retry(
         retry=retry_if_exception_type(ClientError),
@@ -365,9 +368,7 @@ class S3Handler:
         except ClientError as e:
             self._metrics.record_upload_error()
             logger.error("s3_raw_upload_failed", error=str(e), key=s3_key)
-            raise S3UploadError(
-                f"Failed to upload to s3://{bucket}/{s3_key}: {e}"
-            ) from e
+            raise S3UploadError(f"Failed to upload to s3://{bucket}/{s3_key}: {e}") from e
 
     def upload_large_batch(
         self,
@@ -418,9 +419,7 @@ class S3Handler:
         wait=wait_exponential(multiplier=1, min=1, max=10),
         reraise=True,
     )
-    def download_parquet(
-        self, bucket: str, key: str
-    ) -> pa.Table:
+    def download_parquet(self, bucket: str, key: str) -> pa.Table:
         """Download and read a Parquet file from S3.
 
         Args:
@@ -452,15 +451,11 @@ class S3Handler:
         except ClientError as e:
             self._metrics.record_download_error()
             logger.error("s3_download_failed", error=str(e), bucket=bucket, key=key)
-            raise S3DownloadError(
-                f"Failed to download s3://{bucket}/{key}: {e}"
-            ) from e
+            raise S3DownloadError(f"Failed to download s3://{bucket}/{key}: {e}") from e
         except Exception as e:
             self._metrics.record_download_error()
             logger.error("parquet_parse_failed", error=str(e), key=key)
-            raise S3DownloadError(
-                f"Failed to parse Parquet file s3://{bucket}/{key}: {e}"
-            ) from e
+            raise S3DownloadError(f"Failed to parse Parquet file s3://{bucket}/{key}: {e}") from e
 
     def stream_download(
         self, bucket: str, key: str, chunk_size: int = MULTIPART_CHUNK_SIZE
@@ -495,9 +490,7 @@ class S3Handler:
         except ClientError as e:
             self._metrics.record_download_error()
             logger.error("s3_stream_download_failed", error=str(e), key=key)
-            raise S3DownloadError(
-                f"Failed to stream s3://{bucket}/{key}: {e}"
-            ) from e
+            raise S3DownloadError(f"Failed to stream s3://{bucket}/{key}: {e}") from e
 
     # =========================================================================
     # Listing & Utilities
@@ -602,9 +595,7 @@ class S3Handler:
                     "Id": f"riskpulse-{bucket}-notification",
                     "QueueArn": sqs_queue_arn,
                     "Events": events,
-                    "Filter": {
-                        "Key": {"FilterRules": filter_rules}
-                    },
+                    "Filter": {"Key": {"FilterRules": filter_rules}},
                 }
             ]
         }
@@ -625,9 +616,7 @@ class S3Handler:
     # Internal Methods
     # =========================================================================
 
-    def _transactions_to_parquet(
-        self, transactions: list[dict[str, Any]]
-    ) -> io.BytesIO:
+    def _transactions_to_parquet(self, transactions: list[dict[str, Any]]) -> io.BytesIO:
         """Convert transaction dicts to a Parquet buffer with snappy compression.
 
         Args:
@@ -649,9 +638,7 @@ class S3Handler:
         buffer.seek(0)
         return buffer
 
-    def _multipart_upload(
-        self, bucket: str, key: str, data: bytes
-    ) -> None:
+    def _multipart_upload(self, bucket: str, key: str, data: bytes) -> None:
         """Perform a multipart upload for large files.
 
         Args:
@@ -679,10 +666,12 @@ class S3Handler:
                     PartNumber=part_number,
                     Body=chunk,
                 )
-                parts.append({
-                    "PartNumber": part_number,
-                    "ETag": response["ETag"],
-                })
+                parts.append(
+                    {
+                        "PartNumber": part_number,
+                        "ETag": response["ETag"],
+                    }
+                )
                 offset += MULTIPART_CHUNK_SIZE
                 part_number += 1
 

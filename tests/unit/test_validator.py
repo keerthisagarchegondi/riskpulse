@@ -7,23 +7,23 @@ metrics, quarantine lifecycle, and re-processing.
 
 from __future__ import annotations
 
-import json
 import copy
+import json
 import time
 from pathlib import Path
 
 import pytest
 
+from src.validation.quarantine_handler import (
+    QuarantinedRecord,
+    QuarantineHandler,
+)
 from src.validation.schema_validator import (
     SchemaValidator,
     ValidationError,
     ValidationMetrics,
     ValidationResult,
     ValidationSeverity,
-)
-from src.validation.quarantine_handler import (
-    QuarantineHandler,
-    QuarantinedRecord,
 )
 
 # ---------------------------------------------------------------------------
@@ -143,8 +143,7 @@ class TestRequiredFields:
         result = validator.validate(valid_transaction)
         assert result.is_valid is False
         assert any(
-            e.field == "account_id" and e.rule == "required_field_empty"
-            for e in result.errors
+            e.field == "account_id" and e.rule == "required_field_empty" for e in result.errors
         )
 
     def test_whitespace_only_required_field(self, validator, valid_transaction):
@@ -184,13 +183,17 @@ class TestFieldTypeValidation:
         valid_transaction["transaction_amount"] = "one hundred"
         result = validator.validate(valid_transaction)
         assert result.is_valid is False
-        assert any(e.field == "transaction_amount" and e.rule == "type_check" for e in result.errors)
+        assert any(
+            e.field == "transaction_amount" and e.rule == "type_check" for e in result.errors
+        )
 
     def test_amount_as_boolean(self, validator, valid_transaction):
         valid_transaction["transaction_amount"] = True
         result = validator.validate(valid_transaction)
         assert result.is_valid is False
-        assert any(e.field == "transaction_amount" and e.rule == "type_check" for e in result.errors)
+        assert any(
+            e.field == "transaction_amount" and e.rule == "type_check" for e in result.errors
+        )
 
     def test_boolean_field_with_string(self, validator, valid_transaction):
         valid_transaction["is_international"] = "yes"
@@ -254,9 +257,9 @@ class TestRangeValidation:
         valid_transaction["geo_longitude"] = 180.0
         result = validator.validate(valid_transaction)
         geo_errors = [
-            e for e in result.errors
-            if e.field in ("geo_latitude", "geo_longitude")
-            and e.rule in ("min_value", "max_value")
+            e
+            for e in result.errors
+            if e.field in ("geo_latitude", "geo_longitude") and e.rule in ("min_value", "max_value")
         ]
         assert len(geo_errors) == 0
 
@@ -265,9 +268,9 @@ class TestRangeValidation:
         valid_transaction["geo_longitude"] = -180.0
         result = validator.validate(valid_transaction)
         geo_errors = [
-            e for e in result.errors
-            if e.field in ("geo_latitude", "geo_longitude")
-            and e.rule in ("min_value", "max_value")
+            e
+            for e in result.errors
+            if e.field in ("geo_latitude", "geo_longitude") and e.rule in ("min_value", "max_value")
         ]
         assert len(geo_errors) == 0
 
@@ -297,8 +300,7 @@ class TestEnumValidation:
         result = validator.validate(valid_transaction)
         assert result.is_valid is False
         assert any(
-            e.field == "transaction_currency" and e.rule == "allowed_values"
-            for e in result.errors
+            e.field == "transaction_currency" and e.rule == "allowed_values" for e in result.errors
         )
 
     def test_invalid_card_type(self, validator, valid_transaction):
@@ -311,7 +313,8 @@ class TestEnumValidation:
             valid_transaction["transaction_type"] = txn_type
             result = validator.validate(valid_transaction)
             type_errors = [
-                e for e in result.errors
+                e
+                for e in result.errors
                 if e.field == "transaction_type" and e.rule == "allowed_values"
             ]
             assert len(type_errors) == 0, f"Failed for type: {txn_type}"
@@ -326,8 +329,7 @@ class TestEnumValidation:
                 txn["transaction_type"] = "withdrawal"
             result = validator.validate(txn)
             channel_errors = [
-                e for e in result.errors
-                if e.field == "channel" and e.rule == "allowed_values"
+                e for e in result.errors if e.field == "channel" and e.rule == "allowed_values"
             ]
             assert len(channel_errors) == 0, f"Failed for channel: {channel}"
 
@@ -336,7 +338,8 @@ class TestEnumValidation:
             valid_transaction["transaction_currency"] = currency
             result = validator.validate(valid_transaction)
             curr_errors = [
-                e for e in result.errors
+                e
+                for e in result.errors
                 if e.field == "transaction_currency" and e.rule == "allowed_values"
             ]
             assert len(curr_errors) == 0, f"Failed for currency: {currency}"
@@ -369,8 +372,7 @@ class TestPatternValidation:
         valid_transaction["card_last_four"] = "9876"
         result = validator.validate(valid_transaction)
         pattern_errors = [
-            e for e in result.errors
-            if e.field == "card_last_four" and e.rule == "pattern"
+            e for e in result.errors if e.field == "card_last_four" and e.rule == "pattern"
         ]
         assert len(pattern_errors) == 0
 
@@ -445,7 +447,11 @@ class TestTimestampValidation:
     def test_valid_timestamp_no_timezone(self, validator, valid_transaction):
         valid_transaction["transaction_timestamp"] = "2026-06-15T10:30:00"
         result = validator.validate(valid_transaction)
-        ts_errors = [e for e in result.errors if e.field == "transaction_timestamp" and e.rule == "iso8601_format"]
+        ts_errors = [
+            e
+            for e in result.errors
+            if e.field == "transaction_timestamp" and e.rule == "iso8601_format"
+        ]
         assert len(ts_errors) == 0
 
 
@@ -461,15 +467,15 @@ class TestStringLengthValidation:
         valid_transaction["external_transaction_id"] = "X" * 65
         result = validator.validate(valid_transaction)
         assert any(
-            e.field == "external_transaction_id" and e.rule == "max_length"
-            for e in result.errors
+            e.field == "external_transaction_id" and e.rule == "max_length" for e in result.errors
         )
 
     def test_external_id_at_max_length(self, validator, valid_transaction):
         valid_transaction["external_transaction_id"] = "X" * 64
         result = validator.validate(valid_transaction)
         length_errors = [
-            e for e in result.errors
+            e
+            for e in result.errors
             if e.field == "external_transaction_id" and e.rule == "max_length"
         ]
         assert len(length_errors) == 0
@@ -477,10 +483,7 @@ class TestStringLengthValidation:
     def test_merchant_name_exceeds_max_length(self, validator, valid_transaction):
         valid_transaction["merchant_name"] = "M" * 256
         result = validator.validate(valid_transaction)
-        assert any(
-            e.field == "merchant_name" and e.rule == "max_length"
-            for e in result.errors
-        )
+        assert any(e.field == "merchant_name" and e.rule == "max_length" for e in result.errors)
 
 
 # ===========================================================================
@@ -495,17 +498,14 @@ class TestCrossFieldValidation:
         valid_transaction["geo_country"] = "GBR"
         valid_transaction["is_international"] = False
         result = validator.validate(valid_transaction)
-        assert any(
-            e.rule == "international_flag_matches_country" for e in result.warnings
-        )
+        assert any(e.rule == "international_flag_matches_country" for e in result.warnings)
 
     def test_international_flag_correct(self, validator, valid_transaction):
         valid_transaction["geo_country"] = "GBR"
         valid_transaction["is_international"] = True
         result = validator.validate(valid_transaction)
         intl_warnings = [
-            e for e in result.warnings
-            if e.rule == "international_flag_matches_country"
+            e for e in result.warnings if e.rule == "international_flag_matches_country"
         ]
         assert len(intl_warnings) == 0
 
@@ -514,8 +514,7 @@ class TestCrossFieldValidation:
         valid_transaction["is_international"] = False
         result = validator.validate(valid_transaction)
         intl_warnings = [
-            e for e in result.warnings
-            if e.rule == "international_flag_matches_country"
+            e for e in result.warnings if e.rule == "international_flag_matches_country"
         ]
         assert len(intl_warnings) == 0
 
@@ -524,8 +523,7 @@ class TestCrossFieldValidation:
         del valid_transaction["card_last_four"]
         result = validator.validate(valid_transaction)
         assert any(
-            e.rule == "card_last_four_required_for_card_transactions"
-            for e in result.warnings
+            e.rule == "card_last_four_required_for_card_transactions" for e in result.warnings
         )
 
     def test_online_without_ip(self, validator, valid_transaction):
@@ -538,17 +536,13 @@ class TestCrossFieldValidation:
         valid_transaction["geo_latitude"] = 34.0522
         del valid_transaction["geo_longitude"]
         result = validator.validate(valid_transaction)
-        assert any(
-            e.rule == "geo_coordinates_paired" for e in result.errors
-        )
+        assert any(e.rule == "geo_coordinates_paired" for e in result.errors)
 
     def test_geo_longitude_only(self, validator, valid_transaction):
         del valid_transaction["geo_latitude"]
         valid_transaction["geo_longitude"] = -118.2437
         result = validator.validate(valid_transaction)
-        assert any(
-            e.rule == "geo_coordinates_paired" for e in result.errors
-        )
+        assert any(e.rule == "geo_coordinates_paired" for e in result.errors)
 
     def test_geo_both_present(self, validator, valid_transaction):
         valid_transaction["geo_latitude"] = 34.0522
@@ -574,9 +568,7 @@ class TestCrossFieldValidation:
         valid_transaction["channel"] = "atm"
         valid_transaction["transaction_type"] = "purchase"
         result = validator.validate(valid_transaction)
-        assert any(
-            e.rule == "atm_no_merchant_category" for e in result.warnings
-        )
+        assert any(e.rule == "atm_no_merchant_category" for e in result.warnings)
 
     def test_refund_exceeds_limit(self, validator, valid_transaction):
         valid_transaction["transaction_type"] = "refund"
@@ -608,17 +600,13 @@ class TestCustomBusinessRules:
     def test_non_round_amount_no_warning(self, validator, valid_transaction):
         valid_transaction["transaction_amount"] = 5000.50
         result = validator.validate(valid_transaction)
-        round_warnings = [
-            e for e in result.warnings if e.rule == "suspicious_round_amount"
-        ]
+        round_warnings = [e for e in result.warnings if e.rule == "suspicious_round_amount"]
         assert len(round_warnings) == 0
 
     def test_round_amount_below_threshold(self, validator, valid_transaction):
         valid_transaction["transaction_amount"] = 500.00
         result = validator.validate(valid_transaction)
-        round_warnings = [
-            e for e in result.warnings if e.rule == "suspicious_round_amount"
-        ]
+        round_warnings = [e for e in result.warnings if e.rule == "suspicious_round_amount"]
         assert len(round_warnings) == 0
 
     def test_high_value_transaction(self, validator, valid_transaction):
@@ -629,9 +617,7 @@ class TestCustomBusinessRules:
     def test_normal_value_no_high_value_warning(self, validator, valid_transaction):
         valid_transaction["transaction_amount"] = 1000.50
         result = validator.validate(valid_transaction)
-        hv_warnings = [
-            e for e in result.warnings if e.rule == "high_value_transaction"
-        ]
+        hv_warnings = [e for e in result.warnings if e.rule == "high_value_transaction"]
         assert len(hv_warnings) == 0
 
 
@@ -643,9 +629,7 @@ class TestCustomBusinessRules:
 class TestBatchValidation:
     """Tests for batch validation."""
 
-    def test_batch_validation_returns_results_per_record(
-        self, validator, valid_transaction
-    ):
+    def test_batch_validation_returns_results_per_record(self, validator, valid_transaction):
         batch = [copy.deepcopy(valid_transaction) for _ in range(5)]
         results = validator.validate_batch(batch)
         assert len(results) == 5
@@ -882,18 +866,16 @@ class TestValidationPerformance:
 
     def test_single_record_latency(self, validator, valid_transaction):
         result = validator.validate(valid_transaction)
-        assert result.latency_ms < 5.0, (
-            f"Validation took {result.latency_ms:.3f}ms, exceeds 5ms SLA"
-        )
+        assert (
+            result.latency_ms < 5.0
+        ), f"Validation took {result.latency_ms:.3f}ms, exceeds 5ms SLA"
 
     def test_batch_average_latency(self, validator, valid_transaction):
         validator.metrics.reset()
         batch = [copy.deepcopy(valid_transaction) for _ in range(100)]
         validator.validate_batch(batch)
         avg = validator.metrics.avg_latency_ms
-        assert avg < 5.0, (
-            f"Average batch latency {avg:.3f}ms exceeds 5ms SLA"
-        )
+        assert avg < 5.0, f"Average batch latency {avg:.3f}ms exceeds 5ms SLA"
 
 
 # ===========================================================================
@@ -921,9 +903,7 @@ class TestQuarantineHandler:
         entry = quarantine_handler.quarantine(valid_transaction, result)
         assert any(r["field"] == "account_id" for r in entry.failure_reasons)
 
-    def test_get_quarantined_record(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_get_quarantined_record(self, quarantine_handler, validator, valid_transaction):
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
         entry = quarantine_handler.quarantine(valid_transaction, result)
@@ -953,9 +933,7 @@ class TestQuarantineHandler:
         assert len(quarantine_handler.list_quarantined(status="quarantined")) == 1
         assert len(quarantine_handler.list_quarantined(status="reprocessed")) == 0
 
-    def test_list_quarantined_with_limit(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_list_quarantined_with_limit(self, quarantine_handler, validator, valid_transaction):
         for i in range(10):
             txn = copy.deepcopy(valid_transaction)
             del txn["account_id"]
@@ -965,9 +943,7 @@ class TestQuarantineHandler:
         records = quarantine_handler.list_quarantined(limit=3)
         assert len(records) == 3
 
-    def test_quarantined_record_to_dict(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_quarantined_record_to_dict(self, quarantine_handler, validator, valid_transaction):
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
         entry = quarantine_handler.quarantine(valid_transaction, result)
@@ -987,9 +963,7 @@ class TestQuarantineHandler:
 class TestQuarantineReprocessing:
     """Tests for re-processing quarantined records."""
 
-    def test_reprocess_still_invalid(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_reprocess_still_invalid(self, quarantine_handler, validator, valid_transaction):
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
         entry = quarantine_handler.quarantine(valid_transaction, result)
@@ -1000,9 +974,7 @@ class TestQuarantineReprocessing:
         assert entry.retry_count == 1
         assert entry.status == "quarantined"
 
-    def test_reprocess_now_valid(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_reprocess_now_valid(self, quarantine_handler, validator, valid_transaction):
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
         entry = quarantine_handler.quarantine(valid_transaction, result)
@@ -1013,9 +985,7 @@ class TestQuarantineReprocessing:
         assert revalidation.is_valid is True
         assert entry.status == "reprocessed"
 
-    def test_reprocess_all_eligible(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_reprocess_all_eligible(self, quarantine_handler, validator, valid_transaction):
         for i in range(3):
             txn = copy.deepcopy(valid_transaction)
             del txn["account_id"]
@@ -1025,9 +995,7 @@ class TestQuarantineReprocessing:
         results = quarantine_handler.reprocess(validator)
         assert len(results) == 3
 
-    def test_max_retries_discard(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_max_retries_discard(self, quarantine_handler, validator, valid_transaction):
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
         entry = quarantine_handler.quarantine(valid_transaction, result)
@@ -1037,9 +1005,7 @@ class TestQuarantineReprocessing:
         assert entry.status == "discarded"
         assert entry.retry_count == 3
 
-    def test_discarded_not_reprocessed(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_discarded_not_reprocessed(self, quarantine_handler, validator, valid_transaction):
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
         entry = quarantine_handler.quarantine(valid_transaction, result)
@@ -1069,9 +1035,7 @@ class TestQuarantineDiscard:
     def test_discard_nonexistent(self, quarantine_handler):
         assert quarantine_handler.discard("nonexistent-id") is False
 
-    def test_discard_already_discarded(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_discard_already_discarded(self, quarantine_handler, validator, valid_transaction):
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
         entry = quarantine_handler.quarantine(valid_transaction, result)
@@ -1097,9 +1061,7 @@ class TestQuarantineMetrics:
         assert m["active_quarantined"] == 1
         assert "required_field" in m["reasons_breakdown"]
 
-    def test_metrics_after_reprocess(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_metrics_after_reprocess(self, quarantine_handler, validator, valid_transaction):
         quarantine_handler.metrics.reset()
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
@@ -1110,9 +1072,7 @@ class TestQuarantineMetrics:
         assert m["total_reprocessed"] == 1
         assert m["active_quarantined"] == 0
 
-    def test_metrics_after_discard(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_metrics_after_discard(self, quarantine_handler, validator, valid_transaction):
         quarantine_handler.metrics.reset()
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
@@ -1147,9 +1107,7 @@ class TestQuarantineCounts:
         assert quarantine_handler.count == 1
         assert quarantine_handler.total_count == 1
 
-    def test_count_after_discard(
-        self, quarantine_handler, validator, valid_transaction
-    ):
+    def test_count_after_discard(self, quarantine_handler, validator, valid_transaction):
         del valid_transaction["account_id"]
         result = validator.validate(valid_transaction)
         entry = quarantine_handler.quarantine(valid_transaction, result)

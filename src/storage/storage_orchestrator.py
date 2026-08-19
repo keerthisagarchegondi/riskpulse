@@ -326,9 +326,7 @@ class StorageOrchestrator:
     # Backend Write Implementations
     # -------------------------------------------------------------------------
 
-    async def _write_to_cache(
-        self, transaction_id: str, record: dict[str, Any]
-    ) -> WriteResult:
+    async def _write_to_cache(self, transaction_id: str, record: dict[str, Any]) -> WriteResult:
         """Write transaction to Redis cache with circuit breaker."""
         start = time.perf_counter()
         health = self._health[StorageBackend.REDIS]
@@ -396,9 +394,7 @@ class StorageOrchestrator:
                 error=str(e),
             )
 
-    async def _write_to_postgres(
-        self, transaction_id: str, record: dict[str, Any]
-    ) -> WriteResult:
+    async def _write_to_postgres(self, transaction_id: str, record: dict[str, Any]) -> WriteResult:
         """Write transaction to PostgreSQL with circuit breaker."""
         start = time.perf_counter()
         health = self._health[StorageBackend.POSTGRES]
@@ -471,9 +467,7 @@ class StorageOrchestrator:
         """
         with self._buffer_lock:
             if not self._s3_buffer:
-                return WriteResult(
-                    backend=StorageBackend.S3, success=True, records_written=0
-                )
+                return WriteResult(backend=StorageBackend.S3, success=True, records_written=0)
             batch = list(self._s3_buffer)
             self._s3_buffer.clear()
 
@@ -620,10 +614,7 @@ class StorageOrchestrator:
 
     def get_latency_report(self) -> dict[str, float]:
         """Get average latency for each backend."""
-        return {
-            k.value: round(v.avg_latency_ms, 4)
-            for k, v in self._health.items()
-        }
+        return {k.value: round(v.avg_latency_ms, 4) for k, v in self._health.items()}
 
     def get_buffer_sizes(self) -> dict[str, int]:
         """Get current batch buffer sizes."""

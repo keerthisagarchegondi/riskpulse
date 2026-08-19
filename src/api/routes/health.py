@@ -60,7 +60,9 @@ async def health_check() -> HealthResponse:
         await _check_snowflake(),
     ]
     critical_failures = [
-        item for item in dependencies if item.name in {"kafka", "postgresql"} and item.status == "unhealthy"
+        item
+        for item in dependencies
+        if item.name in {"kafka", "postgresql"} and item.status == "unhealthy"
     ]
     overall_status = "degraded" if critical_failures else "healthy"
 

@@ -15,27 +15,26 @@ import structlog
 
 from src.utils.config import get_settings
 
-
 # Fields that should never appear in logs (PII protection)
-_SENSITIVE_FIELDS = frozenset({
-    "card_number",
-    "card_last_four",
-    "ssn",
-    "password",
-    "secret",
-    "token",
-    "api_key",
-    "authorization",
-    "ip_address",
-    "email",
-    "phone",
-    "device_id",
-})
+_SENSITIVE_FIELDS = frozenset(
+    {
+        "card_number",
+        "card_last_four",
+        "ssn",
+        "password",
+        "secret",
+        "token",
+        "api_key",
+        "authorization",
+        "ip_address",
+        "email",
+        "phone",
+        "device_id",
+    }
+)
 
 
-def _scrub_pii(
-    logger: Any, method_name: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def _scrub_pii(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Remove or mask sensitive fields from log output."""
     for key in list(event_dict.keys()):
         if key.lower() in _SENSITIVE_FIELDS:
@@ -47,9 +46,7 @@ def _scrub_pii(
     return event_dict
 
 
-def _add_app_context(
-    logger: Any, method_name: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def _add_app_context(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Add application context to every log entry."""
     event_dict.setdefault("service", "riskpulse")
     event_dict.setdefault("environment", get_settings().environment)

@@ -14,8 +14,8 @@ Tests cover:
 from __future__ import annotations
 
 import time
-from unittest.mock import MagicMock, patch, call
 from typing import Any
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -26,7 +26,6 @@ from src.ingestion.kafka_producer import (
     TransactionProducer,
 )
 from src.ingestion.schema_registry import SchemaValidationError
-
 
 # ============================================================================
 # Fixtures
@@ -84,16 +83,20 @@ def valid_transaction():
 @pytest.fixture
 def producer(mock_confluent_producer, mock_schema_registry):
     """Create a TransactionProducer with mocked dependencies."""
-    with patch("src.ingestion.kafka_producer.get_schema_registry", return_value=mock_schema_registry):
+    with patch(
+        "src.ingestion.kafka_producer.get_schema_registry", return_value=mock_schema_registry
+    ):
         with patch("src.ingestion.kafka_producer.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(
-                get=MagicMock(side_effect=lambda key, default=None: {
-                    "kafka.bootstrap_servers": "localhost:9092",
-                    "kafka.producer.acks": "all",
-                    "kafka.producer.retries": 3,
-                    "kafka.producer.batch_size": 16384,
-                    "kafka.producer.linger_ms": 10,
-                }.get(key, default))
+                get=MagicMock(
+                    side_effect=lambda key, default=None: {
+                        "kafka.bootstrap_servers": "localhost:9092",
+                        "kafka.producer.acks": "all",
+                        "kafka.producer.retries": 3,
+                        "kafka.producer.batch_size": 16384,
+                        "kafka.producer.linger_ms": 10,
+                    }.get(key, default)
+                )
             )
             p = TransactionProducer(
                 bootstrap_servers="localhost:9092",
@@ -121,9 +124,7 @@ class TestProducerInitialization:
     def test_producer_config_includes_idempotence(self, producer):
         """Producer should enable idempotent mode for exactly-once semantics."""
         # Verify config was built with idempotence enabled
-        config = producer._build_config(
-            MagicMock(get=MagicMock(return_value=None)), None
-        )
+        config = producer._build_config(MagicMock(get=MagicMock(return_value=None)), None)
         assert config["enable.idempotence"] is True
         assert config["compression.type"] == "snappy"
 
@@ -164,9 +165,7 @@ class TestMessageProduction:
         call_kwargs = mock_confluent_producer.produce.call_args[1]
         assert call_kwargs["key"] == b"ACC-12345"
 
-    def test_produce_adds_event_metadata(
-        self, producer, mock_schema_registry, valid_transaction
-    ):
+    def test_produce_adds_event_metadata(self, producer, mock_schema_registry, valid_transaction):
         """Should enrich transaction with event_id and event_timestamp."""
         producer.produce(valid_transaction)
 
@@ -186,19 +185,17 @@ class TestMessageProduction:
         validated_record = mock_schema_registry.validate.call_args[0][1]
         assert validated_record["event_id"] == "my-custom-event-id"
 
-    def test_produce_includes_headers(
-        self, producer, mock_confluent_producer, valid_transaction
-    ):
+    def test_produce_includes_headers(self, producer, mock_confluent_producer, valid_transaction):
         """Should include event metadata in Kafka headers."""
         producer.produce(valid_transaction)
 
         call_kwargs = mock_confluent_producer.produce.call_args[1]
         headers = dict(call_kwargs["headers"])
-        assert b"event_id" in {h[0].encode() if isinstance(h[0], str) else h[0] for h in call_kwargs["headers"]}
+        assert b"event_id" in {
+            h[0].encode() if isinstance(h[0], str) else h[0] for h in call_kwargs["headers"]
+        }
 
-    def test_produce_custom_headers(
-        self, producer, mock_confluent_producer, valid_transaction
-    ):
+    def test_produce_custom_headers(self, producer, mock_confluent_producer, valid_transaction):
         """Should merge custom headers with default headers."""
         producer.produce(valid_transaction, headers={"source": "test"})
 
@@ -206,9 +203,7 @@ class TestMessageProduction:
         header_keys = [h[0] for h in call_kwargs["headers"]]
         assert "source" in header_keys
 
-    def test_produce_to_custom_topic(
-        self, producer, mock_confluent_producer, valid_transaction
-    ):
+    def test_produce_to_custom_topic(self, producer, mock_confluent_producer, valid_transaction):
         """Should allow overriding the target topic."""
         producer.produce(valid_transaction, topic="custom.topic")
 
@@ -226,9 +221,7 @@ class TestMessageProduction:
         self, producer, mock_schema_registry, valid_transaction
     ):
         """Should propagate SchemaValidationError for invalid records."""
-        mock_schema_registry.validate.side_effect = SchemaValidationError(
-            "Invalid field type"
-        )
+        mock_schema_registry.validate.side_effect = SchemaValidationError("Invalid field type")
 
         with pytest.raises(SchemaValidationError):
             producer.produce(valid_transaction)
@@ -252,9 +245,7 @@ class TestMessageProduction:
 class TestBatchProduction:
     """Test batch message production."""
 
-    def test_batch_produce_all_valid(
-        self, producer, mock_confluent_producer, valid_transaction
-    ):
+    def test_batch_produce_all_valid(self, producer, mock_confluent_producer, valid_transaction):
         """Should produce all valid transactions in a batch."""
         transactions = [valid_transaction.copy() for _ in range(50)]
         result = producer.produce_batch(transactions)
@@ -403,25 +394,19 @@ class TestProducerMetrics:
 class TestProducerLifecycle:
     """Test producer lifecycle (flush, close, context manager)."""
 
-    def test_flush_returns_remaining_count(
-        self, producer, mock_confluent_producer
-    ):
+    def test_flush_returns_remaining_count(self, producer, mock_confluent_producer):
         """Flush should return number of remaining messages."""
         mock_confluent_producer.flush.return_value = 0
         remaining = producer.flush()
         assert remaining == 0
 
-    def test_flush_with_pending_messages(
-        self, producer, mock_confluent_producer
-    ):
+    def test_flush_with_pending_messages(self, producer, mock_confluent_producer):
         """Should warn when messages remain after flush timeout."""
         mock_confluent_producer.flush.return_value = 5
         remaining = producer.flush(timeout=1.0)
         assert remaining == 5
 
-    def test_close_flushes_and_marks_closed(
-        self, producer, mock_confluent_producer
-    ):
+    def test_close_flushes_and_marks_closed(self, producer, mock_confluent_producer):
         """Close should flush remaining messages and mark producer as closed."""
         producer.close()
         assert producer.is_closed
@@ -454,9 +439,7 @@ class TestProducerLifecycle:
 class TestPartitionKeyStrategy:
     """Test that partitioning correctly uses account_id."""
 
-    def test_same_account_same_key(
-        self, producer, mock_confluent_producer, valid_transaction
-    ):
+    def test_same_account_same_key(self, producer, mock_confluent_producer, valid_transaction):
         """Transactions from same account should use same partition key."""
         txn1 = valid_transaction.copy()
         txn2 = valid_transaction.copy()

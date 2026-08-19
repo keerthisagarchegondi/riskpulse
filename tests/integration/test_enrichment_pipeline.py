@@ -371,10 +371,17 @@ class TestEnrichmentPipelineIntegration:
 
         # Geo fields
         geo_fields = [
-            "geo_country_code", "geo_city", "geo_latitude", "geo_longitude",
-            "geo_is_vpn", "geo_is_proxy", "geo_is_tor",
-            "geo_distance_from_home_miles", "geo_country_risk_score",
-            "geo_is_high_risk_country", "geo_travel_speed_mph",
+            "geo_country_code",
+            "geo_city",
+            "geo_latitude",
+            "geo_longitude",
+            "geo_is_vpn",
+            "geo_is_proxy",
+            "geo_is_tor",
+            "geo_distance_from_home_miles",
+            "geo_country_risk_score",
+            "geo_is_high_risk_country",
+            "geo_travel_speed_mph",
             "geo_is_impossible_travel",
         ]
         for field in geo_fields:
@@ -382,18 +389,26 @@ class TestEnrichmentPipelineIntegration:
 
         # Device fields
         device_fields = [
-            "device_id", "device_type", "device_fingerprint_hash",
-            "device_is_known", "device_age_days", "device_is_new",
-            "device_trust_score", "device_accounts_count",
-            "device_is_multi_account", "device_risk_score",
+            "device_id",
+            "device_type",
+            "device_fingerprint_hash",
+            "device_is_known",
+            "device_age_days",
+            "device_is_new",
+            "device_trust_score",
+            "device_accounts_count",
+            "device_is_multi_account",
+            "device_risk_score",
         ]
         for field in device_fields:
             assert field in result, f"Missing device field: {field}"
 
         # Merchant fields
         merchant_fields = [
-            "merchant_mcc_risk_score", "merchant_fraud_rate",
-            "merchant_is_high_fraud", "merchant_is_new",
+            "merchant_mcc_risk_score",
+            "merchant_fraud_rate",
+            "merchant_is_high_fraud",
+            "merchant_is_new",
             "merchant_risk_score",
         ]
         for field in merchant_fields:
@@ -401,10 +416,14 @@ class TestEnrichmentPipelineIntegration:
 
         # Velocity fields
         velocity_fields = [
-            "velocity_txn_count_1min", "velocity_txn_count_5min",
-            "velocity_txn_count_1hour", "velocity_amount_sum_1min",
-            "velocity_risk_score", "velocity_breach_count",
-            "velocity_has_warning", "velocity_has_critical",
+            "velocity_txn_count_1min",
+            "velocity_txn_count_5min",
+            "velocity_txn_count_1hour",
+            "velocity_amount_sum_1min",
+            "velocity_risk_score",
+            "velocity_breach_count",
+            "velocity_has_warning",
+            "velocity_has_critical",
         ]
         for field in velocity_fields:
             assert field in result, f"Missing velocity field: {field}"

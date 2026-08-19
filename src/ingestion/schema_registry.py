@@ -47,9 +47,7 @@ class SchemaRegistry:
         schemas_dir: Path | None = None,
     ) -> None:
         settings = get_settings()
-        self._registry_url = schema_registry_url or settings.get(
-            "kafka.schema_registry_url"
-        )
+        self._registry_url = schema_registry_url or settings.get("kafka.schema_registry_url")
         self._schemas_dir = schemas_dir or _PROJECT_ROOT / "schemas"
         self._schema_cache: dict[str, avro.schema.Schema] = {}
         self._parsed_schemas: dict[str, avro.schema.Schema] = {}
@@ -71,9 +69,7 @@ class SchemaRegistry:
 
         schema_path = self._schemas_dir / f"{schema_name}.avsc"
         if not schema_path.exists():
-            raise SchemaRegistryError(
-                f"Schema file not found: {schema_path}"
-            )
+            raise SchemaRegistryError(f"Schema file not found: {schema_path}")
 
         try:
             with open(schema_path, "r") as f:
@@ -88,13 +84,9 @@ class SchemaRegistry:
             )
             return parsed
         except json.JSONDecodeError as e:
-            raise SchemaRegistryError(
-                f"Invalid JSON in schema file {schema_path}: {e}"
-            ) from e
+            raise SchemaRegistryError(f"Invalid JSON in schema file {schema_path}: {e}") from e
         except avro.schema.SchemaParseException as e:
-            raise SchemaRegistryError(
-                f"Invalid Avro schema {schema_path}: {e}"
-            ) from e
+            raise SchemaRegistryError(f"Invalid Avro schema {schema_path}: {e}") from e
 
     def validate(self, schema_name: str, record: dict[str, Any]) -> dict[str, Any]:
         """Validate a record against a named schema.
@@ -165,9 +157,7 @@ class SchemaRegistry:
         decoder = avro.io.BinaryDecoder(buffer)
         return reader.read(decoder)
 
-    def _coerce_types(
-        self, schema: avro.schema.Schema, record: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _coerce_types(self, schema: avro.schema.Schema, record: dict[str, Any]) -> dict[str, Any]:
         """Coerce Python types to Avro-compatible types.
 
         Handles:
@@ -205,10 +195,7 @@ class SchemaRegistry:
 
         # Handle decimal logical type
         props = getattr(field_schema, "props", {})
-        if (
-            field_schema.type == "bytes"
-            and props.get("logicalType") == "decimal"
-        ):
+        if field_schema.type == "bytes" and props.get("logicalType") == "decimal":
             return self._to_decimal_bytes(
                 value,
                 props.get("precision", 12),
@@ -266,9 +253,7 @@ class SchemaRegistry:
         """List all available schema names in the schemas directory."""
         if not self._schemas_dir.exists():
             return []
-        return [
-            p.stem for p in self._schemas_dir.glob("*.avsc")
-        ]
+        return [p.stem for p in self._schemas_dir.glob("*.avsc")]
 
 
 @lru_cache(maxsize=1)

@@ -118,7 +118,9 @@ class TransactionFieldGeoProvider(GeoIPProvider):
     geo_country, geo_city).
     """
 
-    def lookup(self, ip_address: str, transaction: dict[str, Any] | None = None) -> GeoLocation | None:
+    def lookup(
+        self, ip_address: str, transaction: dict[str, Any] | None = None
+    ) -> GeoLocation | None:
         if transaction is None:
             return None
 
@@ -263,8 +265,10 @@ class GeoEnricher:
 
         # Calculate distance
         distance = haversine_distance(
-            float(last_lat), float(last_lng),
-            current_location.latitude, current_location.longitude,
+            float(last_lat),
+            float(last_lng),
+            current_location.latitude,
+            current_location.longitude,
         )
 
         # Calculate time difference
@@ -319,9 +323,7 @@ class GeoEnricher:
         return results
 
 
-def haversine_distance(
-    lat1: float, lon1: float, lat2: float, lon2: float
-) -> float:
+def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate the great-circle distance between two points using Haversine formula.
 
     Args:
@@ -338,10 +340,7 @@ def haversine_distance(
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
 
-    a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(lat1_r) * math.cos(lat2_r) * math.sin(dlon / 2) ** 2
-    )
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1_r) * math.cos(lat2_r) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     return _EARTH_RADIUS_MILES * c

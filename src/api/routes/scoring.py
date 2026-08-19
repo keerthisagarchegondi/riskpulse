@@ -66,9 +66,7 @@ class ScoreTransactionRequest(BaseModel):
 class BatchScoreRequest(BaseModel):
     """Request schema for batch scoring."""
 
-    transactions: list[ScoreTransactionRequest] = Field(
-        ..., min_length=1, max_length=1000
-    )
+    transactions: list[ScoreTransactionRequest] = Field(..., min_length=1, max_length=1000)
 
 
 class MethodScoreResponse(BaseModel):

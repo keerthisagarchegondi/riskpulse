@@ -25,9 +25,9 @@ from src.api.schemas.transaction_schema import (
     TransactionResponse,
     TransactionSubmitResponse,
 )
+from src.utils.constants import API_PREFIX, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, TOPIC_RAW_EVENTS
 from src.utils.security import SecurityValidationError, sanitize_string
 from src.utils.sql_security import SqlFilter, build_where_clause
-from src.utils.constants import API_PREFIX, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, TOPIC_RAW_EVENTS
 
 logger = structlog.get_logger(__name__)
 
@@ -348,7 +348,9 @@ class _TransactionStorage:
                 detail="Storage service temporarily unavailable",
             )
 
-    async def list_transactions(self, filters: TransactionFilter) -> tuple[list[TransactionResponse], int]:
+    async def list_transactions(
+        self, filters: TransactionFilter
+    ) -> tuple[list[TransactionResponse], int]:
         """List transactions with filtering and pagination."""
         try:
             import asyncpg
@@ -383,12 +385,12 @@ class _TransactionStorage:
             offset = (filters.page - 1) * filters.page_size
 
             # Get total count
-            count_query = f"SELECT COUNT(*) FROM transactions WHERE {where_clause}"
+            count_query = f"SELECT COUNT(*) FROM transactions WHERE {where_clause}"  # nosec B608
             total = await conn.fetchval(count_query, *params)
 
             # Get paginated results
-            data_query = (
-                f"SELECT * FROM transactions WHERE {where_clause} "
+            data_query = (  # nosec B608
+                f"SELECT * FROM transactions WHERE {where_clause} "  # nosec B608
                 f"ORDER BY created_at DESC LIMIT ${param_idx} OFFSET ${param_idx + 1}"
             )
             params.extend([filters.page_size, offset])

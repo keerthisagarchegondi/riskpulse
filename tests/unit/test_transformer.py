@@ -19,9 +19,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.transformation.cleaner import DataCleaner, CleaningResult
+from src.transformation.cleaner import CleaningResult, DataCleaner
 from src.transformation.normalizer import DataNormalizer, NormalizationResult, reset_normalizer
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures

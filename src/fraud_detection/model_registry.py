@@ -281,7 +281,9 @@ class ModelRegistry:
 
             logger.info(
                 "Model registered: name=%s, version=%s, type=%s",
-                name, version, model_type,
+                name,
+                version,
+                model_type,
             )
             return metadata
 
@@ -294,7 +296,9 @@ class ModelRegistry:
                 raise KeyError(f"Version '{version}' not found for model '{name}'")
             return ModelMetadata.from_dict(self._registry["models"][name][version])
 
-    def list_models(self, name: str | None = None, stage: ModelStage | None = None) -> list[ModelMetadata]:
+    def list_models(
+        self, name: str | None = None, stage: ModelStage | None = None
+    ) -> list[ModelMetadata]:
         """List all registered models, optionally filtered by name or stage."""
         results: list[ModelMetadata] = []
         with self._lock:
@@ -367,20 +371,26 @@ class ModelRegistry:
             entry["updated_at"] = datetime.now(timezone.utc).isoformat()
 
             # Record promotion history
-            self._registry["promotion_history"].append({
-                "name": name,
-                "version": version,
-                "from_stage": previous_stage,
-                "to_stage": target_stage.value,
-                "promoted_by": promoted_by,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
+            self._registry["promotion_history"].append(
+                {
+                    "name": name,
+                    "version": version,
+                    "from_stage": previous_stage,
+                    "to_stage": target_stage.value,
+                    "promoted_by": promoted_by,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
 
             self._save_registry()
 
             logger.info(
                 "Model promoted: name=%s, version=%s, %s → %s, by=%s",
-                name, version, previous_stage, target_stage.value, promoted_by,
+                name,
+                version,
+                previous_stage,
+                target_stage.value,
+                promoted_by,
             )
             return ModelMetadata.from_dict(entry)
 
@@ -417,10 +427,12 @@ class ModelRegistry:
 
             # Archive current production
             if current_production:
-                self._registry["models"][name][current_production]["stage"] = ModelStage.ARCHIVED.value
-                self._registry["models"][name][current_production]["updated_at"] = (
-                    datetime.now(timezone.utc).isoformat()
-                )
+                self._registry["models"][name][current_production][
+                    "stage"
+                ] = ModelStage.ARCHIVED.value
+                self._registry["models"][name][current_production]["updated_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
 
             # Restore archived to production
             entry = self._registry["models"][name][restore_version]
@@ -428,21 +440,25 @@ class ModelRegistry:
             entry["status"] = ModelStatus.ACTIVE.value
             entry["updated_at"] = datetime.now(timezone.utc).isoformat()
 
-            self._registry["promotion_history"].append({
-                "name": name,
-                "version": restore_version,
-                "from_stage": ModelStage.ARCHIVED.value,
-                "to_stage": ModelStage.PRODUCTION.value,
-                "promoted_by": promoted_by,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "action": "rollback",
-            })
+            self._registry["promotion_history"].append(
+                {
+                    "name": name,
+                    "version": restore_version,
+                    "from_stage": ModelStage.ARCHIVED.value,
+                    "to_stage": ModelStage.PRODUCTION.value,
+                    "promoted_by": promoted_by,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "action": "rollback",
+                }
+            )
 
             self._save_registry()
 
             logger.info(
                 "Model rolled back: name=%s, restored=%s, archived=%s",
-                name, restore_version, current_production,
+                name,
+                restore_version,
+                current_production,
             )
             return ModelMetadata.from_dict(entry)
 
@@ -493,7 +509,10 @@ class ModelRegistry:
 
             logger.info(
                 "A/B test created: name=%s, A=%s, B=%s, split=%.2f",
-                test_name, version_a, version_b, traffic_split,
+                test_name,
+                version_a,
+                version_b,
+                traffic_split,
             )
             return config
 
@@ -511,15 +530,13 @@ class ModelRegistry:
             if test_name not in self._registry["ab_tests"]:
                 return None
             self._registry["ab_tests"][test_name]["is_active"] = False
-            self._registry["ab_tests"][test_name]["end_time"] = (
-                datetime.now(timezone.utc).isoformat()
-            )
+            self._registry["ab_tests"][test_name]["end_time"] = datetime.now(
+                timezone.utc
+            ).isoformat()
             self._save_registry()
             return ABTestConfig(**self._registry["ab_tests"][test_name])
 
-    def resolve_ab_assignment(
-        self, test_name: str, user_id: str
-    ) -> str:
+    def resolve_ab_assignment(self, test_name: str, user_id: str) -> str:
         """Determine which model version a user should receive.
 
         Uses deterministic hashing for sticky assignment so the same user
@@ -544,6 +561,7 @@ class ModelRegistry:
             normalized = (hash_val % 10000) / 10000.0
         else:
             import random
+
             normalized = random.random()
 
         if normalized < config.traffic_split:
@@ -628,9 +646,7 @@ class ModelServer:
     def stats(self) -> dict[str, Any]:
         """Get serving statistics."""
         avg_latency = (
-            self._total_latency_ms / self._prediction_count
-            if self._prediction_count > 0
-            else 0.0
+            self._total_latency_ms / self._prediction_count if self._prediction_count > 0 else 0.0
         )
         return {
             "model_name": self._model_name,
@@ -687,7 +703,8 @@ class ModelServer:
 
         logger.info(
             "Hot-reload triggered: %s → %s",
-            current_version, production_meta.version,
+            current_version,
+            production_meta.version,
         )
 
         # Load new model in background (without lock)
@@ -756,12 +773,15 @@ class ModelServer:
             self._error_count += 1
             logger.error(
                 "Prediction failed with primary model (v%s): %s",
-                self.active_version, exc,
+                self.active_version,
+                exc,
             )
             # Attempt fallback
             return self._predict_with_fallback(features)
 
-    def predict_batch(self, batch: list[np.ndarray], user_id: str | None = None) -> list[np.ndarray]:
+    def predict_batch(
+        self, batch: list[np.ndarray], user_id: str | None = None
+    ) -> list[np.ndarray]:
         """Batch multiple prediction requests for efficiency.
 
         Concatenates inputs, runs single model inference, then splits results.
@@ -791,7 +811,7 @@ class ModelServer:
         results: list[np.ndarray] = []
         offset = 0
         for size in sizes:
-            results.append(predictions[offset:offset + size])
+            results.append(predictions[offset : offset + size])
             offset += size
 
         return results
@@ -837,7 +857,10 @@ class ModelServer:
                 f"Primary model failed and no fallback available for '{self._model_name}'"
             )
 
-        logger.warning("Using fallback model (v%s)", self._fallback_metadata.version if self._fallback_metadata else "unknown")
+        logger.warning(
+            "Using fallback model (v%s)",
+            self._fallback_metadata.version if self._fallback_metadata else "unknown",
+        )
 
         try:
             if hasattr(fallback, "predict_proba"):

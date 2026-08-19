@@ -11,7 +11,7 @@ from typing import Any
 
 import structlog
 import yaml
-from confluent_kafka.admin import AdminClient, NewTopic, ConfigResource, ResourceType
+from confluent_kafka.admin import AdminClient, ConfigResource, NewTopic, ResourceType
 
 from src.utils.config import get_settings
 
@@ -34,11 +34,13 @@ class KafkaTopicManager:
         self._bootstrap_servers = bootstrap_servers or settings.get(
             "kafka.bootstrap_servers", "localhost:9092"
         )
-        self._admin_client = AdminClient({
-            "bootstrap.servers": self._bootstrap_servers,
-            "client.id": "riskpulse-admin",
-            "request.timeout.ms": 10000,
-        })
+        self._admin_client = AdminClient(
+            {
+                "bootstrap.servers": self._bootstrap_servers,
+                "client.id": "riskpulse-admin",
+                "request.timeout.ms": 10000,
+            }
+        )
 
     def create_topics(
         self,
@@ -55,6 +57,7 @@ class KafkaTopicManager:
             Dict mapping topic name -> status ('created', 'exists', 'error').
         """
         from pathlib import Path
+
         from src.utils.config import _get_project_root
 
         if config_path is None:
@@ -187,6 +190,4 @@ class KafkaTopicManager:
 
         if errors:
             error_details = {t: s for t, s in results.items() if s.startswith("error")}
-            raise KafkaAdminError(
-                f"Failed to create topics: {error_details}"
-            )
+            raise KafkaAdminError(f"Failed to create topics: {error_details}")

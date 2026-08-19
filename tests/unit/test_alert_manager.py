@@ -12,8 +12,8 @@ from src.alerting.alert_manager import (
     Alert,
     AlertManager,
     AlertSeverity,
-    AlertStatus,
     AlertStatistics,
+    AlertStatus,
     AlertType,
     DeduplicationEngine,
     SuppressionEngine,
@@ -24,7 +24,6 @@ from src.alerting.alert_templates import (
     Locale,
     RenderedAlert,
 )
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -51,11 +50,7 @@ def scoring_result_critical():
                 "latency_ms": 5.0,
                 "success": True,
                 "error": None,
-                "details": {
-                    "triggered_rules": [
-                        {"rule_id": "R001", "rule_name": "High Amount"}
-                    ]
-                },
+                "details": {"triggered_rules": [{"rule_id": "R001", "rule_name": "High Amount"}]},
             },
             {
                 "method": "anomaly_detection",
@@ -104,9 +99,7 @@ def scoring_result_high():
                 "success": True,
                 "error": None,
                 "details": {
-                    "triggered_rules": [
-                        {"rule_id": "R003", "rule_name": "Velocity Check"}
-                    ]
+                    "triggered_rules": [{"rule_id": "R003", "rule_name": "Velocity Check"}]
                 },
             },
             {
@@ -372,42 +365,30 @@ class TestAlertManager:
     def test_generate_alert_critical(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         assert alert is not None
         assert alert.severity == AlertSeverity.CRITICAL
         assert alert.status == AlertStatus.OPEN
         assert alert.account_id == "ACC-12345"
         assert alert.risk_score == 0.97
 
-    def test_generate_alert_high(
-        self, alert_manager, scoring_result_high, sample_transaction
-    ):
-        alert = alert_manager.generate_alert(
-            scoring_result_high, sample_transaction
-        )
+    def test_generate_alert_high(self, alert_manager, scoring_result_high, sample_transaction):
+        alert = alert_manager.generate_alert(scoring_result_high, sample_transaction)
         assert alert is not None
         assert alert.severity == AlertSeverity.HIGH
 
     def test_generate_alert_extracts_rule_id(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         assert alert is not None
         assert alert.rule_id == "R001"
 
     def test_generate_alert_deduplication(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert1 = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
-        alert2 = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert1 = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
+        alert2 = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         assert alert1 is not None
         assert alert2 is None  # Deduplicated
 
@@ -415,20 +396,14 @@ class TestAlertManager:
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
         # Add account to suppression
-        alert_manager._suppression_engine.add_suppression(
-            "ACC-12345", "under investigation"
-        )
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert_manager._suppression_engine.add_suppression("ACC-12345", "under investigation")
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         assert alert is None
 
     def test_generate_alert_with_enrichment(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        enrichment = {
-            "customer_history": {"total_transactions": 500, "previous_alerts": 2}
-        }
+        enrichment = {"customer_history": {"total_transactions": 500, "previous_alerts": 2}}
         alert = alert_manager.generate_alert(
             scoring_result_critical, sample_transaction, enrichment
         )
@@ -469,9 +444,7 @@ class TestAlertManager:
         alerts = alert_manager.generate_alerts_from_batch(batch)
         assert len(alerts) == 2
 
-    def test_batch_skips_non_recommended(
-        self, alert_manager, scoring_result_low
-    ):
+    def test_batch_skips_non_recommended(self, alert_manager, scoring_result_low):
         txn = {
             "external_transaction_id": "TXN-LOW",
             "account_id": "ACC-LOW",
@@ -487,9 +460,7 @@ class TestAlertManager:
     def test_channels_based_on_severity(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         assert alert is not None
         # Critical should have multiple channels
         assert len(alert.channels) > 0
@@ -497,9 +468,7 @@ class TestAlertManager:
     def test_alert_description_populated(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         assert alert is not None
         assert "CRITICAL" in alert.description
         assert "5000.00" in alert.description
@@ -507,9 +476,7 @@ class TestAlertManager:
     def test_alert_details_contain_scoring(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         assert alert is not None
         assert "scoring" in alert.details
         assert "transaction" in alert.details
@@ -525,9 +492,7 @@ class TestAlertLifecycle:
     def test_transition_open_to_investigating(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         updated = alert_manager.transition_alert(
             alert.alert_id,
             AlertStatus.INVESTIGATING,
@@ -540,9 +505,7 @@ class TestAlertLifecycle:
     def test_transition_investigating_to_resolved(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         alert_manager.transition_alert(alert.alert_id, AlertStatus.INVESTIGATING)
         updated = alert_manager.transition_alert(
             alert.alert_id,
@@ -557,9 +520,7 @@ class TestAlertLifecycle:
     def test_transition_to_false_positive(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         alert_manager.transition_alert(alert.alert_id, AlertStatus.INVESTIGATING)
         updated = alert_manager.transition_alert(
             alert.alert_id,
@@ -572,36 +533,26 @@ class TestAlertLifecycle:
     def test_invalid_transition_rejected(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         # Resolve first
         alert_manager.transition_alert(alert.alert_id, AlertStatus.INVESTIGATING)
         alert_manager.transition_alert(alert.alert_id, AlertStatus.RESOLVED)
 
         # Try to transition resolved → investigating (invalid)
-        result = alert_manager.transition_alert(
-            alert.alert_id, AlertStatus.INVESTIGATING
-        )
+        result = alert_manager.transition_alert(alert.alert_id, AlertStatus.INVESTIGATING)
         assert result is None
 
     def test_transition_adds_suppression(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         alert_manager.transition_alert(alert.alert_id, AlertStatus.INVESTIGATING)
 
         # Account should now be suppressed
         assert alert_manager._suppression_engine.is_suppressed("ACC-12345") is True
 
-    def test_get_alert_by_id(
-        self, alert_manager, scoring_result_critical, sample_transaction
-    ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+    def test_get_alert_by_id(self, alert_manager, scoring_result_critical, sample_transaction):
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         retrieved = alert_manager.get_alert(alert.alert_id)
         assert retrieved is not None
         assert retrieved.alert_id == alert.alert_id
@@ -629,25 +580,52 @@ class TestAlertLifecycle:
         # Generate alerts with different severities
         txns_and_scores = [
             (
-                {"final_score": 0.35, "risk_classification": "low",
-                 "alert_recommended": True, "method_scores": []},
-                {"external_transaction_id": "T1", "account_id": "A1",
-                 "merchant_name": "M", "transaction_amount": 100,
-                 "transaction_currency": "USD", "channel": "online"},
+                {
+                    "final_score": 0.35,
+                    "risk_classification": "low",
+                    "alert_recommended": True,
+                    "method_scores": [],
+                },
+                {
+                    "external_transaction_id": "T1",
+                    "account_id": "A1",
+                    "merchant_name": "M",
+                    "transaction_amount": 100,
+                    "transaction_currency": "USD",
+                    "channel": "online",
+                },
             ),
             (
-                {"final_score": 0.97, "risk_classification": "critical",
-                 "alert_recommended": True, "method_scores": []},
-                {"external_transaction_id": "T2", "account_id": "A2",
-                 "merchant_name": "M", "transaction_amount": 9000,
-                 "transaction_currency": "USD", "channel": "online"},
+                {
+                    "final_score": 0.97,
+                    "risk_classification": "critical",
+                    "alert_recommended": True,
+                    "method_scores": [],
+                },
+                {
+                    "external_transaction_id": "T2",
+                    "account_id": "A2",
+                    "merchant_name": "M",
+                    "transaction_amount": 9000,
+                    "transaction_currency": "USD",
+                    "channel": "online",
+                },
             ),
             (
-                {"final_score": 0.6, "risk_classification": "medium",
-                 "alert_recommended": True, "method_scores": []},
-                {"external_transaction_id": "T3", "account_id": "A3",
-                 "merchant_name": "M", "transaction_amount": 500,
-                 "transaction_currency": "USD", "channel": "pos"},
+                {
+                    "final_score": 0.6,
+                    "risk_classification": "medium",
+                    "alert_recommended": True,
+                    "method_scores": [],
+                },
+                {
+                    "external_transaction_id": "T3",
+                    "account_id": "A3",
+                    "merchant_name": "M",
+                    "transaction_amount": 500,
+                    "transaction_currency": "USD",
+                    "channel": "pos",
+                },
             ),
         ]
         for score, txn in txns_and_scores:
@@ -668,9 +646,7 @@ class TestAlertEnrichment:
     def test_enrich_with_customer_history(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         enriched = alert_manager.enrich_alert(
             alert,
             customer_history={
@@ -686,9 +662,7 @@ class TestAlertEnrichment:
     def test_enrich_with_recent_transactions(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         recent_txns = [
             {
                 "transaction_id": "TXN-R1",
@@ -698,18 +672,14 @@ class TestAlertEnrichment:
                 "channel": "pos",
             }
         ]
-        enriched = alert_manager.enrich_alert(
-            alert, recent_transactions=recent_txns
-        )
+        enriched = alert_manager.enrich_alert(alert, recent_transactions=recent_txns)
         assert "recent_transactions" in enriched.enrichment
         assert len(enriched.enrichment["recent_transactions"]) == 1
 
     def test_enrich_with_risk_profile(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         enriched = alert_manager.enrich_alert(
             alert,
             risk_profile={
@@ -724,9 +694,7 @@ class TestAlertEnrichment:
     def test_enrich_limits_recent_transactions(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         # Provide 20 transactions, should be limited to 10
         recent_txns = [
             {
@@ -738,9 +706,7 @@ class TestAlertEnrichment:
             }
             for i in range(20)
         ]
-        enriched = alert_manager.enrich_alert(
-            alert, recent_transactions=recent_txns
-        )
+        enriched = alert_manager.enrich_alert(alert, recent_transactions=recent_txns)
         assert len(enriched.enrichment["recent_transactions"]) == 10
 
 
@@ -779,9 +745,7 @@ class TestAlertStatistics:
     def test_statistics_status_change(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         alert_manager.transition_alert(alert.alert_id, AlertStatus.INVESTIGATING)
         stats = alert_manager.get_statistics_snapshot()
         assert stats["by_status"]["investigating"] == 1
@@ -802,12 +766,8 @@ class TestAlertStatistics:
 class TestAlertSerialization:
     """Tests for alert serialization/deserialization."""
 
-    def test_alert_to_dict(
-        self, alert_manager, scoring_result_critical, sample_transaction
-    ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+    def test_alert_to_dict(self, alert_manager, scoring_result_critical, sample_transaction):
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         data = alert.to_dict()
         assert data["alert_id"] == alert.alert_id
         assert data["severity"] == "critical"
@@ -817,9 +777,7 @@ class TestAlertSerialization:
     def test_alert_from_dict_roundtrip(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         data = alert.to_dict()
         restored = Alert.from_dict(data)
         assert restored.alert_id == alert.alert_id
@@ -960,13 +918,9 @@ class TestAlertTemplateRenderer:
 class TestAlertManagerIntegration:
     """Integration tests combining multiple components."""
 
-    def test_full_alert_lifecycle(
-        self, alert_manager, scoring_result_critical, sample_transaction
-    ):
+    def test_full_alert_lifecycle(self, alert_manager, scoring_result_critical, sample_transaction):
         # Generate
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         assert alert is not None
         assert alert.status == AlertStatus.OPEN
 
@@ -975,9 +929,13 @@ class TestAlertManagerIntegration:
             alert,
             customer_history={"total_transactions": 100, "previous_alerts": 1},
             recent_transactions=[
-                {"transaction_id": "T1", "transaction_amount": 50.0,
-                 "transaction_timestamp": "2026-06-14T10:00:00Z",
-                 "merchant_name": "Store", "channel": "pos"}
+                {
+                    "transaction_id": "T1",
+                    "transaction_amount": 50.0,
+                    "transaction_timestamp": "2026-06-14T10:00:00Z",
+                    "merchant_name": "Store",
+                    "channel": "pos",
+                }
             ],
         )
         assert "customer_history" in enriched.enrichment
@@ -999,9 +957,7 @@ class TestAlertManagerIntegration:
         assert resolved.status == AlertStatus.RESOLVED
         assert resolved.resolved_at is not None
 
-    def test_dedup_then_different_rule_generates(
-        self, alert_manager, sample_transaction
-    ):
+    def test_dedup_then_different_rule_generates(self, alert_manager, sample_transaction):
         score1 = {
             "final_score": 0.85,
             "risk_classification": "high",
@@ -1038,9 +994,7 @@ class TestAlertManagerIntegration:
     def test_render_generated_alert(
         self, alert_manager, scoring_result_critical, sample_transaction
     ):
-        alert = alert_manager.generate_alert(
-            scoring_result_critical, sample_transaction
-        )
+        alert = alert_manager.generate_alert(scoring_result_critical, sample_transaction)
         renderer = AlertTemplateRenderer()
         rendered_list = renderer.render_all_channels(alert)
         assert len(rendered_list) > 0

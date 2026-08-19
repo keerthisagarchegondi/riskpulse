@@ -55,8 +55,14 @@ class SecretsManager:
         self.cache_ttl_seconds = cache_ttl_seconds or int(
             settings.get("security.secrets_manager.cache_ttl_seconds", 300)
         )
-        self._client = client if client is not None else (self._create_client() if self.enabled else None)
+        self._client = (
+            client if client is not None else (self._create_client() if self.enabled else None)
+        )
         self._cache: dict[str, SecretValue] = {}
+
+    @staticmethod
+    def _is_managed_environment(environment: str) -> bool:
+        return environment.lower() in {"prod", "production", "staging"}
 
     def get_secret(self, secret_id: str, *, force_refresh: bool = False) -> dict[str, Any]:
         """Return a secret as a dictionary.
@@ -68,7 +74,11 @@ class SecretsManager:
             raise SecretsManagerError("secret_id is required")
 
         cached = self._cache.get(secret_id)
-        if cached and not force_refresh and (time.time() - cached.created_at) < self.cache_ttl_seconds:
+        if (
+            cached
+            and not force_refresh
+            and (time.time() - cached.created_at) < self.cache_ttl_seconds
+        ):
             return cached.value.copy()
 
         if self._client is None:
@@ -105,13 +115,24 @@ class SecretsManager:
         configured_id = secret_id or settings.get("security.secrets_manager.database_secret_id")
         if configured_id:
             return self.get_secret(configured_id)
-        return {
+        credentials = {
             "host": os.environ.get("RISKPULSE_DB_HOST", "localhost"),
             "port": os.environ.get("RISKPULSE_DB_PORT", "5432"),
             "database": os.environ.get("RISKPULSE_DB_NAME", "riskpulse"),
             "username": os.environ.get("RISKPULSE_DB_USER", "riskpulse"),
             "password": os.environ.get("RISKPULSE_DB_PASSWORD", "riskpulse"),
         }
+        if self._is_managed_environment(settings.environment) and credentials["password"] in {
+            "",
+            "riskpulse",
+            "riskpulse_dev_password",
+            "change-me",
+        }:
+            raise SecretsManagerError(
+                "Production database credentials must come from Secrets Manager "
+                "or a non-default RISKPULSE_DB_PASSWORD value"
+            )
+        return credentials
 
     def get_api_keys(self, secret_id: str | None = None) -> list[dict[str, Any]]:
         settings = get_settings()
@@ -134,15 +155,27 @@ class SecretsManager:
             value = secret.get("jwt_secret") or secret.get("secret") or secret.get("value")
             if value:
                 return str(value)
-        return os.environ.get("RISKPULSE_JWT_SECRET", settings.get("security.jwt.dev_secret", "dev-jwt-secret"))
 
-    @staticmethod
-    def _create_client() -> Any:
+        env_secret = os.environ.get("RISKPULSE_JWT_SECRET")
+        if env_secret and env_secret != "dev-jwt-secret":
+            return env_secret
+
+        if self._is_managed_environment(settings.environment):
+            raise SecretsManagerError(
+                "Production JWT secret must be configured through Secrets Manager "
+                "or RISKPULSE_JWT_SECRET; refusing to use development fallback"
+            )
+
+        return env_secret or settings.get("security.jwt.dev_secret", "dev-jwt-secret")
+
+    def _create_client(self) -> Any:
         try:
             import boto3
         except ImportError as exc:  # pragma: no cover - optional dependency
-            raise SecretsManagerError("boto3 is required for AWS Secrets Manager integration") from exc
-        return boto3.client("secretsmanager")
+            raise SecretsManagerError(
+                "boto3 is required for AWS Secrets Manager integration"
+            ) from exc
+        return boto3.client("secretsmanager", region_name=self.region_name)
 
 
 _manager: SecretsManager | None = None

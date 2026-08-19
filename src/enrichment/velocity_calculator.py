@@ -117,13 +117,15 @@ class VelocityResult:
 
     def to_dict(self) -> dict[str, Any]:
         result = self.metrics.to_dict()
-        result.update({
-            "velocity_risk_score": self.velocity_risk_score,
-            "velocity_breach_count": self.breach_count,
-            "velocity_has_warning": self.has_warning,
-            "velocity_has_critical": self.has_critical,
-            "velocity_breaches": [b.to_dict() for b in self.breaches],
-        })
+        result.update(
+            {
+                "velocity_risk_score": self.velocity_risk_score,
+                "velocity_breach_count": self.breach_count,
+                "velocity_has_warning": self.has_warning,
+                "velocity_has_critical": self.has_critical,
+                "velocity_breaches": [b.to_dict() for b in self.breaches],
+            }
+        )
         return result
 
 
@@ -276,9 +278,7 @@ class VelocityCalculator:
 
             amount = float(transaction.get("transaction_amount", 0.0))
             merchant_id = transaction.get("merchant_id", "")
-            timestamp = self._parse_unix_timestamp(
-                transaction.get("transaction_timestamp")
-            )
+            timestamp = self._parse_unix_timestamp(transaction.get("transaction_timestamp"))
 
             # Get or create customer profile
             profile = self._get_or_create_profile(customer_id)
@@ -291,12 +291,8 @@ class VelocityCalculator:
 
             # Check thresholds
             result.breaches = self._check_thresholds(result.metrics)
-            result.has_warning = any(
-                b.severity == "warning" for b in result.breaches
-            )
-            result.has_critical = any(
-                b.severity == "critical" for b in result.breaches
-            )
+            result.has_warning = any(b.severity == "warning" for b in result.breaches)
+            result.has_critical = any(b.severity == "critical" for b in result.breaches)
 
             # Compute velocity risk score
             result.velocity_risk_score = self._compute_risk_score(result)
@@ -437,9 +433,7 @@ class VelocityCalculator:
             return dt.timestamp()
         return time.time()
 
-    def evaluate_batch(
-        self, transactions: list[dict[str, Any]]
-    ) -> list[VelocityResult]:
+    def evaluate_batch(self, transactions: list[dict[str, Any]]) -> list[VelocityResult]:
         """Evaluate a batch of transactions.
 
         Args:

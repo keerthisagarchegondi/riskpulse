@@ -34,7 +34,6 @@ from src.alerting.notification_service import (
     WebhookTarget,
 )
 
-
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
 
@@ -448,19 +447,22 @@ class TestPreferencesManager:
         manager.update_preference(pref)
 
         # Email enabled for low severity
-        assert manager.is_channel_enabled(
-            "test-user", NotificationChannel.EMAIL, AlertSeverity.LOW
-        ) is True
+        assert (
+            manager.is_channel_enabled("test-user", NotificationChannel.EMAIL, AlertSeverity.LOW)
+            is True
+        )
 
         # SMS NOT enabled for low severity (requires HIGH)
-        assert manager.is_channel_enabled(
-            "test-user", NotificationChannel.SMS, AlertSeverity.LOW
-        ) is False
+        assert (
+            manager.is_channel_enabled("test-user", NotificationChannel.SMS, AlertSeverity.LOW)
+            is False
+        )
 
         # SMS enabled for high severity
-        assert manager.is_channel_enabled(
-            "test-user", NotificationChannel.SMS, AlertSeverity.HIGH
-        ) is True
+        assert (
+            manager.is_channel_enabled("test-user", NotificationChannel.SMS, AlertSeverity.HIGH)
+            is True
+        )
 
     def test_quiet_hours(self):
         """Should detect quiet hours correctly."""
@@ -484,7 +486,9 @@ class TestNotificationService:
     """Tests for the main notification service."""
 
     @pytest.mark.asyncio
-    async def test_notify_sends_email(self, notification_service, sample_alert, mock_email_provider):
+    async def test_notify_sends_email(
+        self, notification_service, sample_alert, mock_email_provider
+    ):
         """Should send email notification for high-severity alert."""
         records = await notification_service.notify(
             alert=sample_alert,
@@ -685,9 +689,7 @@ class TestNotificationService:
         notification_service.tracker.create_record(
             "ALT-001", NotificationChannel.EMAIL, "a@test.com"
         )
-        notification_service.tracker.create_record(
-            "ALT-001", NotificationChannel.SMS, "+1111"
-        )
+        notification_service.tracker.create_record("ALT-001", NotificationChannel.SMS, "+1111")
 
         records = notification_service.get_notifications_for_alert("ALT-001")
         assert len(records) == 2
@@ -926,9 +928,7 @@ class TestNotificationEscalationIntegration:
     """Tests combining notification service with escalation engine."""
 
     @pytest.mark.asyncio
-    async def test_escalation_triggers_notification(
-        self, notification_service, sample_alert
-    ):
+    async def test_escalation_triggers_notification(self, notification_service, sample_alert):
         """Escalation should trigger notifications to escalation recipients."""
         engine = EscalationEngine(
             config_path=None,

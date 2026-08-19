@@ -23,6 +23,10 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 from src.storage.snowflake_handler import (
+    SCHEMA_ANALYTICS,
+    SCHEMA_RAW,
+    SCHEMA_REPORTING,
+    SCHEMA_STAGING,
     FileFormat,
     LoadMetrics,
     LoadStrategy,
@@ -36,12 +40,7 @@ from src.storage.snowflake_handler import (
     SnowflakeSchemaError,
     WatermarkState,
     create_snowflake_handler,
-    SCHEMA_ANALYTICS,
-    SCHEMA_RAW,
-    SCHEMA_REPORTING,
-    SCHEMA_STAGING,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -156,7 +155,9 @@ class TestSnowflakeConnection:
         """Test that connect() raises error when credentials are missing."""
         with patch("src.storage.snowflake_handler.snowflake") as mock_sf:
             handler = SnowflakeHandler(account="", user="")
-            with pytest.raises(SnowflakeConnectionError, match="account and user must be configured"):
+            with pytest.raises(
+                SnowflakeConnectionError, match="account and user must be configured"
+            ):
                 handler.connect()
 
     def test_connect_raises_when_snowflake_not_installed(self):
@@ -269,6 +270,7 @@ class TestQueryExecution:
         mock_cursor = MagicMock()
 
         from src.storage.snowflake_handler import ProgrammingError
+
         mock_cursor.execute.side_effect = ProgrammingError("Syntax error")
         mock_conn.cursor.return_value = mock_cursor
 
@@ -314,9 +316,7 @@ class TestDataLoading:
         _, mock_conn = mock_snowflake_connector
         mock_cursor = MagicMock()
         mock_cursor.description = [("rows_loaded",), ("errors_seen",)]
-        mock_cursor.fetchall.return_value = [
-            {"rows_loaded": 1000, "errors_seen": 2}
-        ]
+        mock_cursor.fetchall.return_value = [{"rows_loaded": 1000, "errors_seen": 2}]
         mock_cursor.sfqid = "qid-load-1"
         mock_conn.cursor.return_value = mock_cursor
 
@@ -384,6 +384,7 @@ class TestDataLoading:
         mock_cursor = MagicMock()
 
         from src.storage.snowflake_handler import ProgrammingError
+
         mock_cursor.execute.side_effect = ProgrammingError("Stage not found")
         mock_conn.cursor.return_value = mock_cursor
 
@@ -648,8 +649,12 @@ class TestSchemaManagement:
         _, mock_conn = mock_snowflake_connector
         mock_cursor = MagicMock()
         mock_cursor.description = [
-            ("COLUMN_NAME",), ("DATA_TYPE",), ("IS_NULLABLE",),
-            ("CHARACTER_MAXIMUM_LENGTH",), ("NUMERIC_PRECISION",), ("NUMERIC_SCALE",),
+            ("COLUMN_NAME",),
+            ("DATA_TYPE",),
+            ("IS_NULLABLE",),
+            ("CHARACTER_MAXIMUM_LENGTH",),
+            ("NUMERIC_PRECISION",),
+            ("NUMERIC_SCALE",),
         ]
         mock_cursor.fetchall.return_value = [
             {
@@ -725,6 +730,7 @@ class TestMetrics:
         mock_cursor = MagicMock()
 
         from src.storage.snowflake_handler import ProgrammingError
+
         mock_cursor.execute.side_effect = ProgrammingError("bad query")
         mock_conn.cursor.return_value = mock_cursor
 
@@ -803,10 +809,7 @@ class TestDynamicTables:
 
         # Should have created at least 3 dynamic tables
         execute_calls = mock_cursor.execute.call_args_list
-        dynamic_table_calls = [
-            c for c in execute_calls
-            if "DYNAMIC TABLE" in str(c)
-        ]
+        dynamic_table_calls = [c for c in execute_calls if "DYNAMIC TABLE" in str(c)]
         assert len(dynamic_table_calls) >= 3
 
 
@@ -820,11 +823,14 @@ class TestFactory:
 
     def test_create_snowflake_handler(self):
         """Test factory function creates handler with defaults."""
-        with patch.dict(os.environ, {
-            "SNOWFLAKE_ACCOUNT": "test_account",
-            "SNOWFLAKE_USER": "test_user",
-            "SNOWFLAKE_PASSWORD": "test_pass",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "SNOWFLAKE_ACCOUNT": "test_account",
+                "SNOWFLAKE_USER": "test_user",
+                "SNOWFLAKE_PASSWORD": "test_pass",
+            },
+        ):
             handler = create_snowflake_handler(pool_size=3, query_cache_ttl=120)
             assert handler._pool_size == 3
             assert handler._query_cache_ttl == 120

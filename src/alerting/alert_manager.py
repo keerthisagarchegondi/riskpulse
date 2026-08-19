@@ -148,9 +148,7 @@ class Alert:
             channels=data.get("channels", []),
             assigned_to=data.get("assigned_to"),
             resolved_at=(
-                datetime.fromisoformat(data["resolved_at"])
-                if data.get("resolved_at")
-                else None
+                datetime.fromisoformat(data["resolved_at"]) if data.get("resolved_at") else None
             ),
             resolution_notes=data.get("resolution_notes"),
             created_at=datetime.fromisoformat(data["created_at"]),
@@ -169,15 +167,30 @@ class AlertStatistics:
     total_suppressed: int = 0
     total_deduplicated: int = 0
     total_published: int = 0
-    by_severity: dict[str, int] = field(default_factory=lambda: {
-        "low": 0, "medium": 0, "high": 0, "critical": 0,
-    })
-    by_status: dict[str, int] = field(default_factory=lambda: {
-        "open": 0, "investigating": 0, "resolved": 0, "false_positive": 0,
-    })
-    by_type: dict[str, int] = field(default_factory=lambda: {
-        "rule_based": 0, "anomaly": 0, "ml_score": 0, "ensemble": 0,
-    })
+    by_severity: dict[str, int] = field(
+        default_factory=lambda: {
+            "low": 0,
+            "medium": 0,
+            "high": 0,
+            "critical": 0,
+        }
+    )
+    by_status: dict[str, int] = field(
+        default_factory=lambda: {
+            "open": 0,
+            "investigating": 0,
+            "resolved": 0,
+            "false_positive": 0,
+        }
+    )
+    by_type: dict[str, int] = field(
+        default_factory=lambda: {
+            "rule_based": 0,
+            "anomaly": 0,
+            "ml_score": 0,
+            "ensemble": 0,
+        }
+    )
     avg_resolution_time_minutes: float = 0.0
     alerts_per_minute: float = 0.0
     _lock: Lock = field(default_factory=Lock, repr=False)
@@ -233,16 +246,12 @@ class DeduplicationEngine:
         self._seen: dict[str, list[float]] = {}
         self._lock = Lock()
 
-    def _generate_dedup_key(
-        self, account_id: str, rule_id: str | None, alert_type: str
-    ) -> str:
+    def _generate_dedup_key(self, account_id: str, rule_id: str | None, alert_type: str) -> str:
         """Generate a deduplication key from alert attributes."""
         raw = f"{account_id}:{rule_id or 'none'}:{alert_type}"
         return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
-    def is_duplicate(
-        self, account_id: str, rule_id: str | None, alert_type: str
-    ) -> bool:
+    def is_duplicate(self, account_id: str, rule_id: str | None, alert_type: str) -> bool:
         """Check if an alert with same key was seen within the dedup window.
 
         Returns True if a duplicate exists (alert should be suppressed).
@@ -254,8 +263,7 @@ class DeduplicationEngine:
             if key in self._seen:
                 # Clean expired entries
                 self._seen[key] = [
-                    ts for ts in self._seen[key]
-                    if (now - ts) < self._window_seconds
+                    ts for ts in self._seen[key] if (now - ts) < self._window_seconds
                 ]
                 if self._seen[key]:
                     return True
@@ -274,7 +282,8 @@ class DeduplicationEngine:
     def _evict_expired(self, now: float) -> None:
         """Remove entries with all timestamps expired."""
         expired_keys = [
-            k for k, timestamps in self._seen.items()
+            k
+            for k, timestamps in self._seen.items()
             if all((now - ts) >= self._window_seconds for ts in timestamps)
         ]
         for k in expired_keys:
@@ -302,9 +311,7 @@ class SuppressionEngine:
         suppress_on_status: list[str] | None = None,
         cooldown_minutes: int = 120,
     ) -> None:
-        self._suppress_on_status = suppress_on_status or [
-            ALERT_INVESTIGATING, ALERT_RESOLVED
-        ]
+        self._suppress_on_status = suppress_on_status or [ALERT_INVESTIGATING, ALERT_RESOLVED]
         self._cooldown_seconds = cooldown_minutes * 60
         self._suppressed_accounts: dict[str, tuple[str, float]] = {}
         self._lock = Lock()
@@ -373,9 +380,7 @@ class ThrottleEngine:
         self._storm_cooldown_until: float = 0.0
         self._lock = Lock()
 
-    def should_throttle(
-        self, account_id: str, rule_id: str | None
-    ) -> tuple[bool, str]:
+    def should_throttle(self, account_id: str, rule_id: str | None) -> tuple[bool, str]:
         """Check if alert should be throttled.
 
         Returns:
@@ -391,9 +396,7 @@ class ThrottleEngine:
                 return True, "alert_storm_active"
 
             # Clean and check total rate
-            self._total_timestamps = [
-                ts for ts in self._total_timestamps if ts > one_minute_ago
-            ]
+            self._total_timestamps = [ts for ts in self._total_timestamps if ts > one_minute_ago]
             if len(self._total_timestamps) >= self._max_total_per_minute:
                 return True, "total_rate_exceeded"
 
@@ -489,23 +492,15 @@ class AlertManager:
         )
         self._suppression_engine = SuppressionEngine(
             suppress_on_status=suppression_config.get("suppress_on_status", []),
-            cooldown_minutes=suppression_config.get(
-                "cooldown_after_resolution_minutes", 120
-            ),
+            cooldown_minutes=suppression_config.get("cooldown_after_resolution_minutes", 120),
         )
         self._throttle_engine = ThrottleEngine(
-            max_per_account_per_hour=throttle_config.get(
-                "max_alerts_per_account_per_hour", 5
+            max_per_account_per_hour=throttle_config.get("max_alerts_per_account_per_hour", 5),
+            max_per_rule_per_hour=throttle_config.get("max_alerts_per_rule_per_hour", 50),
+            max_total_per_minute=throttle_config.get("max_total_alerts_per_minute", 100),
+            storm_threshold_per_minute=throttle_config.get("storm_detection", {}).get(
+                "threshold_per_minute", 200
             ),
-            max_per_rule_per_hour=throttle_config.get(
-                "max_alerts_per_rule_per_hour", 50
-            ),
-            max_total_per_minute=throttle_config.get(
-                "max_total_alerts_per_minute", 100
-            ),
-            storm_threshold_per_minute=throttle_config.get(
-                "storm_detection", {}
-            ).get("threshold_per_minute", 200),
         )
 
         # Alert storage (in-memory index for lifecycle management)
@@ -524,9 +519,7 @@ class AlertManager:
         logger.info(
             "alert_manager_initialized",
             dedup_window_minutes=dedup_config.get("window_minutes", 60),
-            throttle_max_per_minute=throttle_config.get(
-                "max_total_alerts_per_minute", 100
-            ),
+            throttle_max_per_minute=throttle_config.get("max_total_alerts_per_minute", 100),
         )
 
     @staticmethod
@@ -561,9 +554,8 @@ class AlertManager:
             Alert instance or None if suppressed/deduplicated/throttled.
         """
         account_id = transaction.get("account_id", "unknown")
-        transaction_id = (
-            transaction.get("external_transaction_id")
-            or transaction.get("transaction_id", "unknown")
+        transaction_id = transaction.get("external_transaction_id") or transaction.get(
+            "transaction_id", "unknown"
         )
         risk_score = scoring_result.get("final_score", 0.0)
         risk_classification = scoring_result.get("risk_classification", "low")
@@ -598,9 +590,7 @@ class AlertManager:
             return None
 
         # ── Throttle check ───────────────────────────────────────────────
-        throttled, throttle_reason = self._throttle_engine.should_throttle(
-            account_id, rule_id
-        )
+        throttled, throttle_reason = self._throttle_engine.should_throttle(account_id, rule_id)
         if throttled:
             logger.debug(
                 "alert_throttled",
@@ -612,9 +602,7 @@ class AlertManager:
 
         # ── Create alert ─────────────────────────────────────────────────
         channels = self._resolve_channels(severity)
-        description = self._build_description(
-            alert_type, severity, risk_score, transaction
-        )
+        description = self._build_description(alert_type, severity, risk_score, transaction)
 
         alert = Alert(
             alert_id=str(uuid.uuid4()),
@@ -767,10 +755,7 @@ class AlertManager:
     def get_alerts_by_account(self, account_id: str) -> list[Alert]:
         """Retrieve all alerts for an account."""
         with self._alerts_lock:
-            return [
-                a for a in self._alerts.values()
-                if a.account_id == account_id
-            ]
+            return [a for a in self._alerts.values() if a.account_id == account_id]
 
     def get_alerts_by_status(self, status: AlertStatus) -> list[Alert]:
         """Retrieve all alerts with a given status."""
@@ -786,10 +771,7 @@ class AlertManager:
             AlertSeverity.LOW: 3,
         }
         with self._alerts_lock:
-            open_alerts = [
-                a for a in self._alerts.values()
-                if a.status == AlertStatus.OPEN
-            ]
+            open_alerts = [a for a in self._alerts.values() if a.status == AlertStatus.OPEN]
         return sorted(open_alerts, key=lambda a: severity_order.get(a.severity, 99))
 
     # ── Alert Enrichment ─────────────────────────────────────────────────
@@ -880,9 +862,7 @@ class AlertManager:
         }
         return method_map.get(dominant_method, AlertType.ENSEMBLE)
 
-    def _classify_severity(
-        self, risk_score: float, risk_classification: str
-    ) -> AlertSeverity:
+    def _classify_severity(self, risk_score: float, risk_classification: str) -> AlertSeverity:
         """Classify alert severity from risk score."""
         # Use the classification from scoring if available
         classification_map = {
@@ -972,9 +952,7 @@ class AlertManager:
             },
         }
 
-    def _is_valid_transition(
-        self, current: AlertStatus, target: AlertStatus
-    ) -> bool:
+    def _is_valid_transition(self, current: AlertStatus, target: AlertStatus) -> bool:
         """Check if a status transition is allowed."""
         allowed = self._transitions.get(current.value, [])
         if not allowed:
@@ -1010,7 +988,11 @@ class AlertManager:
         try:
             self._kafka_producer.produce(
                 topic=topic,
-                key=partition_key.encode("utf-8") if isinstance(partition_key, str) else partition_key,
+                key=(
+                    partition_key.encode("utf-8")
+                    if isinstance(partition_key, str)
+                    else partition_key
+                ),
                 value=message,
             )
             self._statistics.record_published()
@@ -1056,6 +1038,7 @@ class AlertManager:
                     updated_at = NOW()
             """
             import json
+
             params = {
                 "alert_id": alert.alert_id,
                 "transaction_id": alert.transaction_id,

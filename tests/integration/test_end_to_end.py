@@ -30,7 +30,6 @@ from src.validation.quarantine_handler import QuarantineHandler
 from src.validation.rules_engine import RulesEngine
 from src.validation.schema_validator import SchemaValidator
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -84,9 +83,7 @@ def generate_valid_transaction(idx: int = 0) -> dict:
         "merchant_category_code": merchant[2],
         "transaction_amount": round(random.uniform(5.0, 2000.0), 2),
         "transaction_currency": random.choice(["USD", "EUR", "GBP"]),
-        "transaction_type": random.choices(
-            TRANSACTION_TYPES, weights=[0.7, 0.1, 0.1, 0.1], k=1
-        )[0],
+        "transaction_type": random.choices(TRANSACTION_TYPES, weights=[0.7, 0.1, 0.1, 0.1], k=1)[0],
         "channel": random.choice(CHANNELS),
         "card_type": random.choice(CARD_TYPES),
         "card_last_four": f"{random.randint(1000, 9999)}",
@@ -141,13 +138,15 @@ def generate_fraud_transaction() -> dict:
         "geo_country": location[0],
         "geo_city": location[1],
         "is_international": True,
-        "transaction_timestamp": datetime.now(timezone.utc).replace(
-            hour=random.randint(1, 4)
-        ).isoformat(),
+        "transaction_timestamp": datetime.now(timezone.utc)
+        .replace(hour=random.randint(1, 4))
+        .isoformat(),
     }
 
 
-def generate_batch(count: int, fraud_ratio: float = 0.05, invalid_ratio: float = 0.02) -> list[dict]:
+def generate_batch(
+    count: int, fraud_ratio: float = 0.05, invalid_ratio: float = 0.02
+) -> list[dict]:
     """Generate a mixed batch of transactions.
 
     Args:
@@ -459,9 +458,7 @@ class TestPipelinePerformance:
 
         throughput = result.succeeded / elapsed if elapsed > 0 else 0
         # Minimum throughput target
-        assert throughput > 500, (
-            f"Throughput {throughput:.0f} events/sec is below 500 target"
-        )
+        assert throughput > 500, f"Throughput {throughput:.0f} events/sec is below 500 target"
 
     def test_per_record_latency_under_sla(self, pipeline):
         """Average per-record latency should be under 10ms."""
@@ -470,9 +467,7 @@ class TestPipelinePerformance:
 
         avg_latency = result.metrics.avg_per_record_ms
         # Under 10ms average per record
-        assert avg_latency < 10.0, (
-            f"Average latency {avg_latency:.2f}ms exceeds 10ms SLA"
-        )
+        assert avg_latency < 10.0, f"Average latency {avg_latency:.2f}ms exceeds 10ms SLA"
 
     def test_large_batch_10k_transactions(self, pipeline):
         """Process 10,000 transactions end-to-end without errors."""
@@ -487,9 +482,9 @@ class TestPipelinePerformance:
         assert result.succeeded + result.failed == 10000
 
         # Success rate should be > 90% (some will fail due to invalid/rules)
-        assert result.succeeded / result.total > 0.90, (
-            f"Success rate {result.succeeded/result.total:.2%} is below 90%"
-        )
+        assert (
+            result.succeeded / result.total > 0.90
+        ), f"Success rate {result.succeeded/result.total:.2%} is below 90%"
 
         throughput = result.succeeded / elapsed if elapsed > 0 else 0
         print(f"\n{'='*60}")
@@ -533,9 +528,9 @@ class TestPipelinePerformance:
             pipeline.reset_metrics()
 
         sustained_throughput = total_succeeded / total_time if total_time > 0 else 0
-        assert sustained_throughput > 400, (
-            f"Sustained throughput {sustained_throughput:.0f} events/sec is below 400 target"
-        )
+        assert (
+            sustained_throughput > 400
+        ), f"Sustained throughput {sustained_throughput:.0f} events/sec is below 400 target"
 
     def test_validation_stage_latency(self, pipeline):
         """Validation stage completes within 5ms per record."""
@@ -546,9 +541,7 @@ class TestPipelinePerformance:
         validation_metrics = stage_metrics.get(PipelineStage.VALIDATION.value, {})
         avg_latency = validation_metrics.get("avg_latency_ms", 0)
 
-        assert avg_latency < 5.0, (
-            f"Validation avg latency {avg_latency:.3f}ms exceeds 5ms target"
-        )
+        assert avg_latency < 5.0, f"Validation avg latency {avg_latency:.3f}ms exceeds 5ms target"
 
     def test_enrichment_stage_latency(self, pipeline):
         """Enrichment stage completes within 5ms per record."""
@@ -559,9 +552,7 @@ class TestPipelinePerformance:
         enrichment_metrics = stage_metrics.get(PipelineStage.ENRICHMENT.value, {})
         avg_latency = enrichment_metrics.get("avg_latency_ms", 0)
 
-        assert avg_latency < 5.0, (
-            f"Enrichment avg latency {avg_latency:.3f}ms exceeds 5ms target"
-        )
+        assert avg_latency < 5.0, f"Enrichment avg latency {avg_latency:.3f}ms exceeds 5ms target"
 
 
 # ============================================================================

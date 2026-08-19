@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# isort: skip_file
 """Back-test fraud detection rules against labelled historical data.
 
 Usage::
@@ -32,11 +33,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from src.fraud_detection.rule_engine import (
-    FraudRuleEngine,
-    RulePerformanceMetrics,
-)
-
+from src.fraud_detection.rule_engine import FraudRuleEngine  # noqa: E402
 
 # ── Synthetic Data Generator ─────────────────────────────────────────
 
@@ -90,11 +87,19 @@ def _generate_legitimate(idx: int, base_ts: datetime) -> Tuple[Dict[str, Any], D
 
 def _generate_fraudulent(idx: int, base_ts: datetime) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Generate a transaction that should trigger at least one rule."""
-    pattern = _RNG.choice([
-        "high_amount", "structuring", "rapid", "impossible_travel",
-        "new_device", "late_night", "high_risk_country", "card_testing",
-        "dormant",
-    ])
+    pattern = _RNG.choice(
+        [
+            "high_amount",
+            "structuring",
+            "rapid",
+            "impossible_travel",
+            "new_device",
+            "late_night",
+            "high_risk_country",
+            "card_testing",
+            "dormant",
+        ]
+    )
 
     base_amount = round(_RNG.uniform(50, 200), 2)
     ts_offset = _RNG.randint(0, 1440)
@@ -141,10 +146,12 @@ def _generate_fraudulent(idx: int, base_ts: datetime) -> Tuple[Dict[str, Any], D
         recent = []
         for i in range(6):
             rt_ts = _random_ts(base_ts, ts_offset - _RNG.randint(1, 9))
-            recent.append({
-                "transaction_timestamp": rt_ts,
-                "transaction_amount": round(_RNG.uniform(10, 100), 2),
-            })
+            recent.append(
+                {
+                    "transaction_timestamp": rt_ts,
+                    "transaction_amount": round(_RNG.uniform(10, 100), 2),
+                }
+            )
         ctx["recent_transactions"] = recent
 
     elif pattern == "impossible_travel":
@@ -178,10 +185,12 @@ def _generate_fraudulent(idx: int, base_ts: datetime) -> Tuple[Dict[str, Any], D
         recent = []
         for i in range(4):
             rt_ts = _random_ts(base_ts, ts_offset - _RNG.randint(1, 25))
-            recent.append({
-                "transaction_timestamp": rt_ts,
-                "transaction_amount": round(_RNG.uniform(0.5, 4.0), 2),
-            })
+            recent.append(
+                {
+                    "transaction_timestamp": rt_ts,
+                    "transaction_amount": round(_RNG.uniform(0.5, 4.0), 2),
+                }
+            )
         ctx["recent_transactions"] = recent
 
     elif pattern == "dormant":
@@ -220,6 +229,7 @@ def generate_backtest_dataset(
 
 # ── CLI ──────────────────────────────────────────────────────────────
 
+
 def _load_jsonl(path: str) -> Tuple[List[Dict], List[bool], List[Optional[Dict]]]:
     transactions, labels, contexts = [], [], []
     with open(path) as f:
@@ -248,17 +258,17 @@ def main() -> None:
         print(f"Loaded {len(transactions)} labelled transactions from {args.data}")
     else:
         transactions, labels, contexts = generate_backtest_dataset(args.n_legit, args.n_fraud)
-        print(f"Generated {len(transactions)} synthetic transactions "
-              f"({args.n_legit} legit, {args.n_fraud} fraud)")
+        print(
+            f"Generated {len(transactions)} synthetic transactions "
+            f"({args.n_legit} legit, {args.n_fraud} fraud)"
+        )
 
     start = time.perf_counter()
     metrics = engine.backtest(transactions, labels, contexts)
     elapsed = time.perf_counter() - start
 
     if args.categories:
-        rule_ids_for_cats = {
-            r.id for r in engine.rules if r.category in args.categories
-        }
+        rule_ids_for_cats = {r.id for r in engine.rules if r.category in args.categories}
         metrics = {k: v for k, v in metrics.items() if k in rule_ids_for_cats}
 
     if args.json:
@@ -273,17 +283,21 @@ def main() -> None:
 
     # Table output
     print(f"\nBacktest completed in {elapsed:.2f}s\n")
-    print(f"{'Rule ID':<20} {'Precision':>10} {'Recall':>10} {'F1':>10} "
-          f"{'TP':>6} {'FP':>6} {'FN':>6} {'TN':>6}")
+    print(
+        f"{'Rule ID':<20} {'Precision':>10} {'Recall':>10} {'F1':>10} "
+        f"{'TP':>6} {'FP':>6} {'FN':>6} {'TN':>6}"
+    )
     print("-" * 86)
 
     for rule_id in sorted(metrics.keys()):
         m = metrics[rule_id]
         if m.total_evaluated == 0:
             continue
-        print(f"{rule_id:<20} {m.precision:>10.4f} {m.recall:>10.4f} {m.f1_score:>10.4f} "
-              f"{m.true_positives:>6} {m.false_positives:>6} "
-              f"{m.false_negatives:>6} {m.true_negatives:>6}")
+        print(
+            f"{rule_id:<20} {m.precision:>10.4f} {m.recall:>10.4f} {m.f1_score:>10.4f} "
+            f"{m.true_positives:>6} {m.false_positives:>6} "
+            f"{m.false_negatives:>6} {m.true_negatives:>6}"
+        )
 
     # Aggregate false positive rate
     total_fp = sum(m.false_positives for m in metrics.values())

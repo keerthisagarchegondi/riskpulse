@@ -23,35 +23,39 @@ def sample_training_data() -> tuple[pd.DataFrame, np.ndarray]:
     n_legit = 500
     n_fraud = 20
 
-    legit = pd.DataFrame({
-        "transaction_amount": rng.lognormal(3.5, 1.0, n_legit),
-        "transaction_count_1hour": rng.poisson(2, n_legit).astype(float),
-        "transaction_count_24hour": rng.poisson(8, n_legit).astype(float),
-        "amount_mean_24hour": rng.lognormal(3.5, 0.5, n_legit),
-        "amount_std_24hour": rng.exponential(20, n_legit),
-        "time_since_last_transaction_seconds": rng.exponential(3600, n_legit),
-        "distance_from_last_location_km": rng.exponential(10, n_legit),
-        "unique_merchants_24hour": rng.poisson(3, n_legit).astype(float),
-        "unique_countries_24hour": np.ones(n_legit),
-        "hour_of_day": rng.integers(6, 23, n_legit).astype(float),
-        "is_international": rng.binomial(1, 0.05, n_legit).astype(float),
-        "amount_to_avg_ratio": rng.lognormal(0, 0.3, n_legit),
-    })
+    legit = pd.DataFrame(
+        {
+            "transaction_amount": rng.lognormal(3.5, 1.0, n_legit),
+            "transaction_count_1hour": rng.poisson(2, n_legit).astype(float),
+            "transaction_count_24hour": rng.poisson(8, n_legit).astype(float),
+            "amount_mean_24hour": rng.lognormal(3.5, 0.5, n_legit),
+            "amount_std_24hour": rng.exponential(20, n_legit),
+            "time_since_last_transaction_seconds": rng.exponential(3600, n_legit),
+            "distance_from_last_location_km": rng.exponential(10, n_legit),
+            "unique_merchants_24hour": rng.poisson(3, n_legit).astype(float),
+            "unique_countries_24hour": np.ones(n_legit),
+            "hour_of_day": rng.integers(6, 23, n_legit).astype(float),
+            "is_international": rng.binomial(1, 0.05, n_legit).astype(float),
+            "amount_to_avg_ratio": rng.lognormal(0, 0.3, n_legit),
+        }
+    )
 
-    fraud = pd.DataFrame({
-        "transaction_amount": rng.lognormal(6.0, 1.5, n_fraud),
-        "transaction_count_1hour": rng.poisson(8, n_fraud).astype(float),
-        "transaction_count_24hour": rng.poisson(25, n_fraud).astype(float),
-        "amount_mean_24hour": rng.lognormal(5.0, 1.0, n_fraud),
-        "amount_std_24hour": rng.exponential(100, n_fraud),
-        "time_since_last_transaction_seconds": rng.exponential(120, n_fraud),
-        "distance_from_last_location_km": rng.exponential(500, n_fraud),
-        "unique_merchants_24hour": rng.poisson(10, n_fraud).astype(float),
-        "unique_countries_24hour": rng.poisson(3, n_fraud).astype(float) + 1,
-        "hour_of_day": rng.integers(0, 6, n_fraud).astype(float),
-        "is_international": rng.binomial(1, 0.7, n_fraud).astype(float),
-        "amount_to_avg_ratio": rng.lognormal(1.5, 0.8, n_fraud),
-    })
+    fraud = pd.DataFrame(
+        {
+            "transaction_amount": rng.lognormal(6.0, 1.5, n_fraud),
+            "transaction_count_1hour": rng.poisson(8, n_fraud).astype(float),
+            "transaction_count_24hour": rng.poisson(25, n_fraud).astype(float),
+            "amount_mean_24hour": rng.lognormal(5.0, 1.0, n_fraud),
+            "amount_std_24hour": rng.exponential(100, n_fraud),
+            "time_since_last_transaction_seconds": rng.exponential(120, n_fraud),
+            "distance_from_last_location_km": rng.exponential(500, n_fraud),
+            "unique_merchants_24hour": rng.poisson(10, n_fraud).astype(float),
+            "unique_countries_24hour": rng.poisson(3, n_fraud).astype(float) + 1,
+            "hour_of_day": rng.integers(0, 6, n_fraud).astype(float),
+            "is_international": rng.binomial(1, 0.7, n_fraud).astype(float),
+            "amount_to_avg_ratio": rng.lognormal(1.5, 0.8, n_fraud),
+        }
+    )
 
     X = pd.concat([legit, fraud], ignore_index=True)
     y = np.concatenate([np.zeros(n_legit), np.ones(n_fraud)])
@@ -158,10 +162,12 @@ class TestAnomalyDetectorFit:
 
     def test_fit_with_missing_features(self):
         """Model should handle missing features gracefully."""
-        X = pd.DataFrame({
-            "transaction_amount": [100.0, 200.0, 50.0],
-            "hour_of_day": [10.0, 15.0, 22.0],
-        })
+        X = pd.DataFrame(
+            {
+                "transaction_amount": [100.0, 200.0, 50.0],
+                "hour_of_day": [10.0, 15.0, 22.0],
+            }
+        )
         detector = AnomalyDetector(n_estimators=50, random_state=42)
         detector.fit(X)
         assert detector.is_fitted
@@ -219,7 +225,9 @@ class TestAnomalyDetectorPredict:
             latencies.append((time.perf_counter() - start) * 1000)
 
         avg_latency = np.mean(latencies)
-        assert avg_latency < 100.0, f"Average latency {avg_latency:.2f}ms exceeds 100ms test threshold"
+        assert (
+            avg_latency < 100.0
+        ), f"Average latency {avg_latency:.2f}ms exceeds 100ms test threshold"
 
     def test_predict_unfitted_raises(self, normal_transaction):
         detector = AnomalyDetector()
@@ -312,18 +320,14 @@ class TestAnomalyDetectorTuning:
     def test_tune_contamination_returns_float(self, sample_training_data):
         X, y = sample_training_data
         detector = AnomalyDetector(n_estimators=50, random_state=42)
-        best_c = detector.tune_contamination(
-            X, y, contamination_range=[0.01, 0.03, 0.05]
-        )
+        best_c = detector.tune_contamination(X, y, contamination_range=[0.01, 0.03, 0.05])
         assert isinstance(best_c, float)
         assert 0 < best_c < 1
 
     def test_tune_updates_contamination(self, sample_training_data):
         X, y = sample_training_data
         detector = AnomalyDetector(n_estimators=50, random_state=42)
-        best_c = detector.tune_contamination(
-            X, y, contamination_range=[0.01, 0.03, 0.05]
-        )
+        best_c = detector.tune_contamination(X, y, contamination_range=[0.01, 0.03, 0.05])
         assert detector._contamination == best_c
 
 

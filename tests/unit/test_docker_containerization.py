@@ -6,7 +6,6 @@ from pathlib import Path
 
 import yaml
 
-
 ROOT = Path(".")
 DOCKER_DIR = ROOT / "infrastructure" / "docker"
 
@@ -70,7 +69,13 @@ def test_production_compose_has_resource_limits_restart_policies_and_awslogs() -
 def test_makefile_has_docker_operation_targets() -> None:
     content = _read("Makefile")
 
-    for target in ("docker-build:", "docker-build-prod:", "docker-up:", "docker-down:", "docker-test:"):
+    for target in (
+        "docker-build:",
+        "docker-build-prod:",
+        "docker-up:",
+        "docker-down:",
+        "docker-test:",
+    ):
         assert target in content
 
     assert "docker-compose.yml config --quiet" in content

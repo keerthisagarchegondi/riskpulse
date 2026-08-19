@@ -280,23 +280,27 @@ class RiskScorer:
         calibrated_scores = self._calibrate_scores_batch(raw_scores, X)
 
         for i, txn in enumerate(transactions):
-            transaction_id = txn.get("transaction_id", txn.get("external_transaction_id", f"batch_{i}"))
+            transaction_id = txn.get(
+                "transaction_id", txn.get("external_transaction_id", f"batch_{i}")
+            )
             fv = feature_vectors[i]
             feature_quality = self._assess_feature_quality(fv)
             risk_level = self._classify_risk(calibrated_scores[i])
             confidence = self._compute_confidence(calibrated_scores[i], feature_quality)
 
-            results.append(RiskScore(
-                transaction_id=transaction_id,
-                risk_score=float(calibrated_scores[i]),
-                risk_level=risk_level,
-                raw_score=float(raw_scores[i]),
-                confidence=float(confidence),
-                top_features=[],  # Skip SHAP for batch performance
-                prediction_latency_ms=0.0,
-                model_version=self._artifact.model_version,
-                feature_quality=feature_quality,
-            ))
+            results.append(
+                RiskScore(
+                    transaction_id=transaction_id,
+                    risk_score=float(calibrated_scores[i]),
+                    risk_level=risk_level,
+                    raw_score=float(raw_scores[i]),
+                    confidence=float(confidence),
+                    top_features=[],  # Skip SHAP for batch performance
+                    prediction_latency_ms=0.0,
+                    model_version=self._artifact.model_version,
+                    feature_quality=feature_quality,
+                )
+            )
 
         return results
 
@@ -388,7 +392,9 @@ class RiskScorer:
                     proba = self._artifact.calibrator.predict_proba(X)
                     return float(np.clip(proba[0, 1], 0.0, 1.0))
                 elif hasattr(self._artifact.calibrator, "transform"):
-                    return float(np.clip(self._artifact.calibrator.transform([[raw_score]])[0, 0], 0.0, 1.0))
+                    return float(
+                        np.clip(self._artifact.calibrator.transform([[raw_score]])[0, 0], 0.0, 1.0)
+                    )
             except Exception as e:
                 logger.debug("Calibration fallback: %s", e)
 
@@ -428,7 +434,9 @@ class RiskScorer:
 
     def _assess_feature_quality(self, feature_vector: FeatureVector) -> str:
         """Assess the quality of the feature vector."""
-        total_features = len(self._artifact.feature_names) if self._artifact else len(FEATURE_CATALOG)
+        total_features = (
+            len(self._artifact.feature_names) if self._artifact else len(FEATURE_CATALOG)
+        )
         missing_ratio = len(feature_vector.missing_features) / max(total_features, 1)
         stale_ratio = len(feature_vector.stale_features) / max(total_features, 1)
 
@@ -460,7 +468,9 @@ class RiskScorer:
             logger.warning("Failed to initialize SHAP explainer: %s", e)
             self._shap_explainer = None
 
-    def _explain_prediction(self, X: np.ndarray, feature_vector: FeatureVector) -> list[dict[str, Any]]:
+    def _explain_prediction(
+        self, X: np.ndarray, feature_vector: FeatureVector
+    ) -> list[dict[str, Any]]:
         """Generate SHAP explanations for a prediction."""
         if self._shap_explainer is None:
             return self._fallback_explanation(X, feature_vector)
@@ -481,12 +491,14 @@ class RiskScorer:
             importance_list = []
             for i, (name, shap_val) in enumerate(zip(feature_names, contributions)):
                 feat_value = feature_vector.features.get(name, 0.0)
-                importance_list.append({
-                    "feature": name,
-                    "shap_value": float(shap_val),
-                    "feature_value": float(feat_value),
-                    "direction": "increases_risk" if shap_val > 0 else "decreases_risk",
-                })
+                importance_list.append(
+                    {
+                        "feature": name,
+                        "shap_value": float(shap_val),
+                        "feature_value": float(feat_value),
+                        "direction": "increases_risk" if shap_val > 0 else "decreases_risk",
+                    }
+                )
 
             # Sort by absolute SHAP value and take top N
             importance_list.sort(key=lambda x: abs(x["shap_value"]), reverse=True)
@@ -496,7 +508,9 @@ class RiskScorer:
             logger.debug("SHAP explanation failed, using fallback: %s", e)
             return self._fallback_explanation(X, feature_vector)
 
-    def _fallback_explanation(self, X: np.ndarray, feature_vector: FeatureVector) -> list[dict[str, Any]]:
+    def _fallback_explanation(
+        self, X: np.ndarray, feature_vector: FeatureVector
+    ) -> list[dict[str, Any]]:
         """Fallback explanation using feature importances from the model."""
         if not hasattr(self._artifact.model, "feature_importances_"):
             return []
@@ -508,12 +522,14 @@ class RiskScorer:
         for name, imp in zip(feature_names, importances):
             if imp > 0:
                 feat_value = feature_vector.features.get(name, 0.0)
-                importance_list.append({
-                    "feature": name,
-                    "importance": float(imp),
-                    "feature_value": float(feat_value),
-                    "direction": "contributes",
-                })
+                importance_list.append(
+                    {
+                        "feature": name,
+                        "importance": float(imp),
+                        "feature_value": float(feat_value),
+                        "direction": "contributes",
+                    }
+                )
 
         importance_list.sort(key=lambda x: x["importance"], reverse=True)
         return importance_list[: self._shap_max_features]

@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from src.api.openapi import install_custom_openapi
 from src.monitoring.cloudwatch_logger import configure_cloudwatch_logging
 from src.utils.config import get_settings
-from src.utils.constants import APP_NAME, APP_VERSION, API_PREFIX
+from src.utils.constants import API_PREFIX, APP_NAME, APP_VERSION
 from src.utils.logger import configure_logging
 
 logger = structlog.get_logger(__name__)
@@ -52,7 +52,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.redis_client = redis_client
         logger.info("redis_connected", url=settings.redis_url)
     except Exception as exc:
-        logger.warning("redis_unavailable", error=str(exc), msg="Rate limiting will use in-memory fallback")
+        logger.warning(
+            "redis_unavailable", error=str(exc), msg="Rate limiting will use in-memory fallback"
+        )
         app.state.redis_client = None
 
     logger.info("api_started", service=APP_NAME)
@@ -108,21 +110,25 @@ def create_app() -> FastAPI:
     # Rate limiting middleware
     from src.api.middleware.rate_limiter import RateLimitMiddleware
 
-    app.add_middleware(RateLimitMiddleware, redis_client=None)
+    app.add_middleware(RateLimitMiddleware, redis_client=getattr(app.state, "redis_client", None))
 
     # --- Exception Handlers ---
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         """Return structured 422 errors with field-level detail."""
         errors = []
         for error in exc.errors():
             loc = " -> ".join(str(l) for l in error["loc"])
-            errors.append({
-                "field": loc,
-                "message": error["msg"],
-                "type": error["type"],
-            })
+            errors.append(
+                {
+                    "field": loc,
+                    "message": error["msg"],
+                    "type": error["type"],
+                }
+            )
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
@@ -153,10 +159,10 @@ def create_app() -> FastAPI:
     # --- Routes ---
 
     from src.api.routes.health import router as health_router
-    from src.api.routes.transactions import router as transactions_router
-    from src.api.routes.rules import router as rules_router
     from src.api.routes.risk_scores import router as risk_scores_router
+    from src.api.routes.rules import router as rules_router
     from src.api.routes.scoring import router as scoring_router
+    from src.api.routes.transactions import router as transactions_router
 
     app.include_router(health_router)
     app.include_router(transactions_router)

@@ -94,7 +94,9 @@ class StageMetrics:
             "records_failed": self.records_failed,
             "records_skipped": self.records_skipped,
             "avg_latency_ms": round(self.avg_latency_ms, 4),
-            "min_latency_ms": round(self.min_latency_ms, 4) if self.min_latency_ms != float("inf") else 0.0,
+            "min_latency_ms": (
+                round(self.min_latency_ms, 4) if self.min_latency_ms != float("inf") else 0.0
+            ),
             "max_latency_ms": round(self.max_latency_ms, 4),
             "success_rate": round(self.success_rate, 4),
         }
@@ -283,12 +285,16 @@ class PipelineOrchestrator:
             # Stage 1: Schema Validation
             current_record = self._run_validation(current_record, txn_id)
             if current_record is None:
-                return self._make_failure(txn_id, PipelineStage.VALIDATION, "Schema validation failed", start)
+                return self._make_failure(
+                    txn_id, PipelineStage.VALIDATION, "Schema validation failed", start
+                )
 
             # Stage 2: Business Rules
             current_record = self._run_rules_engine(current_record, txn_id)
             if current_record is None:
-                return self._make_failure(txn_id, PipelineStage.VALIDATION, "Blocked by rules engine", start)
+                return self._make_failure(
+                    txn_id, PipelineStage.VALIDATION, "Blocked by rules engine", start
+                )
 
             # Stage 3: Cleaning
             current_record = self._run_cleaning(current_record, txn_id)
@@ -298,17 +304,23 @@ class PipelineOrchestrator:
             # Stage 4: Normalization
             current_record = self._run_normalization(current_record, txn_id)
             if current_record is None:
-                return self._make_failure(txn_id, PipelineStage.NORMALIZATION, "Normalization failed", start)
+                return self._make_failure(
+                    txn_id, PipelineStage.NORMALIZATION, "Normalization failed", start
+                )
 
             # Stage 5: Feature Engineering
             current_record = self._run_feature_engineering(current_record, txn_id)
             if current_record is None:
-                return self._make_failure(txn_id, PipelineStage.FEATURE_ENGINEERING, "Feature engineering failed", start)
+                return self._make_failure(
+                    txn_id, PipelineStage.FEATURE_ENGINEERING, "Feature engineering failed", start
+                )
 
             # Stage 6: Enrichment (Geo + Device + Merchant + Velocity)
             current_record = self._run_enrichment(current_record, txn_id)
             if current_record is None:
-                return self._make_failure(txn_id, PipelineStage.ENRICHMENT, "Enrichment failed", start)
+                return self._make_failure(
+                    txn_id, PipelineStage.ENRICHMENT, "Enrichment failed", start
+                )
 
             # Mark pipeline metadata
             current_record["_pipeline_processed"] = True
@@ -500,7 +512,9 @@ class PipelineOrchestrator:
             logger.error("Normalization stage error", transaction_id=txn_id, error=str(e))
             return self._handle_stage_error(stage, record, txn_id, str(e))
 
-    def _run_feature_engineering(self, record: dict[str, Any], txn_id: str) -> dict[str, Any] | None:
+    def _run_feature_engineering(
+        self, record: dict[str, Any], txn_id: str
+    ) -> dict[str, Any] | None:
         """Stage 4: Feature engineering."""
         stage = PipelineStage.FEATURE_ENGINEERING.value
         start = time.perf_counter()
@@ -511,7 +525,9 @@ class PipelineOrchestrator:
 
             if not result.is_success:
                 self._record_stage_failure(stage)
-                return self._handle_stage_error(stage, record, txn_id, result.error or "Feature computation failed")
+                return self._handle_stage_error(
+                    stage, record, txn_id, result.error or "Feature computation failed"
+                )
 
             # Merge features into record
             record.update(result.features)

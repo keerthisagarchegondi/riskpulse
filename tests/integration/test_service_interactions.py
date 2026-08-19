@@ -15,7 +15,6 @@ from fastapi.testclient import TestClient
 from src.api.app import create_app
 from src.api.middleware.auth import reset_key_manager
 
-
 AUTH_HEADERS = {"X-API-Key": "dev-api-key-riskpulse-2024"}
 
 

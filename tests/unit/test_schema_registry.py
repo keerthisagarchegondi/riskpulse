@@ -25,7 +25,6 @@ from src.ingestion.schema_registry import (
     get_schema_registry,
 )
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -141,13 +140,15 @@ class TestSchemaLoading:
     def test_load_invalid_avro_schema_raises(self, tmp_path):
         """Should raise SchemaRegistryError for valid JSON but invalid Avro."""
         bad_schema = tmp_path / "invalid_avro.avsc"
-        bad_schema.write_text(json.dumps({
-            "type": "record",
-            "name": "Bad",
-            "fields": [
-                {"name": "field1", "type": "nonexistent_type"}
-            ]
-        }))
+        bad_schema.write_text(
+            json.dumps(
+                {
+                    "type": "record",
+                    "name": "Bad",
+                    "fields": [{"name": "field1", "type": "nonexistent_type"}],
+                }
+            )
+        )
 
         registry = SchemaRegistry(schemas_dir=tmp_path)
         with pytest.raises(SchemaRegistryError, match="Invalid Avro schema"):
@@ -243,18 +244,14 @@ class TestSerialization:
 
     def test_serialize_produces_bytes(self, registry, valid_event):
         """Serialization should produce non-empty bytes."""
-        coerced = registry._coerce_types(
-            registry.get_schema("transaction_event"), valid_event
-        )
+        coerced = registry._coerce_types(registry.get_schema("transaction_event"), valid_event)
         data = registry.serialize("transaction_event", coerced)
         assert isinstance(data, bytes)
         assert len(data) > 0
 
     def test_serialize_deserialize_roundtrip(self, registry, valid_event):
         """Should faithfully roundtrip through serialize/deserialize."""
-        coerced = registry._coerce_types(
-            registry.get_schema("transaction_event"), valid_event
-        )
+        coerced = registry._coerce_types(registry.get_schema("transaction_event"), valid_event)
         data = registry.serialize("transaction_event", coerced)
         result = registry.deserialize("transaction_event", data)
 
@@ -268,9 +265,7 @@ class TestSerialization:
 
     def test_serialize_minimal_event_roundtrip(self, registry, minimal_event):
         """Should roundtrip minimal events with null fields."""
-        coerced = registry._coerce_types(
-            registry.get_schema("transaction_event"), minimal_event
-        )
+        coerced = registry._coerce_types(registry.get_schema("transaction_event"), minimal_event)
         data = registry.serialize("transaction_event", coerced)
         result = registry.deserialize("transaction_event", data)
 

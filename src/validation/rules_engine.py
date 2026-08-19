@@ -86,7 +86,7 @@ class RuleDefinition:
     def config_hash(self) -> str:
         """Content hash for change detection."""
         content = f"{self.id}:{self.version}:{self.condition}:{self.enabled}"
-        return hashlib.md5(content.encode()).hexdigest()[:12]
+        return hashlib.sha256(content.encode()).hexdigest()[:12]
 
 
 @dataclass
@@ -314,9 +314,7 @@ class RuleAuditTrail:
         """Get aggregated statistics."""
         with self._lock:
             total = len(self._records)
-            triggered = sum(
-                v for k, v in self._stats.items() if k.endswith(":triggered")
-            )
+            triggered = sum(v for k, v in self._stats.items() if k.endswith(":triggered"))
             return {
                 "total_evaluations": total,
                 "total_triggered": triggered,
@@ -407,7 +405,7 @@ class RulesEngine:
             with open(self._rules_path, "r") as f:
                 content = f.read()
 
-            config_hash = hashlib.md5(content.encode()).hexdigest()
+            config_hash = hashlib.sha256(content.encode()).hexdigest()
             if config_hash == self._config_hash:
                 return  # No changes
 
@@ -595,7 +593,9 @@ class RulesEngine:
                     # Update overall action (block overrides flag)
                     if rule.action == RuleAction.BLOCK:
                         result.overall_action = RuleAction.BLOCK
-                    elif rule.action == RuleAction.FLAG and result.overall_action != RuleAction.BLOCK:
+                    elif (
+                        rule.action == RuleAction.FLAG and result.overall_action != RuleAction.BLOCK
+                    ):
                         result.overall_action = RuleAction.FLAG
 
                     # Track highest severity
@@ -841,9 +841,7 @@ class RulesEngine:
         # unless explicitly marked.
         return False
 
-    def _evaluate_cardinality(
-        self, condition: dict[str, Any], transaction: dict[str, Any]
-    ) -> bool:
+    def _evaluate_cardinality(self, condition: dict[str, Any], transaction: dict[str, Any]) -> bool:
         """Evaluate cardinality rule (distinct values per group)."""
         group_by = condition.get("group_by")
         count_field = condition.get("count_field")
@@ -927,7 +925,9 @@ class RulesEngine:
 
     # --- Rule Management API ---
 
-    def get_rules(self, category: str | None = None, enabled_only: bool = False) -> list[dict[str, Any]]:
+    def get_rules(
+        self, category: str | None = None, enabled_only: bool = False
+    ) -> list[dict[str, Any]]:
         """Get all rules, optionally filtered by category or enabled status."""
         with self._lock:
             rules = self._rules
@@ -937,20 +937,22 @@ class RulesEngine:
                 continue
             if category and rule.category != category:
                 continue
-            result.append({
-                "id": rule.id,
-                "name": rule.name,
-                "description": rule.description,
-                "version": rule.version,
-                "priority": rule.priority,
-                "enabled": rule.enabled,
-                "severity": rule.severity.value,
-                "category": rule.category,
-                "condition": rule.condition,
-                "action": rule.action.value,
-                "schedule": rule.schedule,
-                "tags": rule.tags,
-            })
+            result.append(
+                {
+                    "id": rule.id,
+                    "name": rule.name,
+                    "description": rule.description,
+                    "version": rule.version,
+                    "priority": rule.priority,
+                    "enabled": rule.enabled,
+                    "severity": rule.severity.value,
+                    "category": rule.category,
+                    "condition": rule.condition,
+                    "action": rule.action.value,
+                    "schedule": rule.schedule,
+                    "tags": rule.tags,
+                }
+            )
         return result
 
     def get_rule(self, rule_id: str) -> dict[str, Any] | None:
@@ -1056,7 +1058,11 @@ class RulesEngine:
                 version=updates.get("version", old_rule.version),
                 priority=updates.get("priority", old_rule.priority),
                 enabled=updates.get("enabled", old_rule.enabled),
-                severity=RuleSeverity(updates["severity"]) if "severity" in updates else old_rule.severity,
+                severity=(
+                    RuleSeverity(updates["severity"])
+                    if "severity" in updates
+                    else old_rule.severity
+                ),
                 category=updates.get("category", old_rule.category),
                 condition=updates.get("condition", old_rule.condition),
                 action=RuleAction(updates["action"]) if "action" in updates else old_rule.action,

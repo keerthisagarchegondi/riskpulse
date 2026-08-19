@@ -33,7 +33,6 @@ from src.validation.rules_engine import (
     reset_rules_engine,
 )
 
-
 # --- Fixtures ---
 
 
@@ -93,7 +92,11 @@ def rules_yaml_path(tmp_path):
                     "operator": "and",
                     "conditions": [
                         {"field": "transaction_type", "operator": "equals", "value": "purchase"},
-                        {"field": "transaction_amount", "operator": "greater_than", "value": 25000.0},
+                        {
+                            "field": "transaction_amount",
+                            "operator": "greater_than",
+                            "value": 25000.0,
+                        },
                     ],
                 },
                 "action": "block",
@@ -183,7 +186,11 @@ def rules_yaml_path(tmp_path):
                     "operator": "and",
                     "conditions": [
                         {"field": "merchant_name", "operator": "is_null"},
-                        {"field": "transaction_amount", "operator": "greater_than", "value": 1000.0},
+                        {
+                            "field": "transaction_amount",
+                            "operator": "greater_than",
+                            "value": 1000.0,
+                        },
                     ],
                 },
                 "action": "flag",
@@ -201,7 +208,11 @@ def rules_yaml_path(tmp_path):
                 "condition": {
                     "operator": "and",
                     "conditions": [
-                        {"field": "transaction_amount", "operator": "greater_than", "value": 9000.0},
+                        {
+                            "field": "transaction_amount",
+                            "operator": "greater_than",
+                            "value": 9000.0,
+                        },
                         {"field": "transaction_amount", "operator": "less_than", "value": 10000.0},
                     ],
                 },
@@ -308,18 +319,24 @@ class TestRuleLoading:
         # Modify the YAML to add a rule
         with open(rules_yaml_path, "r") as f:
             data = yaml.safe_load(f)
-        data["rules"].append({
-            "id": "TEST-NEW",
-            "name": "New Rule",
-            "description": "Added after initial load",
-            "version": "1.0.0",
-            "priority": 100,
-            "enabled": True,
-            "severity": "low",
-            "category": "test",
-            "condition": {"field": "transaction_amount", "operator": "greater_than", "value": 99999},
-            "action": "flag",
-        })
+        data["rules"].append(
+            {
+                "id": "TEST-NEW",
+                "name": "New Rule",
+                "description": "Added after initial load",
+                "version": "1.0.0",
+                "priority": 100,
+                "enabled": True,
+                "severity": "low",
+                "category": "test",
+                "condition": {
+                    "field": "transaction_amount",
+                    "operator": "greater_than",
+                    "value": 99999,
+                },
+                "action": "flag",
+            }
+        )
         with open(rules_yaml_path, "w") as f:
             yaml.dump(data, f)
         engine.force_reload()
@@ -585,7 +602,11 @@ class TestRuleManagement:
             "enabled": True,
             "severity": "low",
             "category": "custom",
-            "condition": {"field": "transaction_amount", "operator": "greater_than", "value": 99999},
+            "condition": {
+                "field": "transaction_amount",
+                "operator": "greater_than",
+                "value": 99999,
+            },
             "action": "flag",
             "tags": ["dynamic"],
         }
@@ -598,11 +619,13 @@ class TestRuleManagement:
     def test_add_duplicate_rule_raises(self, engine):
         """Adding a rule with existing ID raises ValueError."""
         with pytest.raises(ValueError, match="already exists"):
-            engine.add_rule({
-                "id": "TEST-001",
-                "name": "Duplicate",
-                "condition": {"field": "x", "operator": "equals", "value": 1},
-            })
+            engine.add_rule(
+                {
+                    "id": "TEST-001",
+                    "name": "Duplicate",
+                    "condition": {"field": "x", "operator": "equals", "value": 1},
+                }
+            )
 
     def test_remove_rule(self, engine):
         """Remove a rule by ID."""
@@ -662,7 +685,9 @@ class TestVelocityTracker:
         tracker.record_event("account:ACC-003", 1000.0, timestamp=now - 10)
         tracker.record_event("account:ACC-003", 2000.0, timestamp=now - 5)
         tracker.record_event("account:ACC-003", 3000.0, timestamp=now - 1)
-        total = tracker.get_cumulative_amount("account:ACC-003", window_seconds=60, current_time=now)
+        total = tracker.get_cumulative_amount(
+            "account:ACC-003", window_seconds=60, current_time=now
+        )
         assert total == 6000.0
 
     def test_amount_threshold_filter(self):
@@ -832,22 +857,24 @@ class TestPerformance:
         """Engine handles 50+ rules within performance target."""
         rules = []
         for i in range(50):
-            rules.append({
-                "id": f"PERF-{i:03d}",
-                "name": f"Performance Rule {i}",
-                "description": f"Rule {i}",
-                "version": "1.0.0",
-                "priority": i + 1,
-                "enabled": True,
-                "severity": "low",
-                "category": "performance_test",
-                "condition": {
-                    "field": "transaction_amount",
-                    "operator": "greater_than",
-                    "value": 999999.0 + i,  # Won't trigger
-                },
-                "action": "flag",
-            })
+            rules.append(
+                {
+                    "id": f"PERF-{i:03d}",
+                    "name": f"Performance Rule {i}",
+                    "description": f"Rule {i}",
+                    "version": "1.0.0",
+                    "priority": i + 1,
+                    "enabled": True,
+                    "severity": "low",
+                    "category": "performance_test",
+                    "condition": {
+                        "field": "transaction_amount",
+                        "operator": "greater_than",
+                        "value": 999999.0 + i,  # Won't trigger
+                    },
+                    "action": "flag",
+                }
+            )
         config = {"metadata": {"schema_version": "1.0.0"}, "rules": rules}
         rules_file = tmp_path / "perf_rules.yaml"
         with open(rules_file, "w") as f:

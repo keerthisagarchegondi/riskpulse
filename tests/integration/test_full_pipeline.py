@@ -60,7 +60,6 @@ from src.transformation.normalizer import DataNormalizer
 from src.validation.quarantine_handler import QuarantineHandler
 from src.validation.schema_validator import SchemaValidator
 
-
 # ============================================================================
 # Test Data Generators
 # ============================================================================
@@ -351,9 +350,7 @@ class TestFullPipelineToAlert:
         classifications = [s.risk_classification.value for s, _ in scored]
         assert "low" in classifications
 
-    def test_batch_alert_generation(
-        self, pipeline, full_scoring_pipeline, alert_manager
-    ):
+    def test_batch_alert_generation(self, pipeline, full_scoring_pipeline, alert_manager):
         """Batch scoring and alert generation produces expected alerts."""
         fraud_txns = [make_fraud_transaction() for _ in range(20)]
         valid_txns = [make_valid_transaction() for _ in range(80)]
@@ -373,9 +370,7 @@ class TestFullPipelineToAlert:
                 alert_candidates.append((score.to_dict(), result.record))
 
         # Generate alerts
-        alerts = alert_manager.generate_alerts_from_batch(
-            [(s, t) for s, t in alert_candidates]
-        )
+        alerts = alert_manager.generate_alerts_from_batch([(s, t) for s, t in alert_candidates])
 
         # We should have at least some alerts from the fraud transactions
         assert len(alerts) > 0
@@ -419,9 +414,7 @@ class TestAlertIntegration:
                     "method": "rule_engine",
                     "success": True,
                     "details": {
-                        "triggered_rules": [
-                            {"rule_id": "RULE-HIGH-AMOUNT", "severity": "high"}
-                        ]
+                        "triggered_rules": [{"rule_id": "RULE-HIGH-AMOUNT", "severity": "high"}]
                     },
                 },
             ],
@@ -485,9 +478,7 @@ class TestAlertIntegration:
         assert alert is not None
 
         # Start investigating → suppresses further alerts
-        alert_manager.transition_alert(
-            alert.alert_id, AlertStatus.INVESTIGATING
-        )
+        alert_manager.transition_alert(alert.alert_id, AlertStatus.INVESTIGATING)
 
         # New alert for same account should be suppressed
         txn2 = make_fraud_transaction(account_id=account_id)
@@ -511,9 +502,7 @@ class TestAlertIntegration:
                 "method_scores": [],
             }
             # Use unique account to avoid dedup
-            txn = make_fraud_transaction(
-                account_id=f"ACC-SEV-{uuid.uuid4().hex[:8]}"
-            )
+            txn = make_fraud_transaction(account_id=f"ACC-SEV-{uuid.uuid4().hex[:8]}")
             alert = alert_manager.generate_alert(scoring_result, txn)
             if alert is not None:
                 assert alert.severity == expected_severity
@@ -550,9 +539,7 @@ class TestAlertIntegration:
         }
 
         for i in range(5):
-            txn = make_fraud_transaction(
-                account_id=f"ACC-STATS-{i:04d}"
-            )
+            txn = make_fraud_transaction(account_id=f"ACC-STATS-{i:04d}")
             alert_manager.generate_alert(scoring_result, txn)
 
         stats = alert_manager._statistics.snapshot()
@@ -635,7 +622,9 @@ class TestScoringPipelineIntegration:
         assert "medium" in thresholds
         assert "high" in thresholds
         assert "critical" in thresholds
-        assert thresholds["low"] < thresholds["medium"] < thresholds["high"] < thresholds["critical"]
+        assert (
+            thresholds["low"] < thresholds["medium"] < thresholds["high"] < thresholds["critical"]
+        )
 
 
 class TestPipelineResilience:
@@ -721,9 +710,7 @@ class TestPipelineResilience:
             "risk_classification": "high",
             "alert_recommended": True,
         }
-        txn = make_fraud_transaction(
-            account_id=f"ACC-MALFORMED-{uuid.uuid4().hex[:6]}"
-        )
+        txn = make_fraud_transaction(account_id=f"ACC-MALFORMED-{uuid.uuid4().hex[:6]}")
 
         alert = alert_manager.generate_alert(minimal_result, txn)
         # Should not crash — either generates alert or returns None
@@ -818,9 +805,7 @@ class TestEndToEndDataFlow:
         for result in batch_result.results:
             if not result.success:
                 continue
-            score = full_scoring_pipeline.score_transaction_sync(
-                result.record, use_cache=False
-            )
+            score = full_scoring_pipeline.score_transaction_sync(result.record, use_cache=False)
             if score.alert_recommended:
                 scored_high_risk.append((score.to_dict(), result.record))
 
@@ -836,11 +821,11 @@ class TestEndToEndDataFlow:
 
         # Verify alert statistics
         stats = alert_manager._statistics.snapshot()
-        assert stats["total_generated"] + stats["total_suppressed"] + stats["total_deduplicated"] >= 0
+        assert (
+            stats["total_generated"] + stats["total_suppressed"] + stats["total_deduplicated"] >= 0
+        )
 
-    def test_alert_latency_under_5_seconds(
-        self, pipeline, full_scoring_pipeline, alert_manager
-    ):
+    def test_alert_latency_under_5_seconds(self, pipeline, full_scoring_pipeline, alert_manager):
         """End-to-end latency from ingestion to alert < 5 seconds for critical."""
         # Use a transaction that passes validation but has some risk indicators
         txn = make_valid_transaction(
@@ -864,6 +849,4 @@ class TestEndToEndDataFlow:
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         # End-to-end latency must be under 5000ms
-        assert elapsed_ms < 5000, (
-            f"End-to-end latency {elapsed_ms:.1f}ms exceeds 5000ms target"
-        )
+        assert elapsed_ms < 5000, f"End-to-end latency {elapsed_ms:.1f}ms exceeds 5000ms target"

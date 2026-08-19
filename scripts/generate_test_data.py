@@ -391,7 +391,12 @@ def _generate_ip(domestic: bool = True) -> str:
     else:
         # Foreign/suspicious ranges
         first_octet = random.choice([5, 31, 37, 46, 77, 85, 91, 185, 195, 212])
-    return f"{first_octet}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}"
+    return (
+        f"{first_octet}."
+        f"{random.randint(0, 255)}."
+        f"{random.randint(0, 255)}."
+        f"{random.randint(1, 254)}"
+    )
 
 
 # ============================================================================
@@ -487,7 +492,7 @@ def anonymize_transactions(
         record["device_id"] = device_map[device_id]
         record["card_last_four"] = card_map[card_last_four]
         if record.get("ip_address"):
-            record["ip_address"] = "0.0.0.0"
+            record["ip_address"] = "192.0.2.0"
         anonymized.append(record)
 
     return anonymized

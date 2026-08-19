@@ -26,6 +26,7 @@ from src.fraud_detection.rule_engine import (
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def engine():
     """Return a fresh FraudRuleEngine using the default fraud_rules.yaml."""
@@ -74,6 +75,7 @@ def base_context():
 
 # ── Helper Tests ─────────────────────────────────────────────────────
 
+
 class TestHelpers:
     def test_safe_float_valid(self):
         assert _safe_float("123.45") == 123.45
@@ -120,6 +122,7 @@ class TestHelpers:
 
 # ── Engine Initialization ────────────────────────────────────────────
 
+
 class TestEngineInit:
     def test_loads_rules(self, engine):
         assert len(engine.rules) >= 17
@@ -144,6 +147,7 @@ class TestEngineInit:
 
 # ── Clean Transaction (Baseline) ────────────────────────────────────
 
+
 class TestCleanTransaction:
     def test_no_rules_triggered(self, engine, base_transaction, base_context):
         result = engine.evaluate(base_transaction, base_context)
@@ -158,6 +162,7 @@ class TestCleanTransaction:
 
 
 # ── FRAUD-AMT-001: High Amount vs Customer Average ──────────────────
+
 
 class TestHighAmountVsAvg:
     def test_triggers_above_3x_avg(self, engine, base_transaction, base_context):
@@ -187,6 +192,7 @@ class TestHighAmountVsAvg:
 
 # ── FRAUD-AMT-002: Amount Below Reporting Threshold ─────────────────
 
+
 class TestStructuring:
     def test_triggers_just_below_10k(self, engine, base_transaction, base_context):
         base_transaction["transaction_amount"] = 9500.0
@@ -210,6 +216,7 @@ class TestStructuring:
 
 # ── FRAUD-AMT-003: Round Amount ─────────────────────────────────────
 
+
 class TestRoundAmount:
     def test_triggers_on_round_amount(self, engine, base_transaction, base_context):
         base_transaction["transaction_amount"] = 7000.0
@@ -232,16 +239,19 @@ class TestRoundAmount:
 
 # ── FRAUD-VEL-001: Rapid Successive Transactions ───────────────────
 
+
 class TestRapidTransactions:
     def test_triggers_with_5_in_10_min(self, engine, base_transaction, base_context):
         base_ts = datetime(2026, 7, 1, 14, 30, 0, tzinfo=timezone.utc)
         recent = []
         for i in range(5):
             ts = base_ts - timedelta(minutes=i + 1)
-            recent.append({
-                "transaction_timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "transaction_amount": 25.0,
-            })
+            recent.append(
+                {
+                    "transaction_timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "transaction_amount": 25.0,
+                }
+            )
         base_context["recent_transactions"] = recent
         result = engine.evaluate(base_transaction, base_context)
         matched = [r for r in result.triggered_rules if r.rule_id == "FRAUD-VEL-001"]
@@ -250,8 +260,18 @@ class TestRapidTransactions:
     def test_does_not_trigger_with_few_recent(self, engine, base_transaction, base_context):
         base_ts = datetime(2026, 7, 1, 14, 30, 0, tzinfo=timezone.utc)
         recent = [
-            {"transaction_timestamp": (base_ts - timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ"), "transaction_amount": 10.0},
-            {"transaction_timestamp": (base_ts - timedelta(minutes=8)).strftime("%Y-%m-%dT%H:%M:%SZ"), "transaction_amount": 10.0},
+            {
+                "transaction_timestamp": (base_ts - timedelta(minutes=5)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+                "transaction_amount": 10.0,
+            },
+            {
+                "transaction_timestamp": (base_ts - timedelta(minutes=8)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+                "transaction_amount": 10.0,
+            },
         ]
         base_context["recent_transactions"] = recent
         result = engine.evaluate(base_transaction, base_context)
@@ -261,6 +281,7 @@ class TestRapidTransactions:
 
 # ── FRAUD-VEL-002: Declined Then Approved ───────────────────────────
 
+
 class TestDeclinedThenApproved:
     def test_triggers_3_declines_then_approved(self, engine, base_transaction, base_context):
         base_transaction["status"] = "approved"
@@ -268,11 +289,13 @@ class TestDeclinedThenApproved:
         recent = []
         for i in range(3):
             ts = base_ts - timedelta(minutes=i + 1)
-            recent.append({
-                "transaction_timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "status": "declined",
-                "transaction_amount": 100.0,
-            })
+            recent.append(
+                {
+                    "transaction_timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "status": "declined",
+                    "transaction_amount": 100.0,
+                }
+            )
         base_context["recent_transactions"] = recent
         result = engine.evaluate(base_transaction, base_context)
         matched = [r for r in result.triggered_rules if r.rule_id == "FRAUD-VEL-002"]
@@ -292,13 +315,24 @@ class TestDeclinedThenApproved:
 
 # ── FRAUD-VEL-003: Escalating Amounts ──────────────────────────────
 
+
 class TestEscalatingAmounts:
     def test_triggers_on_doubling_pattern(self, engine, base_transaction, base_context):
         base_ts = datetime(2026, 7, 1, 14, 30, 0, tzinfo=timezone.utc)
         base_transaction["transaction_amount"] = 800.0
         recent = [
-            {"transaction_timestamp": (base_ts - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ"), "transaction_amount": 100.0},
-            {"transaction_timestamp": (base_ts - timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ"), "transaction_amount": 200.0},
+            {
+                "transaction_timestamp": (base_ts - timedelta(minutes=10)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+                "transaction_amount": 100.0,
+            },
+            {
+                "transaction_timestamp": (base_ts - timedelta(minutes=5)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+                "transaction_amount": 200.0,
+            },
         ]
         base_context["recent_transactions"] = recent
         result = engine.evaluate(base_transaction, base_context)
@@ -309,8 +343,18 @@ class TestEscalatingAmounts:
         base_ts = datetime(2026, 7, 1, 14, 30, 0, tzinfo=timezone.utc)
         base_transaction["transaction_amount"] = 100.0
         recent = [
-            {"transaction_timestamp": (base_ts - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ"), "transaction_amount": 100.0},
-            {"transaction_timestamp": (base_ts - timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ"), "transaction_amount": 100.0},
+            {
+                "transaction_timestamp": (base_ts - timedelta(minutes=10)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+                "transaction_amount": 100.0,
+            },
+            {
+                "transaction_timestamp": (base_ts - timedelta(minutes=5)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+                "transaction_amount": 100.0,
+            },
         ]
         base_context["recent_transactions"] = recent
         result = engine.evaluate(base_transaction, base_context)
@@ -320,13 +364,14 @@ class TestEscalatingAmounts:
 
 # ── FRAUD-GEO-001: Impossible Travel ───────────────────────────────
 
+
 class TestImpossibleTravel:
     def test_triggers_nyc_to_london_in_1h(self, engine, base_transaction, base_context):
-        base_transaction["geo_latitude"] = 51.5074   # London
+        base_transaction["geo_latitude"] = 51.5074  # London
         base_transaction["geo_longitude"] = -0.1278
         base_transaction["transaction_timestamp"] = "2026-07-01T15:00:00Z"
         base_context["last_transaction"] = {
-            "geo_latitude": 40.7128,   # NYC
+            "geo_latitude": 40.7128,  # NYC
             "geo_longitude": -74.006,
             "transaction_timestamp": "2026-07-01T14:00:00Z",
         }
@@ -358,8 +403,11 @@ class TestImpossibleTravel:
 
 # ── FRAUD-GEO-002: International From Domestic-Only ────────────────
 
+
 class TestInternationalDomestic:
-    def test_triggers_international_on_domestic_account(self, engine, base_transaction, base_context):
+    def test_triggers_international_on_domestic_account(
+        self, engine, base_transaction, base_context
+    ):
         base_transaction["is_international"] = True
         base_transaction["geo_country"] = "GB"
         base_context["is_domestic_only"] = True
@@ -377,6 +425,7 @@ class TestInternationalDomestic:
 
 
 # ── FRAUD-GEO-003: High-Risk Country ──────────────────────────────
+
 
 class TestHighRiskCountry:
     def test_triggers_on_russia(self, engine, base_transaction, base_context):
@@ -399,6 +448,7 @@ class TestHighRiskCountry:
 
 
 # ── FRAUD-PAT-001: New Device + High Amount ────────────────────────
+
 
 class TestNewDeviceHighAmount:
     def test_triggers_new_device_high_amount(self, engine, base_transaction, base_context):
@@ -428,6 +478,7 @@ class TestNewDeviceHighAmount:
 
 # ── FRAUD-PAT-002: Merchant Category Mismatch ─────────────────────
 
+
 class TestMerchantMismatch:
     def test_triggers_unusual_mcc(self, engine, base_transaction, base_context):
         base_transaction["merchant_category_code"] = "7995"  # gambling
@@ -448,6 +499,7 @@ class TestMerchantMismatch:
 
 # ── FRAUD-PAT-003: Card Testing ────────────────────────────────────
 
+
 class TestCardTesting:
     def test_triggers_small_then_large(self, engine, base_transaction, base_context):
         base_transaction["transaction_amount"] = 1500.0
@@ -455,10 +507,12 @@ class TestCardTesting:
         recent = []
         for i in range(4):
             ts = base_ts - timedelta(minutes=i + 1)
-            recent.append({
-                "transaction_timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "transaction_amount": round(1.0 + i * 0.5, 2),  # 1.0, 1.5, 2.0, 2.5
-            })
+            recent.append(
+                {
+                    "transaction_timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "transaction_amount": round(1.0 + i * 0.5, 2),  # 1.0, 1.5, 2.0, 2.5
+                }
+            )
         base_context["recent_transactions"] = recent
         result = engine.evaluate(base_transaction, base_context)
         matched = [r for r in result.triggered_rules if r.rule_id == "FRAUD-PAT-003"]
@@ -475,6 +529,7 @@ class TestCardTesting:
 
 # ── FRAUD-PAT-004: Multi-Account Device ────────────────────────────
 
+
 class TestMultiAccountDevice:
     def test_triggers_3_accounts(self, engine, base_transaction, base_context):
         base_context["accounts_on_device"] = 5
@@ -490,6 +545,7 @@ class TestMultiAccountDevice:
 
 
 # ── FRAUD-PAT-005: Channel Anomaly ─────────────────────────────────
+
 
 class TestChannelAnomaly:
     def test_triggers_unknown_channel(self, engine, base_transaction, base_context):
@@ -510,6 +566,7 @@ class TestChannelAnomaly:
 
 
 # ── FRAUD-TMP-001: Late Night High Value ──────────────────────────
+
 
 class TestLateNightHighValue:
     def test_triggers_2am_high_value(self, engine, base_transaction, base_context):
@@ -536,6 +593,7 @@ class TestLateNightHighValue:
 
 # ── FRAUD-TMP-002: Dormant Account ─────────────────────────────────
 
+
 class TestDormantAccount:
     def test_triggers_90_day_dormant(self, engine, base_transaction, base_context):
         base_context["days_since_last_transaction"] = 120.0
@@ -552,16 +610,19 @@ class TestDormantAccount:
 
 # ── FRAUD-TMP-003: Burst After Silence ─────────────────────────────
 
+
 class TestBurstAfterSilence:
     def test_triggers_burst_after_silence(self, engine, base_transaction, base_context):
         base_ts = datetime(2026, 7, 1, 14, 30, 0, tzinfo=timezone.utc)
         recent = []
         for i in range(5):
             ts = base_ts - timedelta(minutes=i + 1)
-            recent.append({
-                "transaction_timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "transaction_amount": 50.0,
-            })
+            recent.append(
+                {
+                    "transaction_timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "transaction_amount": 50.0,
+                }
+            )
         base_context["recent_transactions"] = recent
         base_context["days_since_last_transaction"] = 5.0  # 120h > 48h silence
         result = engine.evaluate(base_transaction, base_context)
@@ -577,6 +638,7 @@ class TestBurstAfterSilence:
 
 
 # ── Severity Escalation ─────────────────────────────────────────────
+
 
 class TestSeverityEscalation:
     def test_single_rule_keeps_base_severity(self, engine, base_transaction, base_context):
@@ -612,6 +674,7 @@ class TestSeverityEscalation:
 
 # ── Confidence Scoring ──────────────────────────────────────────────
 
+
 class TestConfidenceScoring:
     def test_zero_confidence_no_rules(self, engine, base_transaction, base_context):
         result = engine.evaluate(base_transaction, base_context)
@@ -644,6 +707,7 @@ class TestConfidenceScoring:
 
 
 # ── Rule Score ──────────────────────────────────────────────────────
+
 
 class TestRuleScore:
     def test_score_zero_no_rules(self, engine, base_transaction, base_context):
@@ -681,6 +745,7 @@ class TestRuleScore:
 
 # ── Batch Evaluation ────────────────────────────────────────────────
 
+
 class TestBatchEvaluation:
     def test_batch_returns_correct_count(self, engine, base_transaction, base_context):
         txns = [copy.deepcopy(base_transaction) for _ in range(5)]
@@ -696,6 +761,7 @@ class TestBatchEvaluation:
 
 # ── Result Serialization ────────────────────────────────────────────
 
+
 class TestResultSerialization:
     def test_to_dict(self, engine, base_transaction, base_context):
         base_transaction["geo_country"] = "RU"
@@ -709,6 +775,7 @@ class TestResultSerialization:
 
 
 # ── Engine Metrics ──────────────────────────────────────────────────
+
 
 class TestEngineMetrics:
     def test_metrics_increment(self, engine, base_transaction, base_context):
@@ -725,6 +792,7 @@ class TestEngineMetrics:
 
 
 # ── Backtesting ─────────────────────────────────────────────────────
+
 
 class TestBacktesting:
     def test_backtest_returns_metrics(self, engine, base_transaction, base_context):
@@ -776,6 +844,7 @@ class TestBacktesting:
 
 # ── Performance ─────────────────────────────────────────────────────
 
+
 class TestPerformance:
     def test_evaluation_under_20ms(self, engine, base_transaction, base_context):
         """Each evaluation should complete in < 20 ms."""
@@ -805,6 +874,7 @@ class TestPerformance:
 
 # ── RulePerformanceMetrics ──────────────────────────────────────────
 
+
 class TestRulePerformanceMetrics:
     def test_precision_no_positives(self):
         m = RulePerformanceMetrics(rule_id="test")
@@ -828,8 +898,11 @@ class TestRulePerformanceMetrics:
 
     def test_to_dict(self):
         m = RulePerformanceMetrics(
-            rule_id="test", true_positives=8, false_positives=2,
-            true_negatives=90, false_negatives=0,
+            rule_id="test",
+            true_positives=8,
+            false_positives=2,
+            true_negatives=90,
+            false_negatives=0,
         )
         d = m.to_dict()
         assert d["rule_id"] == "test"

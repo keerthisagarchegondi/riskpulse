@@ -27,11 +27,11 @@ from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError
 
 from src.storage.s3_handler import (
-    S3Handler,
     S3_BUCKET_ARCHIVE,
     S3_BUCKET_MODELS,
     S3_BUCKET_PROCESSED,
     S3_BUCKET_RAW,
+    S3Handler,
     StorageLayer,
 )
 
@@ -464,13 +464,7 @@ class TestEncryption:
         s3_client.put_bucket_encryption(
             Bucket=S3_BUCKET_RAW,
             ServerSideEncryptionConfiguration={
-                "Rules": [
-                    {
-                        "ApplyServerSideEncryptionByDefault": {
-                            "SSEAlgorithm": "AES256"
-                        }
-                    }
-                ]
+                "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
             },
         )
 
@@ -567,9 +561,7 @@ class TestEncryption:
 class TestLifecyclePolicies:
     """Validate lifecycle policy configuration on buckets."""
 
-    def test_raw_bucket_lifecycle_configured(
-        self, s3_client: Any, s3_buckets: list[str]
-    ) -> None:
+    def test_raw_bucket_lifecycle_configured(self, s3_client: Any, s3_buckets: list[str]) -> None:
         """Raw bucket should have lifecycle rules for IA and Glacier transitions."""
         rules = [
             {
@@ -626,14 +618,10 @@ class TestLifecyclePolicies:
             LifecycleConfiguration={"Rules": rules},
         )
 
-        response = s3_client.get_bucket_lifecycle_configuration(
-            Bucket=S3_BUCKET_PROCESSED
-        )
+        response = s3_client.get_bucket_lifecycle_configuration(Bucket=S3_BUCKET_PROCESSED)
         configured_rules = response["Rules"]
 
-        glacier_rule = next(
-            r for r in configured_rules if r["ID"] == "processed-to-glacier"
-        )
+        glacier_rule = next(r for r in configured_rules if r["ID"] == "processed-to-glacier")
         assert glacier_rule["Transitions"][0]["Days"] == 180
 
     def test_archive_bucket_lifecycle_deep_archive(
@@ -654,14 +642,10 @@ class TestLifecyclePolicies:
             LifecycleConfiguration={"Rules": rules},
         )
 
-        response = s3_client.get_bucket_lifecycle_configuration(
-            Bucket=S3_BUCKET_ARCHIVE
-        )
+        response = s3_client.get_bucket_lifecycle_configuration(Bucket=S3_BUCKET_ARCHIVE)
         configured_rules = response["Rules"]
 
-        deep_rule = next(
-            r for r in configured_rules if r["ID"] == "archive-to-deep-archive"
-        )
+        deep_rule = next(r for r in configured_rules if r["ID"] == "archive-to-deep-archive")
         assert deep_rule["Transitions"][0]["Days"] == 365
         assert deep_rule["Transitions"][0]["StorageClass"] == "DEEP_ARCHIVE"
 
@@ -710,11 +694,7 @@ class TestEventNotifications:
                         "QueueArn": sqs_queue_arn,
                         "Events": ["s3:ObjectCreated:*"],
                         "Filter": {
-                            "Key": {
-                                "FilterRules": [
-                                    {"Name": "suffix", "Value": ".parquet"}
-                                ]
-                            }
+                            "Key": {"FilterRules": [{"Name": "suffix", "Value": ".parquet"}]}
                         },
                     }
                 ]
@@ -765,9 +745,7 @@ class TestEventNotifications:
 class TestVersioning:
     """Validate bucket versioning."""
 
-    def test_bucket_versioning_enabled(
-        self, s3_client: Any, s3_buckets: list[str]
-    ) -> None:
+    def test_bucket_versioning_enabled(self, s3_client: Any, s3_buckets: list[str]) -> None:
         """All buckets should support versioning when enabled."""
         s3_client.put_bucket_versioning(
             Bucket=S3_BUCKET_RAW,
@@ -805,9 +783,7 @@ class TestVersioning:
         )
 
         # List versions
-        response = s3_client.list_object_versions(
-            Bucket=S3_BUCKET_RAW, Prefix=key
-        )
+        response = s3_client.list_object_versions(Bucket=S3_BUCKET_RAW, Prefix=key)
         versions = response.get("Versions", [])
         assert len(versions) >= 2
 
@@ -848,17 +824,17 @@ class TestCrossServiceAccess:
 
         assert s3_handler.file_exists(S3_BUCKET_PROCESSED, processed_key)
 
-    def test_model_artifact_lifecycle(
-        self, s3_handler: S3Handler
-    ) -> None:
+    def test_model_artifact_lifecycle(self, s3_handler: S3Handler) -> None:
         """Simulate model registry: upload model, retrieve for serving."""
         model_data = b"serialized_isolation_forest_model_v2"
-        config_data = json.dumps({
-            "model_name": "isolation_forest",
-            "version": "2.0.0",
-            "parameters": {"n_estimators": 200, "contamination": 0.01},
-            "metrics": {"auc_roc": 0.94, "recall": 0.87},
-        }).encode()
+        config_data = json.dumps(
+            {
+                "model_name": "isolation_forest",
+                "version": "2.0.0",
+                "parameters": {"n_estimators": 200, "contamination": 0.01},
+                "metrics": {"auc_roc": 0.94, "recall": 0.87},
+            }
+        ).encode()
 
         # Upload model artifact
         model_key = "isolation_forest/v2.0.0/model.pkl"
@@ -912,9 +888,7 @@ class TestCrossServiceAccess:
 class TestPublicAccessBlock:
     """Validate public access is blocked on all buckets."""
 
-    def test_public_access_blocked(
-        self, s3_client: Any, s3_buckets: list[str]
-    ) -> None:
+    def test_public_access_blocked(self, s3_client: Any, s3_buckets: list[str]) -> None:
         """All buckets should have public access blocked."""
         for bucket in BUCKET_NAMES:
             s3_client.put_public_access_block(

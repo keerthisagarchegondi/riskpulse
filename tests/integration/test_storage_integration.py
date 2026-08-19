@@ -41,7 +41,6 @@ from src.storage.storage_orchestrator import (
     WriteResult,
 )
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -86,7 +85,9 @@ def mock_redis_pool():
 @pytest.fixture
 def cache_handler(mock_redis_client, mock_redis_pool):
     """Create a CacheHandler with mocked Redis."""
-    with patch("src.storage.cache_handler.redis.ConnectionPool.from_url", return_value=mock_redis_pool):
+    with patch(
+        "src.storage.cache_handler.redis.ConnectionPool.from_url", return_value=mock_redis_pool
+    ):
         with patch("src.storage.cache_handler.redis.Redis") as mock_redis_cls:
             mock_redis_cls.return_value = mock_redis_client
             handler = CacheHandler.__new__(CacheHandler)
@@ -380,9 +381,7 @@ class TestCacheHandlerLocking:
         result = cache_handler.acquire_processing_lock("TXN-001")
 
         assert result is True
-        mock_redis_client.set.assert_called_with(
-            f"lock:TXN-001", "1", nx=True, ex=30
-        )
+        mock_redis_client.set.assert_called_with(f"lock:TXN-001", "1", nx=True, ex=30)
 
     def test_acquire_processing_lock_already_held(self, cache_handler, mock_redis_client):
         mock_redis_client.set.return_value = None
@@ -580,9 +579,7 @@ class TestStorageOrchestratorWriteFlow:
         assert "_pipeline_timestamp" not in call_data
 
     @pytest.mark.asyncio
-    async def test_store_transaction_buffers_for_s3(
-        self, storage_orchestrator, sample_transaction
-    ):
+    async def test_store_transaction_buffers_for_s3(self, storage_orchestrator, sample_transaction):
         await storage_orchestrator.store_transaction(sample_transaction)
 
         buffer_sizes = storage_orchestrator.get_buffer_sizes()
@@ -711,9 +708,7 @@ class TestStorageOrchestratorCircuitBreaker:
 
         result = await storage_orchestrator.store_transaction(sample_transaction)
 
-        pg_result = next(
-            (r for r in result.results if r.backend == StorageBackend.POSTGRES), None
-        )
+        pg_result = next((r for r in result.results if r.backend == StorageBackend.POSTGRES), None)
         assert pg_result is not None
         assert pg_result.success is False
         assert pg_result.error == "circuit_breaker_open"
@@ -815,9 +810,7 @@ class TestStorageOrchestratorWriteAheadPattern:
         # (delete may be called for other reasons, so check that the dedup key wasn't deleted)
         # The write_ahead_cache key should still be in place
         dedup_key = f"{PREFIX_DEDUP}TXN-2026-INT-001"
-        delete_calls = [
-            str(call) for call in mock_redis_client.delete.call_args_list
-        ]
+        delete_calls = [str(call) for call in mock_redis_client.delete.call_args_list]
         # The confirm should not have been triggered
         assert not any(dedup_key in c for c in delete_calls)
 
@@ -841,9 +834,7 @@ class TestStorageOrchestratorMonitoring:
         assert report["postgres"] >= 0
 
     @pytest.mark.asyncio
-    async def test_backend_health_report(
-        self, storage_orchestrator, sample_transaction
-    ):
+    async def test_backend_health_report(self, storage_orchestrator, sample_transaction):
         await storage_orchestrator.store_transaction(sample_transaction)
 
         health = storage_orchestrator.get_backend_health()

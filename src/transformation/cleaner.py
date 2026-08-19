@@ -26,33 +26,35 @@ logger = get_logger(__name__, component="data_cleaner")
 
 # --- PII Masking ---
 
-_DEFAULT_PII_FIELDS = frozenset({
-    "card_number",
-    "card_last_four",
-    "ssn",
-    "social_security_number",
-    "email",
-    "email_address",
-    "phone",
-    "phone_number",
-    "date_of_birth",
-    "dob",
-    "name",
-    "first_name",
-    "last_name",
-    "full_name",
-    "customer_name",
-    "address",
-    "street_address",
-    "zip_code",
-    "postal_code",
-    "password",
-    "secret",
-    "token",
-    "api_key",
-    "ip_address",
-    "device_id",
-})
+_DEFAULT_PII_FIELDS = frozenset(
+    {
+        "card_number",
+        "card_last_four",
+        "ssn",
+        "social_security_number",
+        "email",
+        "email_address",
+        "phone",
+        "phone_number",
+        "date_of_birth",
+        "dob",
+        "name",
+        "first_name",
+        "last_name",
+        "full_name",
+        "customer_name",
+        "address",
+        "street_address",
+        "zip_code",
+        "postal_code",
+        "password",
+        "secret",
+        "token",
+        "api_key",
+        "ip_address",
+        "device_id",
+    }
+)
 
 # Fields to partially mask (show last N chars)
 _PARTIAL_MASK_FIELDS: dict[str, int] = {
@@ -207,32 +209,38 @@ _DEFAULT_IMPUTATION: dict[str, Any] = {
 
 # --- String Fields to Standardize ---
 
-_LOWERCASE_FIELDS = frozenset({
-    "transaction_type",
-    "channel",
-    "card_type",
-    "device_type",
-})
+_LOWERCASE_FIELDS = frozenset(
+    {
+        "transaction_type",
+        "channel",
+        "card_type",
+        "device_type",
+    }
+)
 
-_TRIM_FIELDS = frozenset({
-    "external_transaction_id",
-    "account_id",
-    "customer_id",
-    "merchant_id",
-    "merchant_name",
-    "merchant_category_code",
-    "transaction_currency",
-    "card_last_four",
-    "ip_address",
-    "device_id",
-    "geo_country",
-    "geo_city",
-})
+_TRIM_FIELDS = frozenset(
+    {
+        "external_transaction_id",
+        "account_id",
+        "customer_id",
+        "merchant_id",
+        "merchant_name",
+        "merchant_category_code",
+        "transaction_currency",
+        "card_last_four",
+        "ip_address",
+        "device_id",
+        "geo_country",
+        "geo_city",
+    }
+)
 
-_UPPERCASE_FIELDS = frozenset({
-    "transaction_currency",
-    "geo_country",
-})
+_UPPERCASE_FIELDS = frozenset(
+    {
+        "transaction_currency",
+        "geo_country",
+    }
+)
 
 
 # --- Data Cleaner ---
@@ -388,7 +396,8 @@ class DataCleaner:
             normalized = normalized.replace("\x00", "")
             # Remove other control characters except newline/tab
             normalized = "".join(
-                c for c in normalized
+                c
+                for c in normalized
                 if c in ("\n", "\t") or not unicodedata.category(c).startswith("C")
             )
             if normalized != value:

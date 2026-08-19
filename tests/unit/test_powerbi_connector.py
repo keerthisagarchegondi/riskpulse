@@ -40,7 +40,9 @@ def test_config_validates_required_credentials() -> None:
 
 def test_connection_parameters_support_password_and_private_key() -> None:
     password_params = _config().connection_parameters()
-    key_params = _config(password=None, private_key_path="C:/secure/key.pem").connection_parameters()
+    key_params = _config(
+        password=None, private_key_path="C:/secure/key.pem"
+    ).connection_parameters()
 
     assert password_params["password"] == "secret"
     assert key_params["private_key_file"] == "C:/secure/key.pem"

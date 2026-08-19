@@ -93,7 +93,9 @@ class HealthChecker:
 
     def build_health(self, dependencies: list[DependencyCheckResult]) -> ServiceHealth:
         critical_failures = [item for item in dependencies if item.critical and not item.is_healthy]
-        noncritical_failures = [item for item in dependencies if not item.critical and not item.is_healthy]
+        noncritical_failures = [
+            item for item in dependencies if not item.critical and not item.is_healthy
+        ]
 
         if critical_failures:
             status = "degraded"

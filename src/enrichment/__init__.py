@@ -2,7 +2,7 @@
 
 from src.enrichment.device_enricher import DeviceEnricher, InMemoryDeviceStore
 from src.enrichment.geo_enricher import GeoEnricher, GeoEnrichmentResult, haversine_distance
-from src.enrichment.merchant_enricher import MerchantEnricher, InMemoryMerchantStore
+from src.enrichment.merchant_enricher import InMemoryMerchantStore, MerchantEnricher
 from src.enrichment.velocity_calculator import VelocityCalculator, VelocityResult
 
 __all__ = [

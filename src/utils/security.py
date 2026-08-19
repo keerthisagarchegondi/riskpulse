@@ -6,7 +6,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 
 from src.utils.config import get_settings
 from src.utils.secrets_manager import get_secrets_manager
@@ -16,7 +17,9 @@ JWT_ISSUER = "riskpulse-api"
 
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 SQLI_PATTERNS = (
-    re.compile(r"(?i)(?:--|/\*|\*/|;|\bunion\b|\bselect\b|\binsert\b|\bupdate\b|\bdelete\b|\bdrop\b|\balter\b)"),
+    re.compile(
+        r"(?i)(?:--|/\*|\*/|;|\bunion\b|\bselect\b|\binsert\b|\bupdate\b|\bdelete\b|\bdrop\b|\balter\b)"
+    ),
     re.compile(r"(?i)\bor\s+1\s*=\s*1\b"),
     re.compile(r"(?i)\band\s+1\s*=\s*1\b"),
 )
@@ -31,7 +34,9 @@ class SecurityValidationError(ValueError):
     """Raised when input contains unsafe content."""
 
 
-def sanitize_string(value: str, *, max_length: int | None = None, reject_sql_tokens: bool = True) -> str:
+def sanitize_string(
+    value: str, *, max_length: int | None = None, reject_sql_tokens: bool = True
+) -> str:
     """Normalize and validate user-controlled text."""
     cleaned = CONTROL_CHARS_RE.sub("", value).strip()
 
@@ -47,7 +52,9 @@ def sanitize_string(value: str, *, max_length: int | None = None, reject_sql_tok
     return cleaned
 
 
-def sanitize_mapping(value: dict[str, Any], *, depth: int = 0, max_depth: int = 5) -> dict[str, Any]:
+def sanitize_mapping(
+    value: dict[str, Any], *, depth: int = 0, max_depth: int = 5
+) -> dict[str, Any]:
     """Recursively sanitize metadata-style dictionaries."""
     if depth > max_depth:
         raise SecurityValidationError("Metadata exceeds maximum nesting depth")
@@ -61,9 +68,11 @@ def sanitize_mapping(value: dict[str, Any], *, depth: int = 0, max_depth: int = 
             sanitized[safe_key] = sanitize_mapping(item, depth=depth + 1, max_depth=max_depth)
         elif isinstance(item, list):
             sanitized[safe_key] = [
-                sanitize_string(element, max_length=2048, reject_sql_tokens=False)
-                if isinstance(element, str)
-                else element
+                (
+                    sanitize_string(element, max_length=2048, reject_sql_tokens=False)
+                    if isinstance(element, str)
+                    else element
+                )
                 for element in item[:100]
             ]
         else:
@@ -104,7 +113,7 @@ def verify_jwt_token(token: str, *, secret: str | None = None) -> dict[str, Any]
             issuer=JWT_ISSUER,
             options={"verify_aud": False},
         )
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise SecurityValidationError("Invalid JWT token") from exc
 
     permissions = payload.get("permissions", [])

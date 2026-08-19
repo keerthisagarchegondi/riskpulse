@@ -6,8 +6,8 @@ Falls back to in-memory rate limiting when Redis is unavailable.
 
 from __future__ import annotations
 
+import hashlib
 import time
-from collections import defaultdict
 from typing import Any
 
 import structlog
@@ -59,7 +59,9 @@ class InMemoryRateLimiter:
     Note: This does not work across multiple API instances.
     """
 
-    def __init__(self, default_rate: int = DEFAULT_RATE_LIMIT, burst_size: int = DEFAULT_BURST_SIZE) -> None:
+    def __init__(
+        self, default_rate: int = DEFAULT_RATE_LIMIT, burst_size: int = DEFAULT_BURST_SIZE
+    ) -> None:
         self._default_rate = default_rate
         self._burst_size = burst_size
         self._buckets: dict[str, TokenBucket] = {}
@@ -102,10 +104,18 @@ class RedisRateLimiter:
     Provides distributed rate limiting across multiple API instances.
     """
 
-    def __init__(self, redis_client: Any, default_rate: int = DEFAULT_RATE_LIMIT, window_seconds: int = 60) -> None:
+    def __init__(
+        self,
+        redis_client: Any,
+        default_rate: int = DEFAULT_RATE_LIMIT,
+        window_seconds: int = 60,
+        *,
+        fail_open: bool = True,
+    ) -> None:
         self._redis = redis_client
         self._default_rate = default_rate
         self._window_seconds = window_seconds
+        self._fail_open = fail_open
 
     async def is_allowed(self, key: str, custom_rate: int | None = None) -> tuple[bool, int, int]:
         """Check if a request is allowed using Redis sliding window.
@@ -142,8 +152,9 @@ class RedisRateLimiter:
             return True, remaining, 0
         except Exception as exc:
             logger.error("redis_rate_limit_error", error=str(exc))
-            # Fail open - allow the request if Redis is down
-            return True, rate_limit, 0
+            if self._fail_open:
+                return True, rate_limit, 0
+            return False, 0, self._window_seconds
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -156,21 +167,51 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """
 
     # Paths exempt from rate limiting
-    EXEMPT_PATHS = frozenset({"/health", "/health/ready", "/health/live", "/docs", "/openapi.json", "/redoc"})
+    EXEMPT_PATHS = frozenset(
+        {"/health", "/health/ready", "/health/live", "/docs", "/openapi.json", "/redoc"}
+    )
 
     def __init__(self, app: Any, redis_client: Any | None = None) -> None:
         super().__init__(app)
         settings = get_settings()
-        self._rate_limit = settings.get("api.rate_limit_per_minute", DEFAULT_RATE_LIMIT)
+        self._is_managed_environment = settings.environment.lower() in {
+            "prod",
+            "production",
+            "staging",
+        }
+        self._rate_limit = int(
+            settings.get(
+                "api.rate_limit_per_minute",
+                settings.get("api.rate_limit.requests_per_minute", DEFAULT_RATE_LIMIT),
+            )
+        )
+        self._burst_size = int(settings.get("api.rate_limit.burst_size", DEFAULT_BURST_SIZE))
+
+        if redis_client is None and self._is_managed_environment:
+            redis_client = self._create_redis_client(settings.redis_url)
 
         if redis_client is not None:
             self._limiter: RedisRateLimiter | InMemoryRateLimiter = RedisRateLimiter(
                 redis_client=redis_client,
                 default_rate=self._rate_limit,
+                fail_open=not self._is_managed_environment,
             )
         else:
-            self._limiter = InMemoryRateLimiter(default_rate=self._rate_limit)
-            logger.warning("rate_limiter_fallback", msg="Using in-memory rate limiter (not suitable for production)")
+            self._limiter = InMemoryRateLimiter(
+                default_rate=self._rate_limit,
+                burst_size=self._burst_size,
+            )
+            logger.warning(
+                "rate_limiter_fallback",
+                msg="Using in-memory rate limiter (not suitable for production)",
+            )
+
+    def _create_redis_client(self, redis_url: str) -> Any:
+        try:
+            import redis.asyncio as aioredis
+        except ImportError as exc:  # pragma: no cover - dependency is installed in production image
+            raise RuntimeError("Redis-backed rate limiting is required in production") from exc
+        return aioredis.from_url(redis_url, decode_responses=True)
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Apply rate limiting based on API key identity."""
@@ -218,6 +259,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Prefer API key name set by auth middleware
         if hasattr(request.state, "api_key_name"):
             return f"apikey:{request.state.api_key_name}"
+        api_key = request.headers.get("X-API-Key")
+        if api_key:
+            digest = hashlib.sha256(api_key.encode()).hexdigest()[:24]
+            return f"apikey_hash:{digest}"
+        authorization = request.headers.get("Authorization")
+        if authorization:
+            digest = hashlib.sha256(authorization.encode()).hexdigest()[:24]
+            return f"authorization_hash:{digest}"
         # Fallback to client IP
         client_ip = request.client.host if request.client else "unknown"
         return f"ip:{client_ip}"

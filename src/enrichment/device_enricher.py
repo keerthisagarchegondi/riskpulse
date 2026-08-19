@@ -98,9 +98,7 @@ class DeviceStore:
         """Get all device IDs associated with a customer."""
         raise NotImplementedError
 
-    def record_device_activity(
-        self, device_id: str, customer_id: str, timestamp: datetime
-    ) -> None:
+    def record_device_activity(self, device_id: str, customer_id: str, timestamp: datetime) -> None:
         """Record a device being used by a customer at a given time."""
         raise NotImplementedError
 
@@ -121,9 +119,7 @@ class InMemoryDeviceStore(DeviceStore):
     def get_customer_devices(self, customer_id: str) -> list[str]:
         return list(self._customer_devices.get(customer_id, set()))
 
-    def record_device_activity(
-        self, device_id: str, customer_id: str, timestamp: datetime
-    ) -> None:
+    def record_device_activity(self, device_id: str, customer_id: str, timestamp: datetime) -> None:
         if device_id not in self._devices:
             self._devices[device_id] = {
                 "first_seen": timestamp,

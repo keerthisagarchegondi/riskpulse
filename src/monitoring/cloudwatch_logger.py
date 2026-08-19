@@ -145,7 +145,9 @@ class CloudWatchJSONFormatter(logging.Formatter):
         event.setdefault("environment", self.environment)
         event.setdefault("logger", record.name)
         event.setdefault("level", record.levelname.lower())
-        event.setdefault("timestamp", datetime.fromtimestamp(record.created, timezone.utc).isoformat())
+        event.setdefault(
+            "timestamp", datetime.fromtimestamp(record.created, timezone.utc).isoformat()
+        )
 
         correlation_id = get_correlation_id()
         if correlation_id:
@@ -292,7 +294,10 @@ class CloudWatchLogHandler(logging.Handler):
         try:
             method(**kwargs)
         except Exception as exc:  # pragma: no cover - AWS SDK exceptions differ by version
-            if "AlreadyExists" not in exc.__class__.__name__ and "already exists" not in str(exc).lower():
+            if (
+                "AlreadyExists" not in exc.__class__.__name__
+                and "already exists" not in str(exc).lower()
+            ):
                 raise
 
     def _describe_sequence_token(self) -> str | None:
