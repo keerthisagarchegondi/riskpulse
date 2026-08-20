@@ -64,7 +64,9 @@ def _fetch_fraud_trends(engine: Engine, filters: dict[str, Any]) -> pd.DataFrame
     return _run_query(engine, sql, filters)
 
 
-def _fetch_category_breakdown(engine: Engine, filters: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _fetch_category_breakdown(
+    engine: Engine, filters: dict[str, Any]
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Fraud category breakdown across merchant, channel, and geography."""
     merchant_sql = """
         SELECT

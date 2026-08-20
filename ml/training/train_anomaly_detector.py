@@ -31,7 +31,7 @@ from sklearn.preprocessing import StandardScaler
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.fraud_detection.anomaly_detector import ANOMALY_FEATURES, AnomalyDetector
+from src.fraud_detection.anomaly_detector import ANOMALY_FEATURES, AnomalyDetector  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,7 @@ def generate_synthetic_data(
         "transaction_count_24hour": rng.poisson(lam=8, size=n_legit),
         "amount_mean_24hour": rng.lognormal(mean=3.5, sigma=0.5, size=n_legit),
         "amount_std_24hour": rng.exponential(scale=20, size=n_legit),
-        "time_since_last_transaction_seconds": rng.exponential(
-            scale=3600, size=n_legit
-        ),
+        "time_since_last_transaction_seconds": rng.exponential(scale=3600, size=n_legit),
         "distance_from_last_location_km": rng.exponential(scale=10, size=n_legit),
         "unique_merchants_24hour": rng.poisson(lam=3, size=n_legit),
         "unique_countries_24hour": np.ones(n_legit),
@@ -90,9 +88,7 @@ def generate_synthetic_data(
         "transaction_count_24hour": rng.poisson(lam=25, size=n_fraud),
         "amount_mean_24hour": rng.lognormal(mean=5.0, sigma=1.0, size=n_fraud),
         "amount_std_24hour": rng.exponential(scale=100, size=n_fraud),
-        "time_since_last_transaction_seconds": rng.exponential(
-            scale=120, size=n_fraud
-        ),
+        "time_since_last_transaction_seconds": rng.exponential(scale=120, size=n_fraud),
         "distance_from_last_location_km": rng.exponential(scale=500, size=n_fraud),
         "unique_merchants_24hour": rng.poisson(lam=10, size=n_fraud),
         "unique_countries_24hour": rng.poisson(lam=3, size=n_fraud).astype(float) + 1,
@@ -340,7 +336,9 @@ def train_model(
     logger.info("=" * 60)
 
     # Step 1: Generate synthetic data
-    logger.info("Step 1: Generating synthetic data (n=%d, fraud_ratio=%.2f)", n_samples, fraud_ratio)
+    logger.info(
+        "Step 1: Generating synthetic data (n=%d, fraud_ratio=%.2f)", n_samples, fraud_ratio
+    )
     X, y = generate_synthetic_data(n_samples, fraud_ratio, random_state)
     logger.info("Data shape: %s, Fraud count: %d", X.shape, y.sum())
 
@@ -358,9 +356,7 @@ def train_model(
 
     if run_hyperparam_search:
         logger.info("Step 3: Hyperparameter search")
-        search_results = hyperparameter_search(
-            X_train, X_val, y_val, random_state=random_state
-        )
+        search_results = hyperparameter_search(X_train, X_val, y_val, random_state=random_state)
         best_params = search_results["best_params"]
     else:
         logger.info("Step 3: Using default hyperparameters (skip search)")

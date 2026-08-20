@@ -24,7 +24,7 @@ from sklearn.preprocessing import StandardScaler
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from ml.training.train_risk_scorer import (
+from ml.training.train_risk_scorer import (  # noqa: E402
     DEFAULT_MODEL_OUTPUT,
     DEFAULT_RANDOM_STATE,
     generate_synthetic_data,
@@ -75,7 +75,8 @@ def create_xgboost_objective(
 
         model = xgb.XGBClassifier(**params)
         model.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             eval_set=[(X_val, y_val)],
             verbose=False,
         )
@@ -128,7 +129,8 @@ def create_lightgbm_objective(
 
         model = lgb.LGBMClassifier(**params)
         model.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             eval_set=[(X_val, y_val)],
         )
 
@@ -208,7 +210,9 @@ def create_cv_objective(
 
             model = model_cls(**params)
             if model_type == "xgboost":
-                model.fit(X_fold_train, y_fold_train, eval_set=[(X_fold_val, y_fold_val)], verbose=False)
+                model.fit(
+                    X_fold_train, y_fold_train, eval_set=[(X_fold_val, y_fold_val)], verbose=False
+                )
             else:
                 model.fit(X_fold_train, y_fold_train, eval_set=[(X_fold_val, y_fold_val)])
 
@@ -291,7 +295,8 @@ def run_optimization(
         X_combined = np.vstack([X_train_scaled, X_val_scaled])
         y_combined = np.concatenate([y_train, y_val])
         objective = create_cv_objective(
-            X_combined, y_combined,
+            X_combined,
+            y_combined,
             model_type=model_type,
             n_splits=n_cv_splits,
             scale_pos_weight=scale_pos_weight,
@@ -300,13 +305,19 @@ def run_optimization(
     else:
         if model_type == "xgboost":
             objective = create_xgboost_objective(
-                X_train_scaled, y_train, X_val_scaled, y_val,
+                X_train_scaled,
+                y_train,
+                X_val_scaled,
+                y_val,
                 scale_pos_weight=scale_pos_weight,
                 random_state=random_state,
             )
         else:
             objective = create_lightgbm_objective(
-                X_train_scaled, y_train, X_val_scaled, y_val,
+                X_train_scaled,
+                y_train,
+                X_val_scaled,
+                y_val,
                 scale_pos_weight=scale_pos_weight,
                 random_state=random_state,
             )
@@ -325,9 +336,12 @@ def run_optimization(
 
     # Evaluate best params on test set
     test_auc = _evaluate_best_on_test(
-        best_params, model_type,
-        X_train_scaled, y_train,
-        X_test_scaled, y_test,
+        best_params,
+        model_type,
+        X_train_scaled,
+        y_train,
+        X_test_scaled,
+        y_test,
         scale_pos_weight=scale_pos_weight,
         random_state=random_state,
     )
@@ -338,7 +352,9 @@ def run_optimization(
         "best_val_auc": float(best_score),
         "test_auc": float(test_auc),
         "n_trials": len(study.trials),
-        "n_completed": len([t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]),
+        "n_completed": len(
+            [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+        ),
         "n_pruned": len([t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]),
         "optimization_time_seconds": elapsed,
         "use_cv": use_cv,
@@ -351,7 +367,10 @@ def run_optimization(
 
     logger.info(
         "Optimization complete: best_val_auc=%.4f, test_auc=%.4f, trials=%d, time=%.1fs",
-        best_score, test_auc, len(study.trials), elapsed,
+        best_score,
+        test_auc,
+        len(study.trials),
+        elapsed,
     )
 
     return results
@@ -374,11 +393,15 @@ def _evaluate_best_on_test(
 
     if model_type == "xgboost":
         import xgboost as xgb
-        full_params.update({"objective": "binary:logistic", "eval_metric": "auc", "tree_method": "hist"})
+
+        full_params.update(
+            {"objective": "binary:logistic", "eval_metric": "auc", "tree_method": "hist"}
+        )
         model = xgb.XGBClassifier(**full_params)
         model.fit(X_train, y_train, verbose=False)
     else:
         import lightgbm as lgb
+
         full_params.update({"objective": "binary", "metric": "auc", "verbosity": -1})
         model = lgb.LGBMClassifier(**full_params)
         model.fit(X_train, y_train)

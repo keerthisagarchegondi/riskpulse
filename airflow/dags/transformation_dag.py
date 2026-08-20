@@ -13,15 +13,15 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sensors.python import PythonSensor
 
+from airflow import DAG
 from src.storage.s3_handler import S3Handler, StorageLayer
 from src.transformation.cleaner import DataCleaner
-from src.transformation.normalizer import DataNormalizer, get_normalizer
 from src.transformation.feature_engineer import FeatureEngineer
+from src.transformation.normalizer import DataNormalizer, get_normalizer
 from src.utils.config import get_settings
 from src.utils.constants import TOPIC_VALIDATED
 from src.utils.logger import get_logger

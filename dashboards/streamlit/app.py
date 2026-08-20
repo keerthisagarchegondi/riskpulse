@@ -29,7 +29,11 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from dashboards.streamlit.auth.roles import can_access_page, role_for_user, visible_pages_for_role  # noqa: E402
+from dashboards.streamlit.auth.roles import (  # noqa: E402
+    can_access_page,
+    role_for_user,
+    visible_pages_for_role,
+)
 from dashboards.streamlit.pages import (  # noqa: E402
     alert_management,
     investigation_console,

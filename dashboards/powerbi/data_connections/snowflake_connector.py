@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import time
 from enum import StrEnum
@@ -34,6 +35,29 @@ except ImportError:  # pragma: no cover - connector is optional for artifact gen
 
 class PowerBIConnectionError(RuntimeError):
     """Raised when Power BI Snowflake connection configuration is invalid."""
+
+
+_SNOWFLAKE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
+
+
+def _validate_snowflake_identifier(identifier: str, *, name: str = "identifier") -> str:
+    """Validate Snowflake identifiers before embedding them in generated SQL."""
+    if not isinstance(identifier, str) or not _SNOWFLAKE_IDENTIFIER_RE.fullmatch(identifier):
+        raise PowerBIConnectionError(f"Invalid Snowflake {name}: {identifier!r}")
+    return identifier
+
+
+def _validate_qualified_table_name(value: str) -> tuple[str, str]:
+    parts = value.split(".")
+    if len(parts) != 2:
+        raise PowerBIConnectionError("RLS access table must be schema-qualified")
+    schema = _validate_snowflake_identifier(parts[0], name="schema")
+    table = _validate_snowflake_identifier(parts[1], name="table")
+    return schema, table
+
+
+def _snowflake_string_literal(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
 
 
 class PowerBIRefreshFrequency(StrEnum):
@@ -364,8 +388,8 @@ class PowerBISnowflakeConnector:
 
         query = self.query_map[dataset_name] % {"lookback_days": self.config.lookback_days}
         if self.config.tenant_id and "TENANT_ID" in query.upper():
-            tenant_id = self.config.tenant_id.replace("'", "''")
-            query = f"SELECT * FROM ({query}) WHERE TENANT_ID = '{tenant_id}'"
+            tenant_id = _snowflake_string_literal(self.config.tenant_id)
+            query = f"SELECT * FROM ({query}) WHERE TENANT_ID = {tenant_id}"  # nosec B608
         return query.strip()
 
     def fetch_dataframe(self, dataset_name: str) -> Any:
@@ -413,7 +437,7 @@ class PowerBISnowflakeConnector:
         for name in self.query_map:
             escaped_query = self.render_query(name).replace('"', '""').replace("\n", " ")
             sections.append(
-                f'{name} = Value.NativeQuery('
+                f"{name} = Value.NativeQuery("
                 f'Snowflake.Databases("{self.config.account}", "{self.config.warehouse}")'
                 f'{{[Name="{self.config.database}"]}}[Data], '
                 f'"{escaped_query}", null, [EnableFolding=true])'
@@ -427,9 +451,11 @@ def build_refresh_schedule(
     """Build the configured Power BI refresh schedule payload."""
     schedule = RefreshSchedule(
         frequency=frequency,
-        refresh_times=("06:00", "12:00", "18:00")
-        if frequency == PowerBIRefreshFrequency.DAILY
-        else tuple(f"{hour:02d}:00" for hour in range(24)),
+        refresh_times=(
+            ("06:00", "12:00", "18:00")
+            if frequency == PowerBIRefreshFrequency.DAILY
+            else tuple(f"{hour:02d}:00" for hour in range(24))
+        ),
     )
     return schedule.to_powerbi_payload()
 
@@ -461,11 +487,12 @@ def build_rls_metadata(
 def build_snowflake_rls_setup_sql(config: RowLevelSecurityConfig | None = None) -> str:
     """Return Snowflake SQL for the Power BI tenant access table."""
     rls = config or RowLevelSecurityConfig()
-    schema, table = rls.access_table.split(".", 1)
+    schema, table = _validate_qualified_table_name(rls.access_table)
+    access_table = f"{schema}.{table}"
     return f"""
 CREATE SCHEMA IF NOT EXISTS {schema};
 
-CREATE TABLE IF NOT EXISTS {rls.access_table} (
+CREATE TABLE IF NOT EXISTS {access_table} (
     USER_PRINCIPAL_NAME VARCHAR(255) NOT NULL,
     TENANT_ID VARCHAR(128) NOT NULL,
     ACCESS_ROLE VARCHAR(64) NOT NULL DEFAULT 'viewer',
@@ -477,9 +504,9 @@ CREATE TABLE IF NOT EXISTS {rls.access_table} (
 
 CREATE OR REPLACE VIEW {schema}.VW_{table}_ACTIVE AS
 SELECT USER_PRINCIPAL_NAME, TENANT_ID, ACCESS_ROLE
-FROM {rls.access_table}
+FROM {access_table}
 WHERE IS_ACTIVE = TRUE;
-""".strip()
+""".strip()  # nosec B608
 
 
 def write_artifacts(output_dir: Path) -> None:

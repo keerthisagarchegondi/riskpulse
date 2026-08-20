@@ -98,7 +98,7 @@ def _fetch_alert_queue_page(
         FROM fraud_alerts fa
         JOIN transactions t ON t.transaction_id = fa.transaction_id
         WHERE {where_sql}
-    """
+    """  # nosec B608
     count_df = _run_query(engine, count_sql, params)
     total_rows = int(count_df.iloc[0]["total_rows"]) if not count_df.empty else 0
 
@@ -139,12 +139,14 @@ def _fetch_alert_queue_page(
             END,
             fa.created_at DESC
         LIMIT :limit_rows OFFSET :offset_rows
-    """
+    """  # nosec B608
     rows_params = {**params, "limit_rows": page_size, "offset_rows": offset}
     return _run_query(engine, rows_sql, rows_params), total_rows
 
 
-def _fetch_alert_queue_export(engine: Engine, filters: dict[str, Any], limit_rows: int = 50000) -> pd.DataFrame:
+def _fetch_alert_queue_export(
+    engine: Engine, filters: dict[str, Any], limit_rows: int = 50000
+) -> pd.DataFrame:
     """Fetch filtered alerts for CSV export, capped for operational safety."""
     where_sql, params = _build_alert_where_clause(filters)
     sql = f"""
@@ -181,7 +183,7 @@ def _fetch_alert_queue_export(engine: Engine, filters: dict[str, Any], limit_row
         WHERE {where_sql}
         ORDER BY fa.created_at DESC
         LIMIT :limit_rows
-    """
+    """  # nosec B608
     return _run_query(engine, sql, {**params, "limit_rows": limit_rows})
 
 
@@ -233,7 +235,9 @@ def _fetch_alert_detail(engine: Engine, alert_id: str) -> pd.DataFrame:
     return _run_query(engine, sql, {"alert_id": alert_id})
 
 
-def _fetch_customer_history(engine: Engine, customer_id: str, transaction_ts: datetime) -> pd.DataFrame:
+def _fetch_customer_history(
+    engine: Engine, customer_id: str, transaction_ts: datetime
+) -> pd.DataFrame:
     """Load customer transaction history in the 30-day lookback window."""
     start_ts = transaction_ts - timedelta(days=30)
     sql = """
@@ -285,7 +289,9 @@ def _fetch_risk_breakdown(engine: Engine, transaction_id: str) -> pd.DataFrame:
     return _run_query(engine, sql, {"transaction_id": transaction_id})
 
 
-def _fetch_similar_alerts(engine: Engine, alert_id: str, transaction_id: str, customer_id: str) -> pd.DataFrame:
+def _fetch_similar_alerts(
+    engine: Engine, alert_id: str, transaction_id: str, customer_id: str
+) -> pd.DataFrame:
     """Find similar historical alerts by customer and transaction attributes."""
     sql = """
         SELECT
@@ -784,7 +790,9 @@ def _render_detail_view(engine: Engine, analyst: str, alert_id: str) -> None:
                     st.warning("Resolution notes are required.")
                 else:
                     try:
-                        new_status = "resolved" if outcome == "confirmed_fraud" else "false_positive"
+                        new_status = (
+                            "resolved" if outcome == "confirmed_fraud" else "false_positive"
+                        )
                         _update_alert_status(
                             engine,
                             alert_id=alert_id,
@@ -841,7 +849,9 @@ def render(engine: Engine) -> None:
 
     # Calculate pages from total count, then allow user to navigate.
     pager_source = pd.DataFrame(index=range(total_rows))
-    pager = paginate_dataframe(pager_source, page_number=default_page, page_size=filters["page_size"])
+    pager = paginate_dataframe(
+        pager_source, page_number=default_page, page_size=filters["page_size"]
+    )
     selected_page = render_pagination_controls(
         key_prefix="investigation_queue",
         total_pages=pager.total_pages,

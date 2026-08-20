@@ -13,15 +13,15 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
-
 from operators.snowflake_operator import (
     SnowflakeCopyIntoOperator,
     SnowflakeMergeOperator,
     SnowflakeRefreshViewsOperator,
 )
+
+from airflow import DAG
 from src.utils.config import get_settings
 from src.utils.constants import TOPIC_METRICS
 from src.utils.logger import get_logger
@@ -352,7 +352,9 @@ def _refresh_materialized_views(**context: Any) -> dict[str, Any]:
     try:
         sql = _REFRESH_MATERIALIZED_VIEWS.format(database=_SNOWFLAKE_DATABASE)
         # Split and execute each statement separately
-        statements = [s.strip() for s in sql.split(";") if s.strip() and not s.strip().startswith("--")]
+        statements = [
+            s.strip() for s in sql.split(";") if s.strip() and not s.strip().startswith("--")
+        ]
         views_refreshed = 0
 
         for stmt in statements:
@@ -375,23 +377,31 @@ def _validate_load(**context: Any) -> dict[str, Any]:
     hook = SnowflakeHook(snowflake_conn_id=_SNOWFLAKE_CONN_ID)
 
     validation_queries = {
-        "raw_count": f"""
-            SELECT COUNT(*) FROM {_SNOWFLAKE_DATABASE}.RAW.TRANSACTIONS
-            WHERE loaded_at >= DATEADD(hour, -2, CURRENT_TIMESTAMP())
-        """,
-        "staging_count": f"""
-            SELECT COUNT(*) FROM {_SNOWFLAKE_DATABASE}.STAGING.TRANSACTIONS
-            WHERE loaded_at >= DATEADD(hour, -2, CURRENT_TIMESTAMP())
-        """,
-        "analytics_count": f"""
-            SELECT COUNT(*) FROM {_SNOWFLAKE_DATABASE}.ANALYTICS.FACT_TRANSACTIONS
-            WHERE loaded_at >= DATEADD(hour, -2, CURRENT_TIMESTAMP())
-        """,
-        "null_check": f"""
-            SELECT COUNT(*) FROM {_SNOWFLAKE_DATABASE}.STAGING.TRANSACTIONS
-            WHERE transaction_id IS NULL
-            AND loaded_at >= DATEADD(hour, -2, CURRENT_TIMESTAMP())
-        """,
+        "raw_count": (
+            f"""
+                SELECT COUNT(*) FROM {_SNOWFLAKE_DATABASE}.RAW.TRANSACTIONS
+                WHERE loaded_at >= DATEADD(hour, -2, CURRENT_TIMESTAMP())
+            """  # nosec B608
+        ),
+        "staging_count": (
+            f"""
+                SELECT COUNT(*) FROM {_SNOWFLAKE_DATABASE}.STAGING.TRANSACTIONS
+                WHERE loaded_at >= DATEADD(hour, -2, CURRENT_TIMESTAMP())
+            """  # nosec B608
+        ),
+        "analytics_count": (
+            f"""
+                SELECT COUNT(*) FROM {_SNOWFLAKE_DATABASE}.ANALYTICS.FACT_TRANSACTIONS
+                WHERE loaded_at >= DATEADD(hour, -2, CURRENT_TIMESTAMP())
+            """  # nosec B608
+        ),
+        "null_check": (
+            f"""
+                SELECT COUNT(*) FROM {_SNOWFLAKE_DATABASE}.STAGING.TRANSACTIONS
+                WHERE transaction_id IS NULL
+                AND loaded_at >= DATEADD(hour, -2, CURRENT_TIMESTAMP())
+            """  # nosec B608
+        ),
     }
 
     results = {}
@@ -530,4 +540,11 @@ with DAG(
         python_callable=_publish_load_metrics,
     )
 
-    load_raw >> stage_transform >> analytics_transform >> refresh_views >> validate >> publish_metrics
+    (
+        load_raw
+        >> stage_transform
+        >> analytics_transform
+        >> refresh_views
+        >> validate
+        >> publish_metrics
+    )

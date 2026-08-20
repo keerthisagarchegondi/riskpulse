@@ -13,15 +13,15 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from airflow import DAG
 from airflow.operators.python import PythonOperator
-
 from operators.data_quality_operator import (
     CheckResult,
     CheckSeverity,
     DataQualityOperator,
     QualityReport,
 )
+
+from airflow import DAG
 from src.utils.config import get_settings
 from src.utils.constants import TOPIC_METRICS
 from src.utils.logger import get_logger
@@ -164,9 +164,7 @@ def _generate_quality_report(**context: Any) -> dict[str, Any]:
             },
         },
         "all_checks": (
-            completeness.get("checks", [])
-            + freshness.get("checks", [])
-            + volume.get("checks", [])
+            completeness.get("checks", []) + freshness.get("checks", []) + volume.get("checks", [])
         ),
     }
 
@@ -176,14 +174,10 @@ def _generate_quality_report(**context: Any) -> dict[str, Any]:
         + volume.get("critical_failures", 0)
     )
     total_warnings = (
-        completeness.get("warnings", 0)
-        + freshness.get("warnings", 0)
-        + volume.get("warnings", 0)
+        completeness.get("warnings", 0) + freshness.get("warnings", 0) + volume.get("warnings", 0)
     )
     total_passed = (
-        completeness.get("passed", 0)
-        + freshness.get("passed", 0)
-        + volume.get("passed", 0)
+        completeness.get("passed", 0) + freshness.get("passed", 0) + volume.get("passed", 0)
     )
 
     report["overall"] = {
@@ -215,9 +209,7 @@ def _publish_quality_metrics(report: dict[str, Any]) -> None:
 
     try:
         settings = get_settings()
-        producer = KafkaProducer(
-            {"bootstrap.servers": settings.kafka_bootstrap_servers}
-        )
+        producer = KafkaProducer({"bootstrap.servers": settings.kafka_bootstrap_servers})
         producer.produce(
             topic=TOPIC_METRICS,
             key="data_quality_report",
@@ -251,12 +243,9 @@ def _notify_on_degradation(**context: Any) -> None:
     try:
         alert_manager = AlertManager()
 
-        failed_checks = [
-            c for c in report.get("all_checks", []) if not c.get("passed")
-        ]
+        failed_checks = [c for c in report.get("all_checks", []) if not c.get("passed")]
         check_summary = "; ".join(
-            f"{c['check_name']}: {c.get('details', 'failed')}"
-            for c in failed_checks[:10]
+            f"{c['check_name']}: {c.get('details', 'failed')}" for c in failed_checks[:10]
         )
 
         alert_manager.generate_alert(

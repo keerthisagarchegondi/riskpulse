@@ -338,9 +338,7 @@ class ModelEvaluator:
                 "recall_threshold_met": metrics.recall >= 0.85,
                 "fpr_threshold_met": metrics.false_positive_rate <= 0.03,
                 "latency_sla_met": latency.meets_sla(10.0),
-                "overall_ready": (
-                    metrics.passes_thresholds() and latency.meets_sla(10.0)
-                ),
+                "overall_ready": (metrics.passes_thresholds() and latency.meets_sla(10.0)),
             },
         }
 

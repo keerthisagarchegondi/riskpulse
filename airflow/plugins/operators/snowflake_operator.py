@@ -8,6 +8,7 @@ Provides reusable operators for common Snowflake ETL patterns:
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any, Sequence
 
@@ -19,6 +20,19 @@ from airflow.utils.context import Context
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__, component="snowflake_operator")
+
+_SNOWFLAKE_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
+
+
+def _validate_snowflake_identifier(identifier: str, *, name: str = "identifier") -> str:
+    """Validate Snowflake identifiers before interpolating them into SQL."""
+    if not isinstance(identifier, str) or not _SNOWFLAKE_IDENTIFIER_RE.fullmatch(identifier):
+        raise AirflowException(f"Invalid Snowflake {name}: {identifier!r}")
+    return identifier
+
+
+def _validate_identifier_list(values: Sequence[str], *, name: str) -> list[str]:
+    return [_validate_snowflake_identifier(value, name=name) for value in values]
 
 
 class SnowflakeCopyIntoOperator(BaseOperator):
@@ -228,12 +242,25 @@ class SnowflakeMergeOperator(BaseOperator):
         hook = SnowflakeHook(snowflake_conn_id=self.snowflake_conn_id)
         start_time = time.monotonic()
 
-        target = f"{self.database}.{self.target_schema}.{self.target_table}"
+        database = _validate_snowflake_identifier(self.database, name="database")
+        target_schema = _validate_snowflake_identifier(self.target_schema, name="schema")
+        target_table = _validate_snowflake_identifier(self.target_table, name="table")
+        merge_keys = _validate_identifier_list(self.merge_keys, name="merge key")
+        update_columns = (
+            _validate_identifier_list(self.update_columns, name="update column")
+            if self.update_columns
+            else None
+        )
+        insert_columns = (
+            _validate_identifier_list(self.insert_columns, name="insert column")
+            if self.insert_columns
+            else None
+        )
+
+        target = f"{database}.{target_schema}.{target_table}"
 
         # Build MERGE SQL
-        join_condition = " AND ".join(
-            f"target.{key} = source.{key}" for key in self.merge_keys
-        )
+        join_condition = " AND ".join(f"target.{key} = source.{key}" for key in merge_keys)
 
         sql_parts = [
             f"MERGE INTO {target} AS target",
@@ -242,16 +269,14 @@ class SnowflakeMergeOperator(BaseOperator):
         ]
 
         # WHEN MATCHED — update
-        if self.update_columns:
-            update_set = ", ".join(
-                f"target.{col} = source.{col}" for col in self.update_columns
-            )
-            sql_parts.append(f"WHEN MATCHED THEN UPDATE SET {update_set}")
+        if update_columns:
+            update_set = ", ".join(f"target.{col} = source.{col}" for col in update_columns)
+            sql_parts.append(f"WHEN MATCHED THEN UPDATE SET {update_set}")  # nosec B608
 
         # WHEN NOT MATCHED — insert
-        if self.insert_columns:
-            cols = ", ".join(self.insert_columns)
-            vals = ", ".join(f"source.{col}" for col in self.insert_columns)
+        if insert_columns:
+            cols = ", ".join(insert_columns)
+            vals = ", ".join(f"source.{col}" for col in insert_columns)
             sql_parts.append(f"WHEN NOT MATCHED THEN INSERT ({cols}) VALUES ({vals})")
 
         sql = "\n".join(sql_parts) + ";"
@@ -275,7 +300,9 @@ class SnowflakeMergeOperator(BaseOperator):
 
         except Exception as exc:
             elapsed_ms = (time.monotonic() - start_time) * 1000
-            logger.error("MERGE failed", target=target, error=str(exc), elapsed_ms=round(elapsed_ms, 2))
+            logger.error(
+                "MERGE failed", target=target, error=str(exc), elapsed_ms=round(elapsed_ms, 2)
+            )
             raise AirflowException(f"MERGE failed for {target}: {exc}") from exc
 
 
@@ -367,7 +394,9 @@ class SnowflakeRefreshViewsOperator(BaseOperator):
             "elapsed_ms": round(elapsed_ms, 2),
             "details": results,
         }
-        logger.info("View refresh batch complete", **{k: v for k, v in summary.items() if k != "details"})
+        logger.info(
+            "View refresh batch complete", **{k: v for k, v in summary.items() if k != "details"}
+        )
 
         if failures > 0 and self.fail_on_error:
             raise AirflowException(f"{failures} view(s) failed to refresh")

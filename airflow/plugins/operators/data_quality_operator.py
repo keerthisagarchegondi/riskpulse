@@ -15,9 +15,9 @@ from typing import Any, Sequence
 
 import sqlalchemy as sa
 from airflow.exceptions import AirflowException, AirflowSkipException
+from airflow.hooks.base import BaseHook
 from airflow.models import BaseOperator
 from airflow.providers.common.sql.hooks.sql import DbApiHook
-from airflow.hooks.base import BaseHook
 from airflow.utils.context import Context
 
 from src.utils.logger import get_logger
@@ -46,9 +46,7 @@ class CheckResult:
 class QualityReport:
     """Aggregated quality report for a single run."""
 
-    run_timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    run_timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     total_checks: int = 0
     passed: int = 0
     warnings: int = 0
@@ -240,21 +238,18 @@ class DataQualityOperator(BaseOperator):
             raise ValueError(f"Invalid SQL identifier: {name!r}")
         return name
 
-    def _run_completeness_checks(
-        self, conn: sa.engine.Connection, report: QualityReport
-    ) -> None:
+    def _run_completeness_checks(self, conn: sa.engine.Connection, report: QualityReport) -> None:
         for check in self.completeness_checks:
             table = self._validate_identifier(check["table"])
             column = self._validate_identifier(check["column"])
             severity = check.get("severity", CheckSeverity.WARNING)
 
-            result = conn.execute(
-                sa.text(
-                    f"SELECT COUNT(*) AS total, "
-                    f"SUM(CASE WHEN {column} IS NULL THEN 1 ELSE 0 END) AS nulls "
-                    f"FROM {table}"
-                )
-            )
+            sql = (
+                f"SELECT COUNT(*) AS total, "  # nosec B608
+                f"SUM(CASE WHEN {column} IS NULL THEN 1 ELSE 0 END) AS nulls "
+                f"FROM {table}"
+            )  # nosec B608
+            result = conn.execute(sa.text(sql))
             row = result.mappings().fetchone()
             total = row["total"] if row else 0
             nulls = row["nulls"] if row else 0
@@ -268,11 +263,7 @@ class DataQualityOperator(BaseOperator):
                     severity=severity,
                     metric_value=round(null_rate, 6),
                     threshold=self.max_null_rate,
-                    details=(
-                        f"{nulls}/{total} nulls ({null_rate:.4%})"
-                        if not passed
-                        else "OK"
-                    ),
+                    details=(f"{nulls}/{total} nulls ({null_rate:.4%})" if not passed else "OK"),
                 )
             )
             logger.debug(
@@ -283,9 +274,7 @@ class DataQualityOperator(BaseOperator):
                 passed=passed,
             )
 
-    def _run_freshness_checks(
-        self, conn: sa.engine.Connection, report: QualityReport
-    ) -> None:
+    def _run_freshness_checks(self, conn: sa.engine.Connection, report: QualityReport) -> None:
         now = datetime.now(timezone.utc)
         for check in self.freshness_checks:
             table = self._validate_identifier(check["table"])
@@ -293,9 +282,8 @@ class DataQualityOperator(BaseOperator):
             max_delay = check["max_delay_minutes"]
             severity = check.get("severity", CheckSeverity.WARNING)
 
-            result = conn.execute(
-                sa.text(f"SELECT MAX({ts_col}) AS latest FROM {table}")
-            )
+            sql = f"SELECT MAX({ts_col}) AS latest FROM {table}"  # nosec B608
+            result = conn.execute(sa.text(sql))
             row = result.mappings().fetchone()
             latest = row["latest"] if row else None
 
@@ -339,22 +327,21 @@ class DataQualityOperator(BaseOperator):
                 passed=passed,
             )
 
-    def _run_volume_checks(
-        self, conn: sa.engine.Connection, report: QualityReport
-    ) -> None:
+    def _run_volume_checks(self, conn: sa.engine.Connection, report: QualityReport) -> None:
         now = datetime.now(timezone.utc)
 
         for raw_table in self.volume_tables:
             table = self._validate_identifier(raw_table)
             # Fetch daily counts for the lookback window + today
+            sql = (
+                f"SELECT DATE(created_at) AS day, COUNT(*) AS cnt "  # nosec B608
+                f"FROM {table} "
+                f"WHERE created_at >= :start "
+                f"GROUP BY DATE(created_at) "
+                f"ORDER BY day"
+            )  # nosec B608
             result = conn.execute(
-                sa.text(
-                    f"SELECT DATE(created_at) AS day, COUNT(*) AS cnt "
-                    f"FROM {table} "
-                    f"WHERE created_at >= :start "
-                    f"GROUP BY DATE(created_at) "
-                    f"ORDER BY day"
-                ),
+                sa.text(sql),
                 {"start": now - timedelta(days=self.volume_lookback_days + 1)},
             )
             rows = result.mappings().fetchall()
@@ -386,7 +373,11 @@ class DataQualityOperator(BaseOperator):
                     check_name=f"volume_{table}",
                     passed=passed,
                     severity=CheckSeverity.WARNING,
-                    metric_value={"today": today_count, "mean": round(mean, 1), "z_score": round(z_score, 2)},
+                    metric_value={
+                        "today": today_count,
+                        "mean": round(mean, 1),
+                        "z_score": round(z_score, 2),
+                    },
                     threshold=self.volume_stddev_threshold,
                     details=(
                         f"z={z_score:.2f} (today={today_count}, mean={mean:.1f})"

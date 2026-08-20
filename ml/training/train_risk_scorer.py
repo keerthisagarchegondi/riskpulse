@@ -37,8 +37,8 @@ from sklearn.preprocessing import StandardScaler
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.fraud_detection.feature_store import FEATURE_CATALOG, FEATURE_DEFAULTS
-from src.fraud_detection.risk_scorer import RiskScorer
+from src.fraud_detection.feature_store import FEATURE_CATALOG, FEATURE_DEFAULTS  # noqa: E402
+from src.fraud_detection.risk_scorer import RiskScorer  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -47,46 +47,80 @@ DEFAULT_RANDOM_STATE = 42
 
 # Feature groups for synthetic data generation
 TRANSACTION_FEATURES = [
-    "transaction_amount", "amount_zscore", "amount_to_avg_ratio",
-    "amount_percentile", "amount_log",
+    "transaction_amount",
+    "amount_zscore",
+    "amount_to_avg_ratio",
+    "amount_percentile",
+    "amount_log",
 ]
 TEMPORAL_FEATURES = [
-    "hour_of_day", "day_of_week", "is_weekend", "is_holiday",
-    "time_since_last_transaction", "minutes_since_midnight",
+    "hour_of_day",
+    "day_of_week",
+    "is_weekend",
+    "is_holiday",
+    "time_since_last_transaction",
+    "minutes_since_midnight",
 ]
-VELOCITY_FEATURES_1H = ["txn_count_1h", "txn_amount_sum_1h", "txn_amount_avg_1h", "txn_amount_max_1h"]
+VELOCITY_FEATURES_1H = [
+    "txn_count_1h",
+    "txn_amount_sum_1h",
+    "txn_amount_avg_1h",
+    "txn_amount_max_1h",
+]
 VELOCITY_FEATURES_24H = [
-    "txn_count_24h", "txn_amount_sum_24h", "txn_amount_avg_24h",
-    "txn_amount_max_24h", "txn_amount_std_24h",
+    "txn_count_24h",
+    "txn_amount_sum_24h",
+    "txn_amount_avg_24h",
+    "txn_amount_max_24h",
+    "txn_amount_std_24h",
 ]
 VELOCITY_FEATURES_7D = ["txn_count_7d", "txn_amount_sum_7d", "txn_amount_avg_7d"]
 MERCHANT_FEATURES = [
-    "unique_merchants_24h", "unique_merchants_7d", "new_merchant_flag",
-    "merchant_risk_score", "merchant_txn_count_30d", "merchant_fraud_rate",
+    "unique_merchants_24h",
+    "unique_merchants_7d",
+    "new_merchant_flag",
+    "merchant_risk_score",
+    "merchant_txn_count_30d",
+    "merchant_fraud_rate",
 ]
 GEO_FEATURES = [
-    "unique_countries_24h", "is_international", "country_risk_score",
-    "distance_from_last_location_km", "impossible_travel_flag",
+    "unique_countries_24h",
+    "is_international",
+    "country_risk_score",
+    "distance_from_last_location_km",
+    "impossible_travel_flag",
 ]
 DEVICE_FEATURES = [
-    "known_device_flag", "device_age_days", "device_txn_count",
+    "known_device_flag",
+    "device_age_days",
+    "device_txn_count",
     "multiple_accounts_on_device",
 ]
 BEHAVIORAL_FEATURES = [
-    "unusual_hour_flag", "channel_switch_flag", "amount_deviation_from_mean",
-    "amount_deviation_from_median", "txn_frequency_deviation",
+    "unusual_hour_flag",
+    "channel_switch_flag",
+    "amount_deviation_from_mean",
+    "amount_deviation_from_median",
+    "txn_frequency_deviation",
 ]
 SEQUENCE_FEATURES = [
-    "consecutive_declined_count", "rapid_succession_flag",
-    "time_since_last_decline", "decline_rate_24h",
+    "consecutive_declined_count",
+    "rapid_succession_flag",
+    "time_since_last_decline",
+    "decline_rate_24h",
 ]
 ACCOUNT_FEATURES = [
-    "account_age_days", "account_total_txn_count", "account_avg_amount",
-    "account_std_amount", "account_max_amount",
+    "account_age_days",
+    "account_total_txn_count",
+    "account_avg_amount",
+    "account_std_amount",
+    "account_max_amount",
 ]
 CROSS_FEATURES = [
-    "amount_x_velocity", "amount_x_hour_risk",
-    "international_x_new_merchant", "high_amount_x_unusual_hour",
+    "amount_x_velocity",
+    "amount_x_hour_risk",
+    "international_x_new_merchant",
+    "high_amount_x_unusual_hour",
 ]
 
 
@@ -128,7 +162,10 @@ def generate_synthetic_data(
 
     logger.info(
         "Generated %d samples (%d fraud, %.2f%% ratio) with %d features",
-        n_samples, n_fraud, fraud_ratio * 100, X.shape[1] - 2,
+        n_samples,
+        n_fraud,
+        fraud_ratio * 100,
+        X.shape[1] - 2,
     )
     return X, y
 
@@ -309,9 +346,9 @@ def _generate_fraud_features(n: int, rng: np.random.Generator) -> pd.DataFrame:
     data["amount_x_velocity"] = amounts * data["txn_count_1h"]
     data["amount_x_hour_risk"] = amounts * data["unusual_hour_flag"]
     data["international_x_new_merchant"] = data["is_international"] * data["new_merchant_flag"]
-    data["high_amount_x_unusual_hour"] = (
-        (amounts > avg_amounts * 3).astype(float) * data["unusual_hour_flag"]
-    )
+    data["high_amount_x_unusual_hour"] = (amounts > avg_amounts * 3).astype(float) * data[
+        "unusual_hour_flag"
+    ]
 
     return pd.DataFrame(data)
 
@@ -337,9 +374,12 @@ def time_based_split(
 
     logger.info(
         "Time-based split: train=%d (fraud=%.2f%%), val=%d (fraud=%.2f%%), test=%d (fraud=%.2f%%)",
-        len(X_train), y_train.mean() * 100,
-        len(X_val), y_val.mean() * 100,
-        len(X_test), y_test.mean() * 100,
+        len(X_train),
+        y_train.mean() * 100,
+        len(X_val),
+        y_val.mean() * 100,
+        len(X_test),
+        y_test.mean() * 100,
     )
     return X_train, X_val, X_test, y_train, y_val, y_test
 
@@ -392,6 +432,7 @@ def train_model(
     if class_weight_strategy == "smote":
         try:
             from imblearn.over_sampling import SMOTE
+
             smote = SMOTE(random_state=random_state)
             X_fit, y_fit = smote.fit_resample(X_train_scaled, y_train)
             logger.info("SMOTE applied: %d -> %d samples", len(y_train), len(y_fit))
@@ -407,14 +448,20 @@ def train_model(
     # Train model
     if model_type == "xgboost":
         model, metrics = _train_xgboost(
-            X_fit, y_fit, X_val_scaled, y_val,
+            X_fit,
+            y_fit,
+            X_val_scaled,
+            y_val,
             scale_pos_weight=scale_pos_weight,
             params=params,
             random_state=random_state,
         )
     elif model_type == "lightgbm":
         model, metrics = _train_lightgbm(
-            X_fit, y_fit, X_val_scaled, y_val,
+            X_fit,
+            y_fit,
+            X_val_scaled,
+            y_val,
             scale_pos_weight=scale_pos_weight,
             params=params,
             random_state=random_state,
@@ -462,7 +509,8 @@ def _train_xgboost(
 
     eval_set = [(X_val, y_val)]
     model.fit(
-        X_train, y_train,
+        X_train,
+        y_train,
         eval_set=eval_set,
         verbose=False,
     )
@@ -470,11 +518,16 @@ def _train_xgboost(
     # Validation metrics
     y_pred_proba = model.predict_proba(X_val)[:, 1]
     metrics = _compute_metrics(y_val, y_pred_proba)
-    metrics["best_iteration"] = model.best_iteration if hasattr(model, "best_iteration") else default_params["n_estimators"]
+    metrics["best_iteration"] = (
+        model.best_iteration if hasattr(model, "best_iteration") else default_params["n_estimators"]
+    )
 
     logger.info(
         "XGBoost training complete: AUC-ROC=%.4f, F1=%.4f, Precision=%.4f, Recall=%.4f",
-        metrics["auc_roc"], metrics["f1"], metrics["precision"], metrics["recall"],
+        metrics["auc_roc"],
+        metrics["f1"],
+        metrics["precision"],
+        metrics["recall"],
     )
     return model, metrics
 
@@ -515,7 +568,8 @@ def _train_lightgbm(
 
     eval_set = [(X_val, y_val)]
     model.fit(
-        X_train, y_train,
+        X_train,
+        y_train,
         eval_set=eval_set,
     )
 
@@ -525,7 +579,10 @@ def _train_lightgbm(
 
     logger.info(
         "LightGBM training complete: AUC-ROC=%.4f, F1=%.4f, Precision=%.4f, Recall=%.4f",
-        metrics["auc_roc"], metrics["f1"], metrics["precision"], metrics["recall"],
+        metrics["auc_roc"],
+        metrics["f1"],
+        metrics["precision"],
+        metrics["recall"],
     )
     return model, metrics
 
@@ -584,6 +641,7 @@ def calibrate_model(
     else:
         # Platt scaling (logistic regression on scores)
         from sklearn.linear_model import LogisticRegression
+
         lr = LogisticRegression()
         lr.fit(raw_proba.reshape(-1, 1), y_val)
 
@@ -615,11 +673,13 @@ def compute_feature_importance(model: Any, feature_names: list[str]) -> list[dic
 
     importance_list = []
     for name, imp in zip(feature_names, importances):
-        importance_list.append({
-            "feature": name,
-            "importance": float(imp),
-            "rank": 0,
-        })
+        importance_list.append(
+            {
+                "feature": name,
+                "importance": float(imp),
+                "rank": 0,
+            }
+        )
 
     importance_list.sort(key=lambda x: x["importance"], reverse=True)
     for i, item in enumerate(importance_list):
@@ -644,12 +704,14 @@ def evaluate_model(
     for t in thresholds:
         y_pred = (y_pred_proba >= t).astype(int)
         if y_pred.sum() > 0 and (1 - y_pred).sum() > 0:
-            threshold_results.append({
-                "threshold": float(t),
-                "precision": float(precision_score(y_test, y_pred, zero_division=0)),
-                "recall": float(recall_score(y_test, y_pred, zero_division=0)),
-                "f1": float(f1_score(y_test, y_pred, zero_division=0)),
-            })
+            threshold_results.append(
+                {
+                    "threshold": float(t),
+                    "precision": float(precision_score(y_test, y_pred, zero_division=0)),
+                    "recall": float(recall_score(y_test, y_pred, zero_division=0)),
+                    "f1": float(f1_score(y_test, y_pred, zero_division=0)),
+                }
+            )
 
     metrics["threshold_analysis"] = threshold_results
     metrics["model_name"] = model_name
@@ -694,12 +756,17 @@ def benchmark_latency(
 
     logger.info(
         "Latency benchmark: mean=%.2fms, p95=%.2fms, p99=%.2fms, SLA met=%s",
-        result["mean_ms"], result["p95_ms"], result["p99_ms"], result["meets_sla"],
+        result["mean_ms"],
+        result["p95_ms"],
+        result["p99_ms"],
+        result["meets_sla"],
     )
     return result
 
 
-def _compute_metrics(y_true: np.ndarray, y_pred_proba: np.ndarray, threshold: float = 0.5) -> dict[str, Any]:
+def _compute_metrics(
+    y_true: np.ndarray, y_pred_proba: np.ndarray, threshold: float = 0.5
+) -> dict[str, Any]:
     """Compute standard classification metrics."""
     y_pred = (y_pred_proba >= threshold).astype(int)
 
@@ -751,7 +818,9 @@ def run_training_pipeline(
     results: dict[str, Any] = {"model_type": model_type, "random_state": random_state}
 
     # Step 1: Generate data
-    logger.info("Step 1: Generating synthetic data (n=%d, fraud_ratio=%.3f)", n_samples, fraud_ratio)
+    logger.info(
+        "Step 1: Generating synthetic data (n=%d, fraud_ratio=%.3f)", n_samples, fraud_ratio
+    )
     X, y = generate_synthetic_data(n_samples, fraud_ratio, random_state)
 
     # Step 2: Split
@@ -764,7 +833,10 @@ def run_training_pipeline(
     # Step 3: Train
     logger.info("Step 3: Training %s model", model_type)
     model, scaler, train_metrics = train_model(
-        X_train, y_train, X_val, y_val,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
         feature_cols=feature_cols,
         model_type=model_type,
         class_weight_strategy=class_weight_strategy,
@@ -841,7 +913,9 @@ def run_training_pipeline(
 
     logger.info(
         "Training pipeline complete: AUC-ROC=%.4f, production_ready=%s, duration=%.1fs",
-        test_metrics["auc_roc"], report["production_ready"], report["pipeline_duration_seconds"],
+        test_metrics["auc_roc"],
+        report["production_ready"],
+        report["pipeline_duration_seconds"],
     )
     return results
 

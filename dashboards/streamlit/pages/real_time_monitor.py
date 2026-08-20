@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 # Data access helpers (sync psycopg2 queries)
 # ---------------------------------------------------------------------------
 
+
 def _run_query(engine: Engine, sql: str, params: dict[str, Any] | None = None) -> pd.DataFrame:
     """Execute a read-only SQL query and return results as a DataFrame."""
     with engine.connect() as conn:
@@ -222,6 +223,7 @@ def _apply_optional_filters(
 # Page renderer
 # ---------------------------------------------------------------------------
 
+
 def _compute_delta(current: float, previous: float) -> tuple[str, bool]:
     """Return a human-readable delta string and whether it's positive."""
     if previous == 0:
@@ -244,7 +246,9 @@ def render(engine: Engine) -> None:
     total_delta, total_pos = _compute_delta(kpis["total_txns"], prev_kpis["total_txns"])
     fraud_rate = (kpis["flagged_txns"] / kpis["total_txns"] * 100) if kpis["total_txns"] else 0.0
     prev_fraud_rate = (
-        (prev_kpis["flagged_txns"] / prev_kpis["total_txns"] * 100) if prev_kpis["total_txns"] else 0.0
+        (prev_kpis["flagged_txns"] / prev_kpis["total_txns"] * 100)
+        if prev_kpis["total_txns"]
+        else 0.0
     )
     fraud_delta, fraud_pos = _compute_delta(fraud_rate, prev_fraud_rate)
     score_delta, score_pos = _compute_delta(kpis["avg_risk_score"], prev_kpis["avg_risk_score"])

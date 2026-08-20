@@ -104,7 +104,7 @@ def _fetch_alert_lifecycle(engine: Engine, filters: dict[str, Any]) -> pd.DataFr
         WHERE {where_sql}
         ORDER BY fa.created_at DESC
         LIMIT 100000
-    """
+    """  # nosec B608
     df = _run_query(engine, sql, params)
     if not df.empty:
         for col in ["created_at", "updated_at", "resolved_at"]:
@@ -126,7 +126,7 @@ def _fetch_alert_volume(engine: Engine, filters: dict[str, Any]) -> pd.DataFrame
         WHERE {where_sql}
         GROUP BY 1, 2
         ORDER BY 1, 2
-    """
+    """  # nosec B608
     return _run_query(engine, sql, params)
 
 
@@ -153,7 +153,7 @@ def _fetch_rule_effectiveness(engine: Engine, filters: dict[str, Any]) -> pd.Dat
         GROUP BY 1, 2, 3
         ORDER BY triggered_count DESC
         LIMIT 100
-    """
+    """  # nosec B608
     df = _run_query(engine, sql, params)
     if df.empty:
         return df
@@ -244,13 +244,15 @@ def calculate_resolution_by_analyst(alerts: pd.DataFrame) -> pd.DataFrame:
                 "assigned_to": analyst,
                 "assigned_alerts": int(len(group.index)),
                 "closed_alerts": int(len(closed.index)),
-                "resolution_rate": len(closed.index) / len(group.index) if len(group.index) else 0.0,
-                "false_positive_rate": len(false_positive.index) / len(closed.index)
-                if len(closed.index)
-                else 0.0,
-                "avg_resolution_hours": float(resolution_hours.mean())
-                if not resolution_hours.empty
-                else 0.0,
+                "resolution_rate": (
+                    len(closed.index) / len(group.index) if len(group.index) else 0.0
+                ),
+                "false_positive_rate": (
+                    len(false_positive.index) / len(closed.index) if len(closed.index) else 0.0
+                ),
+                "avg_resolution_hours": (
+                    float(resolution_hours.mean()) if not resolution_hours.empty else 0.0
+                ),
             }
         )
     return pd.DataFrame(rows).sort_values("assigned_alerts", ascending=False)
@@ -425,14 +427,17 @@ def _render_sla_compliance(alerts: pd.DataFrame) -> None:
     fig.update_layout(template="plotly_dark", height=360)
     st.plotly_chart(fig, use_container_width=True)
 
-    breached = sla_df.loc[~sla_df["sla_met"], [
-        "alert_id",
-        "severity",
-        "status",
-        "assigned_to",
-        "elapsed_hours",
-        "sla_target_hours",
-    ]].sort_values("elapsed_hours", ascending=False)
+    breached = sla_df.loc[
+        ~sla_df["sla_met"],
+        [
+            "alert_id",
+            "severity",
+            "status",
+            "assigned_to",
+            "elapsed_hours",
+            "sla_target_hours",
+        ],
+    ].sort_values("elapsed_hours", ascending=False)
     if not breached.empty:
         st.dataframe(breached.head(100), use_container_width=True)
 

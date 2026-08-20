@@ -13,11 +13,11 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sensors.external_task import ExternalTaskSensor
 
+from airflow import DAG
 from src.enrichment import (
     DeviceEnricher,
     GeoEnricher,
@@ -320,15 +320,11 @@ def _update_customer_profiles(**context: Any) -> dict[str, Any]:
             # Compute profile aggregates
             total_amount = sum(r.get("amount", 0) for r in account_records)
             avg_amount = total_amount / len(account_records) if account_records else 0
-            max_velocity = max(
-                (r.get("velocity_score", 0) for r in account_records), default=0
-            )
+            max_velocity = max((r.get("velocity_score", 0) for r in account_records), default=0)
             unique_merchants = len(
                 {r.get("merchant_name") for r in account_records if r.get("merchant_name")}
             )
-            unique_countries = len(
-                {r.get("country") for r in account_records if r.get("country")}
-            )
+            unique_countries = len({r.get("country") for r in account_records if r.get("country")})
 
             profile_update = {
                 "account_id": account_id,

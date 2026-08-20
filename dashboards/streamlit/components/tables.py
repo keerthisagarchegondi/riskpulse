@@ -121,15 +121,19 @@ def render_alert_queue_table(df: pd.DataFrame) -> None:
             }
         )
         .map(
-            lambda v: f"background-color: {_SEVERITY_COLOR.get(str(v), '#2c3e50')}; color: white;"
-            if pd.notna(v)
-            else "",
+            lambda v: (
+                f"background-color: {_SEVERITY_COLOR.get(str(v), '#2c3e50')}; color: white;"
+                if pd.notna(v)
+                else ""
+            ),
             subset=["severity"],
         )
         .map(
-            lambda v: f"background-color: {_STATUS_COLOR.get(str(v), '#34495e')}; color: white;"
-            if pd.notna(v)
-            else "",
+            lambda v: (
+                f"background-color: {_STATUS_COLOR.get(str(v), '#34495e')}; color: white;"
+                if pd.notna(v)
+                else ""
+            ),
             subset=["status"],
         )
     )

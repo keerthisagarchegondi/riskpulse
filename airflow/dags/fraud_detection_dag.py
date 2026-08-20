@@ -13,11 +13,11 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sensors.external_task import ExternalTaskSensor
 
+from airflow import DAG
 from src.alerting.alert_manager import AlertManager
 from src.fraud_detection.anomaly_detector import AnomalyDetector
 from src.fraud_detection.risk_scorer import RiskScorer
@@ -126,7 +126,9 @@ def _run_rule_based_scoring(**context: Any) -> dict[str, Any]:
                 transaction_id=record.get("transaction_id"),
                 error=str(exc),
             )
-            scored.append({**record, "rule_score": 0.0, "rules_triggered": [], "rule_risk_level": "low"})
+            scored.append(
+                {**record, "rule_score": 0.0, "rules_triggered": [], "rule_risk_level": "low"}
+            )
 
     handler.write_batch(
         records=scored,
@@ -181,7 +183,9 @@ def _run_anomaly_detection(**context: Any) -> dict[str, Any]:
                 transaction_id=record.get("transaction_id"),
                 error=str(exc),
             )
-            scored.append({**record, "anomaly_score": 0.0, "is_anomaly": False, "anomaly_features": []})
+            scored.append(
+                {**record, "anomaly_score": 0.0, "is_anomaly": False, "anomaly_features": []}
+            )
 
     handler.write_batch(
         records=scored,
@@ -241,14 +245,16 @@ def _run_ml_scoring(**context: Any) -> dict[str, Any]:
                 transaction_id=record.get("transaction_id"),
                 error=str(exc),
             )
-            scored.append({
-                **record,
-                "ml_score": 0.0,
-                "ml_risk_level": "low",
-                "ml_confidence": 0.0,
-                "ml_top_features": [],
-                "model_version": "fallback",
-            })
+            scored.append(
+                {
+                    **record,
+                    "ml_score": 0.0,
+                    "ml_risk_level": "low",
+                    "ml_confidence": 0.0,
+                    "ml_top_features": [],
+                    "model_version": "fallback",
+                }
+            )
 
     handler.write_batch(
         records=scored,
@@ -297,9 +303,7 @@ def _compute_ensemble_score(**context: Any) -> dict[str, Any]:
         ml_score = record.get("ml_score", 0.0)
 
         ensemble_score = (
-            rule_weight * rule_score
-            + anomaly_weight * anomaly_score
-            + ml_weight * ml_score
+            rule_weight * rule_score + anomaly_weight * anomaly_score + ml_weight * ml_score
         )
 
         # Classify risk level

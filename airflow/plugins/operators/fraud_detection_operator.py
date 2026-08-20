@@ -131,9 +131,7 @@ class FraudDetectionOperator(BaseOperator):
         # Validate weights sum to ~1.0
         total_weight = rule_weight + anomaly_weight + ml_weight
         if abs(total_weight - 1.0) > 0.01:
-            raise ValueError(
-                f"Ensemble weights must sum to 1.0, got {total_weight:.3f}"
-            )
+            raise ValueError(f"Ensemble weights must sum to 1.0, got {total_weight:.3f}")
 
     def execute(self, context: Context) -> dict[str, Any]:
         start_time = time.monotonic()
