@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pandas as pd
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.preprocessing import StandardScaler
@@ -453,7 +452,7 @@ def main() -> None:
     print(f"Test AUC:        {results['test_auc']:.4f}")
     print(f"Trials:          {results['n_completed']} completed, {results['n_pruned']} pruned")
     print(f"Duration:        {results['optimization_time_seconds']:.1f}s")
-    print(f"\nBest Parameters:")
+    print("\nBest Parameters:")
     for k, v in results["best_params"].items():
         print(f"  {k}: {v}")
     print("=" * 60)

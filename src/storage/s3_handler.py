@@ -34,9 +34,6 @@ from tenacity import (
 
 from src.utils.config import get_settings
 from src.utils.constants import (
-    S3_ARCHIVE_PREFIX,
-    S3_MODELS_PREFIX,
-    S3_PROCESSED_PREFIX,
     S3_RAW_PREFIX,
 )
 

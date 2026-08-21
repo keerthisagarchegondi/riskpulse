@@ -7,7 +7,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import joblib
 import numpy as np
@@ -164,6 +164,8 @@ class AnomalyDetector:
         """
         if not self._is_fitted:
             raise RuntimeError("Model not fitted. Call fit() or load() first.")
+        if self._model is None or self._scaler is None:
+            raise RuntimeError("Model artifacts are unavailable. Call fit() or load() first.")
 
         start = time.perf_counter()
 
@@ -208,6 +210,8 @@ class AnomalyDetector:
         """
         if not self._is_fitted:
             raise RuntimeError("Model not fitted. Call fit() or load() first.")
+        if self._model is None or self._scaler is None:
+            raise RuntimeError("Model artifacts are unavailable. Call fit() or load() first.")
 
         start = time.perf_counter()
         features = self._select_features(X)
@@ -259,10 +263,12 @@ class AnomalyDetector:
         """
         if not self._is_fitted:
             raise RuntimeError("Model not fitted. Call fit() or load() first.")
+        if self._model is None or self._scaler is None:
+            raise RuntimeError("Model artifacts are unavailable. Call fit() or load() first.")
 
         features = self._select_features(X)
         X_scaled = self._scaler.transform(features)
-        return self._model.decision_function(X_scaled)
+        return cast(np.ndarray, self._model.decision_function(X_scaled))
 
     def save(self, path: str | Path) -> Path:
         """Serialize model, scaler, and metadata to disk.

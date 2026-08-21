@@ -14,7 +14,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sensors.external_task import ExternalTaskSensor
 
 from airflow import DAG
@@ -30,7 +29,6 @@ from src.utils.constants import (
     SCORE_THRESHOLD_HIGH,
     TOPIC_FRAUD_ALERTS,
     TOPIC_METRICS,
-    TOPIC_SCORED,
 )
 from src.utils.logger import get_logger
 
@@ -281,7 +279,7 @@ def _compute_ensemble_score(**context: Any) -> dict[str, Any]:
 
     handler = S3Handler()
     partition = ti.xcom_pull(task_ids="load_enriched_data", key="partition")
-    settings = get_settings()
+    get_settings()
 
     records = handler.read_batch(
         storage_layer=StorageLayer.RAW,

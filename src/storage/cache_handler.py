@@ -15,18 +15,15 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
 from threading import Lock
-from typing import Any, Generator
+from typing import Any, cast
 
 import redis
 import structlog
 from redis.backoff import ExponentialBackoff
-from redis.exceptions import ConnectionError as RedisConnectionError
-from redis.exceptions import RedisError, TimeoutError
+from redis.exceptions import RedisError
 from redis.retry import Retry
 
 from src.utils.config import get_settings
@@ -310,7 +307,7 @@ class CacheHandler:
                 return None
 
             self._metrics.record_hit(latency)
-            return json.loads(data)
+            return cast(dict[str, Any], json.loads(data))
         except RedisError as e:
             self._metrics.record_error()
             logger.error("customer_profile_cache_get_failed", customer_id=customer_id, error=str(e))
@@ -406,7 +403,7 @@ class CacheHandler:
                 return None
 
             self._metrics.record_hit(latency)
-            return json.loads(data)
+            return cast(dict[str, Any], json.loads(data))
         except RedisError as e:
             self._metrics.record_error()
             logger.error("recent_txn_cache_get_failed", transaction_id=transaction_id, error=str(e))
@@ -471,7 +468,7 @@ class CacheHandler:
                 return None
 
             self._metrics.record_hit(latency)
-            return json.loads(data)
+            return cast(dict[str, Any], json.loads(data))
         except RedisError as e:
             self._metrics.record_error()
             logger.error("prediction_cache_get_failed", error=str(e))
@@ -528,7 +525,7 @@ class CacheHandler:
             pipe.incr(key)
             pipe.expire(key, ttl)
             results = pipe.execute()
-            return results[0]
+            return int(results[0])
         except RedisError as e:
             self._metrics.record_error()
             logger.error("velocity_increment_failed", customer_id=customer_id, error=str(e))
@@ -809,7 +806,7 @@ class CacheHandler:
                 return None
 
             self._metrics.record_hit(latency)
-            return json.loads(data)
+            return cast(dict[str, Any], json.loads(data))
         except RedisError as e:
             self._metrics.record_error()
             logger.error("write_ahead_get_failed", transaction_id=transaction_id, error=str(e))

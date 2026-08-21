@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -184,6 +183,8 @@ class PredictionDistributionTracker:
         """
         with self._lock:
             if self._baseline_histogram is None or len(self._scores) < 100:
+                return None
+            if self._baseline_edges is None:
                 return None
 
             current_hist, _ = np.histogram(

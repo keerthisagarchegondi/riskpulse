@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Any
+from typing import Any, MutableMapping, cast
 
 import structlog
 
@@ -34,7 +34,9 @@ _SENSITIVE_FIELDS = frozenset(
 )
 
 
-def _scrub_pii(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+def _scrub_pii(
+    logger: Any, method_name: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Remove or mask sensitive fields from log output."""
     for key in list(event_dict.keys()):
         if key.lower() in _SENSITIVE_FIELDS:
@@ -46,7 +48,9 @@ def _scrub_pii(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dic
     return event_dict
 
 
-def _add_app_context(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+def _add_app_context(
+    logger: Any, method_name: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
     """Add application context to every log entry."""
     event_dict.setdefault("service", "riskpulse")
     event_dict.setdefault("environment", get_settings().environment)
@@ -78,13 +82,13 @@ def configure_logging(log_level: str | None = None) -> None:
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
-        _add_app_context,
-        _scrub_pii,
+        cast(structlog.types.Processor, _add_app_context),
+        cast(structlog.types.Processor, _scrub_pii),
     ]
 
     # Choose renderer based on environment
     if settings.is_debug:
-        renderer = structlog.dev.ConsoleRenderer(colors=True)
+        renderer: structlog.types.Processor = structlog.dev.ConsoleRenderer(colors=True)
     else:
         renderer = structlog.processors.JSONRenderer()
 
@@ -130,7 +134,7 @@ def get_logger(name: str | None = None, **initial_context: Any) -> structlog.std
     logger = structlog.get_logger(name)
     if initial_context:
         logger = logger.bind(**initial_context)
-    return logger
+    return cast(structlog.stdlib.BoundLogger, logger)
 
 
 def bind_correlation_id(correlation_id: str) -> None:

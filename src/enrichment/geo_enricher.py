@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import math
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -37,7 +37,7 @@ def _load_risk_countries() -> dict[str, dict[str, Any]]:
         return {}
     with open(config_path, "r") as f:
         data = yaml.safe_load(f) or {}
-    return data.get("countries", {})
+    return cast(dict[str, dict[str, Any]], data.get("countries", {}))
 
 
 @dataclass(frozen=True)

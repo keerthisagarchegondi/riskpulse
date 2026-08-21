@@ -16,28 +16,23 @@ import time
 from pathlib import Path
 from typing import Any
 
-import joblib
 import numpy as np
 import pandas as pd
 from sklearn.isotonic import IsotonicRegression
 from sklearn.metrics import (
     average_precision_score,
-    classification_report,
     f1_score,
-    precision_recall_curve,
     precision_score,
     recall_score,
     roc_auc_score,
-    roc_curve,
 )
-from sklearn.model_selection import StratifiedKFold, TimeSeriesSplit
 from sklearn.preprocessing import StandardScaler
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.fraud_detection.feature_store import FEATURE_CATALOG, FEATURE_DEFAULTS  # noqa: E402
+from src.fraud_detection.feature_store import FEATURE_CATALOG  # noqa: E402
 from src.fraud_detection.risk_scorer import RiskScorer  # noqa: E402
 
 logger = logging.getLogger(__name__)

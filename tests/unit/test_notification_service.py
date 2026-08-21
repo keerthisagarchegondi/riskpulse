@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from src.alerting.alert_manager import Alert, AlertSeverity, AlertStatus, AlertType
 from src.alerting.escalation_engine import (
-    EscalationAction,
     EscalationEngine,
     EscalationLevel,
-    EscalationLevelConfig,
-    EscalationPolicy,
-    EscalationRecord,
     EscalationStatus,
     OnCallRotation,
     OnCallSchedule,
@@ -27,11 +22,9 @@ from src.alerting.notification_service import (
     NotificationChannel,
     NotificationPreference,
     NotificationRateLimiter,
-    NotificationRecord,
     NotificationService,
     PreferencesManager,
     WebhookFormatter,
-    WebhookTarget,
 )
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────

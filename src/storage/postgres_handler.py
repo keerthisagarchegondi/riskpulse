@@ -28,6 +28,11 @@ from src.storage.models import (
 logger = structlog.get_logger(__name__)
 
 
+def _rowcount(result: Any) -> int:
+    """Return SQLAlchemy rowcount for DML results, defaulting safely for drivers without it."""
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
 @dataclass
 class QueryMetrics:
     """Tracks query performance metrics."""
@@ -141,11 +146,11 @@ class PostgresHandler:
         """Return current connection pool statistics."""
         pool = self._engine.pool
         return PoolStats(
-            pool_size=pool.size(),
-            checked_in=pool.checkedin(),
-            checked_out=pool.checkedout(),
-            overflow=pool.overflow(),
-            invalid=pool.invalidated_count if hasattr(pool, "invalidated_count") else 0,
+            pool_size=int(getattr(pool, "size", lambda: 0)()),
+            checked_in=int(getattr(pool, "checkedin", lambda: 0)()),
+            checked_out=int(getattr(pool, "checkedout", lambda: 0)()),
+            overflow=int(getattr(pool, "overflow", lambda: 0)()),
+            invalid=int(getattr(pool, "invalidated_count", 0)),
         )
 
     def get_query_metrics(self, last_n: int = 100) -> list[QueryMetrics]:
@@ -215,7 +220,7 @@ class PostgresHandler:
             )
             result = await session.execute(stmt)
             duration_ms = (time.perf_counter() - start) * 1000
-            rows = result.rowcount
+            rows = _rowcount(result)
             self._record_metric("update_transaction_status", duration_ms, rows)
             return rows > 0
 
@@ -337,8 +342,9 @@ class PostgresHandler:
             stmt = update(FraudAlert).where(FraudAlert.alert_id == alert_id).values(**values)
             result = await session.execute(stmt)
             duration_ms = (time.perf_counter() - start) * 1000
-            self._record_metric("update_alert_status", duration_ms, result.rowcount)
-            return result.rowcount > 0
+            rows = _rowcount(result)
+            self._record_metric("update_alert_status", duration_ms, rows)
+            return rows > 0
 
     async def query_alerts(
         self,
@@ -545,7 +551,7 @@ class PostgresHandler:
                     },
                 )
                 result = await session.execute(stmt)
-                total_rows += result.rowcount
+                total_rows += _rowcount(result)
 
         duration_ms = (time.perf_counter() - start) * 1000
         self._record_metric("bulk_upsert_transactions", duration_ms, total_rows)
@@ -570,7 +576,7 @@ class PostgresHandler:
                 stmt = pg_insert(FraudAlert).values(batch)
                 stmt = stmt.on_conflict_do_nothing()
                 result = await session.execute(stmt)
-                total_rows += result.rowcount
+                total_rows += _rowcount(result)
 
         duration_ms = (time.perf_counter() - start) * 1000
         self._record_metric("bulk_insert_alerts", duration_ms, total_rows)
@@ -595,7 +601,7 @@ class PostgresHandler:
                 stmt = pg_insert(RiskScore).values(batch)
                 stmt = stmt.on_conflict_do_nothing()
                 result = await session.execute(stmt)
-                total_rows += result.rowcount
+                total_rows += _rowcount(result)
 
         duration_ms = (time.perf_counter() - start) * 1000
         self._record_metric("bulk_upsert_risk_scores", duration_ms, total_rows)
@@ -635,7 +641,7 @@ class PostgresHandler:
                     },
                 )
                 result = await session.execute(stmt)
-                total_rows += result.rowcount
+                total_rows += _rowcount(result)
 
         duration_ms = (time.perf_counter() - start) * 1000
         self._record_metric("bulk_upsert_customer_profiles", duration_ms, total_rows)
@@ -658,8 +664,9 @@ class PostgresHandler:
             stmt = delete(Transaction).where(Transaction.transaction_id == transaction_id)
             result = await session.execute(stmt)
             duration_ms = (time.perf_counter() - start) * 1000
-            self._record_metric("delete_transaction", duration_ms, result.rowcount)
-            return result.rowcount > 0
+            rows = _rowcount(result)
+            self._record_metric("delete_transaction", duration_ms, rows)
+            return rows > 0
 
     # -------------------------------------------------------------------------
     # Aggregation Queries

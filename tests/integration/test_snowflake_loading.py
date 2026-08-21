@@ -13,12 +13,9 @@ Tests cover:
 
 from __future__ import annotations
 
-import json
 import os
-import time
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -33,11 +30,9 @@ from src.storage.snowflake_handler import (
     QueryResult,
     SnowflakeConnectionError,
     SnowflakeHandler,
-    SnowflakeHandlerError,
     SnowflakeLoadError,
     SnowflakeMetrics,
     SnowflakeQueryError,
-    SnowflakeSchemaError,
     WatermarkState,
     create_snowflake_handler,
 )
@@ -153,7 +148,7 @@ class TestSnowflakeConnection:
 
     def test_connect_raises_without_credentials(self):
         """Test that connect() raises error when credentials are missing."""
-        with patch("src.storage.snowflake_handler.snowflake") as mock_sf:
+        with patch("src.storage.snowflake_handler.snowflake"):
             handler = SnowflakeHandler(account="", user="")
             with pytest.raises(
                 SnowflakeConnectionError, match="account and user must be configured"

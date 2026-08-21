@@ -11,7 +11,7 @@ from typing import Any
 
 import structlog
 import yaml
-from confluent_kafka.admin import AdminClient, ConfigResource, NewTopic, ResourceType
+from confluent_kafka.admin import AdminClient, NewTopic
 
 from src.utils.config import get_settings
 
@@ -56,7 +56,6 @@ class KafkaTopicManager:
         Returns:
             Dict mapping topic name -> status ('created', 'exists', 'error').
         """
-        from pathlib import Path
 
         from src.utils.config import _get_project_root
 

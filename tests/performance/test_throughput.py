@@ -14,7 +14,6 @@ from __future__ import annotations
 import gc
 import random
 import statistics
-import sys
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -31,9 +30,8 @@ from src.enrichment.merchant_enricher import InMemoryMerchantStore, MerchantEnri
 from src.enrichment.velocity_calculator import VelocityCalculator
 from src.fraud_detection.anomaly_detector import AnomalyDetector
 from src.fraud_detection.rule_engine import FraudRuleEngine
-from src.fraud_detection.scoring_pipeline import ScoringPipeline, UnifiedScore
+from src.fraud_detection.scoring_pipeline import ScoringPipeline
 from src.pipeline_orchestrator import (
-    BatchResult,
     PipelineOrchestrator,
     PipelineStage,
 )
@@ -247,7 +245,7 @@ class TestPipelineThroughput:
         )
 
         print(f"\n{'='*70}")
-        print(f"  THROUGHPUT BENCHMARK: 10K Events/Minute Target")
+        print("  THROUGHPUT BENCHMARK: 10K Events/Minute Target")
         print(f"{'='*70}")
         print(f"  Records Processed:   {result.total:,}")
         print(f"  Succeeded:           {result.succeeded:,}")
@@ -382,7 +380,7 @@ class TestLatencyBenchmarks:
         latencies = []
         for txn in batch:
             start = time.perf_counter()
-            result = pipeline.process_record(txn)
+            pipeline.process_record(txn)
             elapsed = (time.perf_counter() - start) * 1000
             latencies.append(elapsed)
             pipeline.reset_metrics()
@@ -395,7 +393,7 @@ class TestLatencyBenchmarks:
         assert p99 < 50.0, f"P99 latency {p99:.3f}ms exceeds 50ms target"
 
         print(f"\n{'='*70}")
-        print(f"  PIPELINE LATENCY PERCENTILES (500 records)")
+        print("  PIPELINE LATENCY PERCENTILES (500 records)")
         print(f"{'='*70}")
         print(f"  P50:    {p50:.3f} ms")
         print(f"  P95:    {p95:.3f} ms")
@@ -458,6 +456,7 @@ class TestScoringPerformance:
         for txn in transactions:
             start = time.perf_counter()
             score = scoring_pipeline.score_transaction_sync(txn, use_cache=False)
+            assert 0.0 <= score.final_score <= 1.0
             elapsed = (time.perf_counter() - start) * 1000
             latencies.append(elapsed)
 
@@ -471,7 +470,7 @@ class TestScoringPerformance:
         assert p99 < 200.0, f"P99 scoring latency {p99:.3f}ms exceeds 200ms target"
 
         print(f"\n{'='*70}")
-        print(f"  SCORING LATENCY (100 transactions)")
+        print("  SCORING LATENCY (100 transactions)")
         print(f"{'='*70}")
         print(f"  Mean:   {avg_latency:.3f} ms")
         print(f"  P50:    {statistics.median(latencies):.3f} ms")
@@ -494,7 +493,7 @@ class TestScoringPerformance:
         assert throughput > 40, f"Scoring throughput {throughput:.0f}/sec is below 40 target"
 
         print(f"\n{'='*70}")
-        print(f"  SCORING THROUGHPUT (200 transactions, real models)")
+        print("  SCORING THROUGHPUT (200 transactions, real models)")
         print(f"{'='*70}")
         print(f"  Elapsed:     {elapsed:.3f}s")
         print(f"  Throughput:  {throughput:.0f} scores/sec")
@@ -507,6 +506,7 @@ class TestScoringPerformance:
         # First call — cache miss
         start = time.perf_counter()
         score1 = scoring_pipeline.score_transaction_sync(txn, use_cache=True)
+        assert score1.cached is False
         first_latency = (time.perf_counter() - start) * 1000
 
         # Second call — cache hit
@@ -601,7 +601,7 @@ class TestAlertPerformance:
             batch.append((scoring_result, txn))
 
         start = time.perf_counter()
-        alerts = alert_manager.generate_alerts_from_batch(batch)
+        alert_manager.generate_alerts_from_batch(batch)
         elapsed = time.perf_counter() - start
 
         throughput = len(batch) / elapsed if elapsed > 0 else 0
@@ -653,7 +653,7 @@ class TestEndToEndLatency:
         assert avg_latency < 1000, f"Average end-to-end latency {avg_latency:.1f}ms exceeds 1000ms"
 
         print(f"\n{'='*70}")
-        print(f"  END-TO-END LATENCY: Ingestion → Score → Alert")
+        print("  END-TO-END LATENCY: Ingestion → Score → Alert")
         print(f"{'='*70}")
         print(f"  Transactions:  {len(latencies)}")
         print(f"  Mean:          {avg_latency:.1f} ms")
@@ -670,7 +670,7 @@ class TestEndToEndLatency:
         stage_metrics = pipeline.get_stage_metrics()
 
         print(f"\n{'='*70}")
-        print(f"  STAGE LATENCY BREAKDOWN (1000 records)")
+        print("  STAGE LATENCY BREAKDOWN (1000 records)")
         print(f"{'='*70}")
         print(f"  {'Stage':<25} {'Processed':>10} {'Avg (ms)':>10} {'Max (ms)':>10} {'Success':>8}")
         print(f"  {'─'*65}")

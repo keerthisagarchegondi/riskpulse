@@ -7,7 +7,7 @@ exception handlers, and lifecycle management.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI, Request, status
@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from src.api.openapi import install_custom_openapi
 from src.monitoring.cloudwatch_logger import configure_cloudwatch_logging
 from src.utils.config import get_settings
-from src.utils.constants import API_PREFIX, APP_NAME, APP_VERSION
+from src.utils.constants import APP_NAME, APP_VERSION
 from src.utils.logger import configure_logging
 
 logger = structlog.get_logger(__name__)

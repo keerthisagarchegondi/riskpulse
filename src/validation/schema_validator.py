@@ -143,7 +143,7 @@ class ValidationMetrics:
 def _load_validation_rules(config_path: str | Path | None = None) -> dict[str, Any]:
     """Load validation rules from YAML config file."""
     if config_path is None:
-        settings = get_settings()
+        get_settings()
         project_root = Path(__file__).resolve().parent.parent.parent
         config_path = project_root / "config" / "validation_rules.yaml"
 

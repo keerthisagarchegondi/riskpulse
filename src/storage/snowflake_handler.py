@@ -67,8 +67,6 @@ except ImportError:
         pass
 
 
-from src.utils.config import get_settings
-
 logger = structlog.get_logger(__name__)
 
 
@@ -746,6 +744,21 @@ class SnowflakeHandler:
                 file_path.unlink()
             Path(temp_dir).rmdir()
 
+    def bulk_load_records(
+        self,
+        records: list[dict[str, Any]],
+        table_name: str,
+        schema: str = SCHEMA_RAW,
+        batch_id: str | None = None,
+    ) -> LoadMetrics:
+        """Compatibility wrapper for orchestrated buffered loads."""
+        return self.put_and_copy(
+            data=records,
+            target_table=table_name,
+            schema=schema,
+            batch_id=batch_id,
+        )
+
     # =========================================================================
     # INCREMENTAL LOADING (Watermark-based)
     # =========================================================================
@@ -1075,7 +1088,7 @@ class SnowflakeHandler:
         results: dict[str, LoadMetrics] = {}
 
         start_time = time.perf_counter()
-        proc_result = self.call_procedure("REPORTING.REFRESH_ALL", [summary_date])
+        self.call_procedure("REPORTING.REFRESH_ALL", [summary_date])
         duration_ms = (time.perf_counter() - start_time) * 1000
 
         results["REPORTING_ALL"] = LoadMetrics(

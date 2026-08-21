@@ -9,15 +9,13 @@ from __future__ import annotations
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.api.middleware.auth import require_permission, verify_api_key
-from src.utils.constants import API_PREFIX, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from src.utils.constants import API_PREFIX
 from src.validation.rules_engine import (
-    RuleAction,
     RulesEngine,
-    RuleSeverity,
     get_rules_engine,
 )
 
@@ -189,7 +187,7 @@ async def list_rules(
     """List all configured business rules."""
     rules = engine.get_rules(category=category, enabled_only=enabled_only)
     return RuleListResponse(
-        rules=rules,
+        rules=[RuleResponse.model_validate(rule) for rule in rules],
         total=len(rules),
         categories=engine.get_categories(),
     )
@@ -261,6 +259,11 @@ async def create_rule(
             detail=str(exc),
         )
     rule = engine.get_rule(rule_data.id)
+    if rule is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Rule '{rule_data.id}' was not available after creation.",
+        )
     return RuleResponse(**rule)
 
 
@@ -331,7 +334,13 @@ async def enable_rule(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Rule '{rule_id}' not found.",
         )
-    return RuleResponse(**engine.get_rule(rule_id))
+    rule = engine.get_rule(rule_id)
+    if rule is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Rule '{rule_id}' not found.",
+        )
+    return RuleResponse(**rule)
 
 
 @router.post(
@@ -352,7 +361,13 @@ async def disable_rule(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Rule '{rule_id}' not found.",
         )
-    return RuleResponse(**engine.get_rule(rule_id))
+    rule = engine.get_rule(rule_id)
+    if rule is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Rule '{rule_id}' not found.",
+        )
+    return RuleResponse(**rule)
 
 
 @router.post(

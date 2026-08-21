@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -12,7 +11,6 @@ from src.alerting.alert_manager import (
     Alert,
     AlertManager,
     AlertSeverity,
-    AlertStatistics,
     AlertStatus,
     AlertType,
     DeduplicationEngine,
@@ -21,8 +19,6 @@ from src.alerting.alert_manager import (
 )
 from src.alerting.alert_templates import (
     AlertTemplateRenderer,
-    Locale,
-    RenderedAlert,
 )
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────

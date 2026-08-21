@@ -111,7 +111,7 @@ class ErrorResponse(BaseModel):
 # --- Dependency: Model Server ---
 
 
-def _get_model_server(request: Request):
+def _get_model_server(request: Request) -> Any:
     """Retrieve model server from app state."""
     server = getattr(request.app.state, "model_server", None)
     if server is None:
@@ -122,7 +122,7 @@ def _get_model_server(request: Request):
     return server
 
 
-def _get_model_monitor(request: Request):
+def _get_model_monitor(request: Request) -> Any | None:
     """Retrieve model monitor from app state."""
     return getattr(request.app.state, "model_monitor", None)
 
@@ -455,7 +455,7 @@ def _compute_confidence(score: float) -> float:
     return round(2.0 * abs(score - 0.5), 4)
 
 
-def _get_feature_names(server) -> list[str]:
+def _get_feature_names(server: Any) -> list[str]:
     """Get feature names from model server metadata."""
     if hasattr(server, "_primary_metadata") and server._primary_metadata:
         return server._primary_metadata.feature_names or []
@@ -471,7 +471,7 @@ def _get_active_ab_tests(request: Request) -> list[str]:
     return [name for name, data in tests.items() if data.get("is_active", False)]
 
 
-def _build_features_from_request(req: RiskScoreRequest, server) -> np.ndarray:
+def _build_features_from_request(req: RiskScoreRequest, server: Any) -> np.ndarray:
     """Build feature vector from request fields when pre-computed features not provided."""
     feature_names = _get_feature_names(server)
     return _build_single_feature_vector(req, feature_names).reshape(1, -1)

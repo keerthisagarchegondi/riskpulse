@@ -14,9 +14,7 @@ Tests cover:
 
 from __future__ import annotations
 
-import tempfile
 import time
-from pathlib import Path
 
 import pytest
 import yaml
@@ -24,8 +22,6 @@ import yaml
 from src.validation.rules_engine import (
     EvaluationOutcome,
     RuleAction,
-    RuleAuditTrail,
-    RuleDefinition,
     RuleEngineResult,
     RulesEngine,
     RuleSeverity,

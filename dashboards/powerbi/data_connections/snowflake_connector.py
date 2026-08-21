@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import time
 from enum import StrEnum
 from pathlib import Path

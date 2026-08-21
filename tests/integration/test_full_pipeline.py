@@ -15,13 +15,11 @@ Verifies:
 from __future__ import annotations
 
 import random
-import statistics
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -31,10 +29,6 @@ from src.alerting.alert_manager import (
     AlertManager,
     AlertSeverity,
     AlertStatus,
-    AlertType,
-    DeduplicationEngine,
-    SuppressionEngine,
-    ThrottleEngine,
 )
 from src.enrichment.device_enricher import DeviceEnricher, InMemoryDeviceStore
 from src.enrichment.geo_enricher import GeoEnricher
@@ -48,11 +42,8 @@ from src.fraud_detection.scoring_pipeline import (
     UnifiedScore,
 )
 from src.pipeline_orchestrator import (
-    BatchResult,
     PipelineOrchestrator,
-    PipelineResult,
     PipelineStage,
-    StageErrorPolicy,
 )
 from src.transformation.cleaner import DataCleaner
 from src.transformation.feature_engineer import FeatureEngineer
@@ -590,6 +581,7 @@ class TestScoringPipelineIntegration:
         score1 = full_scoring_pipeline.score_transaction_sync(txn, use_cache=False)
         score2 = full_scoring_pipeline.score_transaction_sync(txn, use_cache=False)
 
+        assert score1.cached is False
         assert score2.cached is False
 
     def test_batch_scoring_consistency(self, full_scoring_pipeline):
@@ -810,7 +802,7 @@ class TestEndToEndDataFlow:
                 scored_high_risk.append((score.to_dict(), result.record))
 
         # Stage 3: Generate alerts
-        alerts = alert_manager.generate_alerts_from_batch(scored_high_risk)
+        alert_manager.generate_alerts_from_batch(scored_high_risk)
 
         # Verify pipeline metrics
         assert batch_result.metrics.throughput_per_second > 0
@@ -842,9 +834,8 @@ class TestEndToEndDataFlow:
 
         score = full_scoring_pipeline.score_transaction_sync(pipeline_result.record)
 
-        alert = None
         if score.alert_recommended:
-            alert = alert_manager.generate_alert(score.to_dict(), txn)
+            alert_manager.generate_alert(score.to_dict(), txn)
 
         elapsed_ms = (time.perf_counter() - start) * 1000
 

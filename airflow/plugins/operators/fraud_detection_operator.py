@@ -19,7 +19,6 @@ from src.fraud_detection.anomaly_detector import AnomalyDetector
 from src.fraud_detection.risk_scorer import RiskScorer
 from src.fraud_detection.rule_engine import FraudRuleEngine
 from src.fraud_detection.scoring_pipeline import RiskClassification
-from src.utils.config import get_settings
 from src.utils.constants import (
     SCORE_THRESHOLD_CRITICAL,
     SCORE_THRESHOLD_HIGH,

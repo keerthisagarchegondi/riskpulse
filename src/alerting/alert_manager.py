@@ -18,24 +18,17 @@ import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
-from src.utils.config import get_settings
 from src.utils.constants import (
-    ALERT_FALSE_POSITIVE,
     ALERT_INVESTIGATING,
-    ALERT_OPEN,
     ALERT_RESOLVED,
-    SEVERITY_CRITICAL,
-    SEVERITY_HIGH,
-    SEVERITY_LOW,
-    SEVERITY_MEDIUM,
     TOPIC_FRAUD_ALERTS,
 )
 from src.utils.logger import get_logger
@@ -891,13 +884,13 @@ class AlertManager:
                 details = ms.get("details", {})
                 triggered_rules = details.get("triggered_rules", [])
                 if triggered_rules:
-                    return triggered_rules[0].get("rule_id")
+                    return cast(str | None, triggered_rules[0].get("rule_id"))
         return None
 
     def _resolve_channels(self, severity: AlertSeverity) -> list[str]:
         """Resolve notification channels based on severity."""
         severity_routing = self._routing.get(severity.value, {})
-        return severity_routing.get("channels", ["dashboard"])
+        return cast(list[str], severity_routing.get("channels", ["dashboard"]))
 
     def _build_description(
         self,

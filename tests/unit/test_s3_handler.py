@@ -18,33 +18,26 @@ from __future__ import annotations
 import io
 import json
 from datetime import datetime, timezone
-from unittest.mock import patch
 
 import boto3
-import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from moto import mock_aws
 
 from src.ingestion.api_ingestion import (
-    REQUIRED_TRANSACTION_FIELDS,
     BatchIngestionHandler,
     DetectedSchema,
     FileFormat,
     IngestionError,
     IngestionResult,
     IngestionStatus,
-    SchemaDetectionError,
-    ValidationError,
 )
 from src.storage.s3_handler import (
-    MULTIPART_THRESHOLD,
     S3_BUCKET_PROCESSED,
     S3_BUCKET_RAW,
     S3DownloadError,
     S3Handler,
     S3Metrics,
-    S3UploadError,
     StorageLayer,
     _build_partition_path,
     _generate_file_key,

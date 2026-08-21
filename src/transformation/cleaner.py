@@ -484,7 +484,7 @@ class DataCleaner:
 
         # Handle epoch timestamps (seconds or milliseconds)
         if value.isdigit():
-            ts = int(value)
+            ts = float(value)
             # Milliseconds if > 10 billion
             if ts > 1e10:
                 ts = ts / 1000

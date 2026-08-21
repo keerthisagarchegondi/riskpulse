@@ -7,14 +7,14 @@ Validated transactions are published to Kafka for downstream processing.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from src.api.middleware.auth import require_permission, verify_api_key
+from src.api.middleware.auth import verify_api_key
 from src.api.schemas.transaction_schema import (
     BatchSubmitResponse,
     ErrorResponse,
@@ -152,7 +152,7 @@ async def submit_batch(
     # Publish batch to Kafka
     if producer is not None and events:
         try:
-            results = producer.produce_batch(events, topic=TOPIC_RAW_EVENTS)
+            producer.produce_batch(events, topic=TOPIC_RAW_EVENTS)
             logger.info(
                 "batch_published",
                 total=len(events),
@@ -301,7 +301,7 @@ def _sanitize_optional_filter(value: str | None) -> str | None:
     return sanitize_string(value, reject_sql_tokens=True)
 
 
-def _get_kafka_producer():
+def _get_kafka_producer() -> Any | None:
     """Get the Kafka producer instance from the application state.
 
     Returns None if the producer is not available (graceful degradation).

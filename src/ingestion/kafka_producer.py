@@ -142,6 +142,11 @@ class TransactionProducer:
             topic=self._topic,
         )
 
+    @classmethod
+    def from_settings(cls) -> TransactionProducer:
+        """Create a producer using configured application settings."""
+        return cls()
+
     def _build_config(self, settings: Any, overrides: dict[str, Any] | None) -> dict[str, Any]:
         """Build confluent-kafka producer configuration."""
         config = {
@@ -245,13 +250,17 @@ class TransactionProducer:
 
         # Produce with delivery callback
         callback = on_delivery or self._default_delivery_callback
+
+        def _delivery_callback(err: KafkaError | None, msg: Any) -> None:
+            callback(err, msg, start_time)
+
         try:
             self._producer.produce(
                 topic=target_topic,
                 key=partition_key,
                 value=value_bytes,
                 headers=kafka_headers,
-                callback=lambda err, msg, st=start_time: callback(err, msg, st),
+                callback=_delivery_callback,
             )
             # Trigger delivery callbacks for any completed sends
             self._producer.poll(0)

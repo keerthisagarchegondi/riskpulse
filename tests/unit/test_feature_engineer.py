@@ -16,7 +16,6 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from src.transformation.aggregator import (
-    AggregationResult,
     IncrementalAggregator,
     RunningStatistics,
     TimeWindowAggregator,
@@ -24,12 +23,7 @@ from src.transformation.aggregator import (
     WindowType,
 )
 from src.transformation.feature_engineer import (
-    WINDOW_1H,
-    WINDOW_7D,
-    WINDOW_24H,
     FeatureEngineer,
-    FeatureMetrics,
-    FeatureResult,
 )
 
 # ──────────────────────────────────────────────────────────────────────────────

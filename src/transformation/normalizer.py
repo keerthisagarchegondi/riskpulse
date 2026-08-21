@@ -363,7 +363,7 @@ class DataNormalizer:
 
     def _normalize_currency_code(self, record: dict[str, Any]) -> list[str]:
         """Standardize currency code to uppercase ISO 4217."""
-        changes = []
+        changes: list[str] = []
         raw = record.get("transaction_currency")
         if raw is None:
             return changes
@@ -421,7 +421,7 @@ class DataNormalizer:
 
     def _normalize_country(self, record: dict[str, Any]) -> list[str]:
         """Normalize country code to ISO 3166-1 alpha-2."""
-        changes = []
+        changes: list[str] = []
         raw = record.get("geo_country")
         if raw is None:
             return changes
@@ -503,7 +503,7 @@ class DataNormalizer:
 
     def _normalize_transaction_type(self, record: dict[str, Any]) -> list[str]:
         """Normalize transaction type to canonical values."""
-        changes = []
+        changes: list[str] = []
         raw = record.get("transaction_type")
         if raw is None:
             return changes
@@ -525,7 +525,7 @@ class DataNormalizer:
 
     def _normalize_channel(self, record: dict[str, Any]) -> list[str]:
         """Normalize channel to canonical values."""
-        changes = []
+        changes: list[str] = []
         raw = record.get("channel")
         if raw is None:
             return changes
@@ -547,7 +547,7 @@ class DataNormalizer:
 
     def _normalize_card_type(self, record: dict[str, Any]) -> list[str]:
         """Normalize card type to canonical values."""
-        changes = []
+        changes: list[str] = []
         raw = record.get("card_type")
         if raw is None:
             return changes

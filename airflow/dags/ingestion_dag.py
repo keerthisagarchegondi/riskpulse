@@ -19,7 +19,6 @@ from airflow.sensors.python import PythonSensor
 
 from airflow import DAG
 from src.ingestion.kafka_consumer import TransactionConsumer
-from src.pipeline_orchestrator import PipelineOrchestrator
 from src.storage.s3_handler import S3Handler, StorageLayer
 from src.utils.config import get_settings
 from src.utils.constants import (

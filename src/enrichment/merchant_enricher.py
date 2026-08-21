@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -34,7 +34,7 @@ def _load_merchant_risk_categories() -> dict[str, dict[str, Any]]:
         return {}
     with open(config_path, "r") as f:
         data = yaml.safe_load(f) or {}
-    return data.get("mcc_categories", {})
+    return cast(dict[str, dict[str, Any]], data.get("mcc_categories", {}))
 
 
 @dataclass

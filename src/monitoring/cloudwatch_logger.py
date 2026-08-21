@@ -313,7 +313,8 @@ class CloudWatchLogHandler(logging.Handler):
         streams = response.get("logStreams", [])
         for stream in streams:
             if stream.get("logStreamName") == self.log_stream_name:
-                return stream.get("uploadSequenceToken")
+                token = stream.get("uploadSequenceToken")
+                return token if isinstance(token, str) else None
         return None
 
     @staticmethod

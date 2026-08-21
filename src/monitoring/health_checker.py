@@ -89,7 +89,7 @@ class HealthChecker:
             self.check_redis(),
             self.check_snowflake(),
         )
-        return self.build_health(checks)
+        return self.build_health(list(checks))
 
     def build_health(self, dependencies: list[DependencyCheckResult]) -> ServiceHealth:
         critical_failures = [item for item in dependencies if item.critical and not item.is_healthy]

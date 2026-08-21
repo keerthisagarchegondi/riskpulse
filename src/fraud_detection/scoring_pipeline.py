@@ -635,11 +635,13 @@ class ScoringPipeline:
 
         # Apply timeout
         timeout_s = self._timeout_ms / 1000.0
+        results: list[ScoringMethodResult | BaseException]
         try:
-            results = await asyncio.wait_for(
+            gathered = await asyncio.wait_for(
                 asyncio.gather(rule_task, anomaly_task, ml_task, return_exceptions=True),
                 timeout=timeout_s,
             )
+            results = list(gathered)
         except asyncio.TimeoutError:
             logger.warning("scoring_timeout", transaction_id=txn_id)
             # Collect whatever completed

@@ -6,7 +6,6 @@ when available, otherwise connects to the configured test database.
 
 from __future__ import annotations
 
-import asyncio
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -16,8 +15,8 @@ from typing import AsyncGenerator
 import pytest
 import pytest_asyncio
 
-from src.storage.models import Base, CustomerProfile, FraudAlert, RiskScore, Transaction
-from src.storage.postgres_handler import PostgresHandler, create_postgres_handler
+from src.storage.models import Base, Transaction
+from src.storage.postgres_handler import PostgresHandler
 
 # ---------------------------------------------------------------------------
 # Fixtures

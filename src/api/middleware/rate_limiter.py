@@ -275,5 +275,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def _get_custom_rate(request: Request) -> int | None:
         """Get custom rate limit if the API key has one configured."""
         if hasattr(request.state, "api_key_rate_limit"):
-            return request.state.api_key_rate_limit
+            limit = request.state.api_key_rate_limit
+            return int(limit) if limit is not None else None
         return None

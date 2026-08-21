@@ -14,25 +14,19 @@ import pytest
 
 from src.enrichment.device_enricher import (
     DeviceEnricher,
-    DeviceEnrichmentResult,
     InMemoryDeviceStore,
 )
 from src.enrichment.geo_enricher import (
     GeoEnricher,
-    GeoEnrichmentResult,
-    GeoLocation,
-    TransactionFieldGeoProvider,
     haversine_distance,
 )
 from src.enrichment.merchant_enricher import (
     InMemoryMerchantStore,
     MerchantEnricher,
-    MerchantEnrichmentResult,
 )
 from src.enrichment.velocity_calculator import (
     CustomerVelocityProfile,
     VelocityCalculator,
-    VelocityResult,
 )
 
 # =============================================================================

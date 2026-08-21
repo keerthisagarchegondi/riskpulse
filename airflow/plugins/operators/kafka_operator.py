@@ -8,21 +8,19 @@ timeouts, and dead-letter queue routing.
 from __future__ import annotations
 
 import json
-import time
 from typing import Any, Sequence
 
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.utils.context import Context
-from confluent_kafka import Consumer, KafkaError, KafkaException, TopicPartition
+from confluent_kafka import Consumer, KafkaError, KafkaException
 
 from src.pipeline_orchestrator import (
     BatchResult,
     PipelineOrchestrator,
-    StageErrorPolicy,
 )
 from src.utils.config import get_settings
-from src.utils.constants import TOPIC_DLQ, TOPIC_RAW_EVENTS
+from src.utils.constants import TOPIC_RAW_EVENTS
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__, component="kafka_operator")

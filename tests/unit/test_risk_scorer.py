@@ -8,20 +8,16 @@ Tests cover:
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import joblib
 import numpy as np
-import pandas as pd
 import pytest
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.preprocessing import StandardScaler
 
 from src.fraud_detection.feature_store import (
     FEATURE_CATALOG,
-    FEATURE_DEFAULTS,
     FeatureStore,
     FeatureVector,
 )

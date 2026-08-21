@@ -13,20 +13,19 @@ Delivers fraud alerts across multiple channels with:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from threading import Lock
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import yaml
 
-from src.alerting.alert_manager import Alert, AlertChannel, AlertSeverity
+from src.alerting.alert_manager import Alert, AlertSeverity
 from src.alerting.alert_templates import AlertTemplateRenderer, RenderedAlert
 from src.utils.logger import get_logger
 
@@ -151,12 +150,12 @@ class WebSocketProvider(Protocol):
 class SESEmailProvider:
     """AWS SES email provider."""
 
-    def __init__(self, region: str = "us-east-1", sender: str = "alerts@riskpulse.io"):
+    def __init__(self, region: str = "us-east-1", sender: str = "alerts@riskpulse.io") -> None:
         self._region = region
         self._sender = sender
         self._client = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             import boto3
 
@@ -189,11 +188,11 @@ class SESEmailProvider:
 class SNSSMSProvider:
     """AWS SNS SMS provider."""
 
-    def __init__(self, region: str = "us-east-1"):
+    def __init__(self, region: str = "us-east-1") -> None:
         self._region = region
         self._client = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             import boto3
 
@@ -245,7 +244,7 @@ class HTTPWebhookProvider:
 class InAppWebSocketProvider:
     """In-app WebSocket notification provider."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._connections: dict[str, Any] = {}
 
     def register_connection(self, user_id: str, websocket: Any) -> None:
@@ -332,7 +331,7 @@ class NotificationRateLimiter:
 class DeliveryTracker:
     """Tracks notification delivery status and provides audit trail."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._records: dict[str, NotificationRecord] = {}
         self._by_alert: dict[str, list[str]] = defaultdict(list)
         self._lock = Lock()
@@ -1009,7 +1008,7 @@ class NotificationService:
     def _get_webhook_config(self, recipient: str) -> dict[str, Any] | None:
         """Get webhook configuration for a recipient."""
         webhooks = self._config.get("webhooks", {})
-        return webhooks.get(recipient)
+        return cast(dict[str, Any] | None, webhooks.get(recipient))
 
     def get_delivery_stats(self) -> dict[str, Any]:
         """Get delivery statistics."""

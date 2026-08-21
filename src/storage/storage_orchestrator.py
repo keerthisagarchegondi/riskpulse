@@ -16,7 +16,6 @@ Implements:
 
 from __future__ import annotations
 
-import asyncio
 import time
 import uuid
 from collections import deque
@@ -27,13 +26,11 @@ from threading import Lock
 from typing import Any
 
 import structlog
-from circuitbreaker import CircuitBreakerError, circuit
 
-from src.storage.cache_handler import CacheHandler, CacheHandlerError, create_cache_handler
+from src.storage.cache_handler import CacheHandler, CacheHandlerError
 from src.storage.postgres_handler import PostgresHandler, PostgresHandlerError
-from src.storage.s3_handler import S3Handler, S3HandlerError, StorageLayer
+from src.storage.s3_handler import S3Handler, S3HandlerError
 from src.storage.snowflake_handler import SnowflakeHandler, SnowflakeHandlerError
-from src.utils.config import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -330,6 +327,12 @@ class StorageOrchestrator:
         """Write transaction to Redis cache with circuit breaker."""
         start = time.perf_counter()
         health = self._health[StorageBackend.REDIS]
+        if self._cache is None:
+            return WriteResult(
+                backend=StorageBackend.REDIS,
+                success=False,
+                error="cache_backend_not_configured",
+            )
 
         if health.state == StorageState.UNAVAILABLE:
             return WriteResult(
@@ -408,6 +411,12 @@ class StorageOrchestrator:
 
         try:
             pg_data = self._prepare_postgres_record(record)
+            if self._postgres is None:
+                return WriteResult(
+                    backend=StorageBackend.POSTGRES,
+                    success=False,
+                    error="postgres_backend_not_configured",
+                )
             await self._postgres.create_transaction(pg_data)
 
             latency = (time.perf_counter() - start) * 1000
@@ -485,6 +494,14 @@ class StorageOrchestrator:
             )
 
         try:
+            if self._s3 is None:
+                with self._buffer_lock:
+                    self._s3_buffer = batch + self._s3_buffer
+                return WriteResult(
+                    backend=StorageBackend.S3,
+                    success=False,
+                    error="s3_backend_not_configured",
+                )
             self._s3.upload_transactions(batch)
             latency = (time.perf_counter() - start) * 1000
             health.record_success(latency)
@@ -536,6 +553,14 @@ class StorageOrchestrator:
             )
 
         try:
+            if self._snowflake is None:
+                with self._buffer_lock:
+                    self._snowflake_buffer = batch + self._snowflake_buffer
+                return WriteResult(
+                    backend=StorageBackend.SNOWFLAKE,
+                    success=False,
+                    error="snowflake_backend_not_configured",
+                )
             self._snowflake.bulk_load_records(
                 records=batch,
                 table_name="TRANSACTIONS",

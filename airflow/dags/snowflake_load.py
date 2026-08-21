@@ -14,12 +14,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from airflow.operators.python import PythonOperator
-from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
-from operators.snowflake_operator import (
-    SnowflakeCopyIntoOperator,
-    SnowflakeMergeOperator,
-    SnowflakeRefreshViewsOperator,
-)
 
 from airflow import DAG
 from src.utils.config import get_settings
@@ -302,11 +296,11 @@ def _transform_raw_to_staging(**context: Any) -> dict[str, Any]:
     try:
         # Merge transactions
         txn_sql = _MERGE_RAW_TO_STAGING.format(database=_SNOWFLAKE_DATABASE)
-        txn_result = hook.run(txn_sql, autocommit=True)
+        hook.run(txn_sql, autocommit=True)
 
         # Merge fraud alerts
         alerts_sql = _MERGE_RAW_TO_STAGING_ALERTS.format(database=_SNOWFLAKE_DATABASE)
-        alerts_result = hook.run(alerts_sql, autocommit=True)
+        hook.run(alerts_sql, autocommit=True)
 
         summary = {
             "transactions_merged": True,

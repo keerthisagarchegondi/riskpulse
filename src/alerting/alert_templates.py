@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-from src.alerting.alert_manager import Alert, AlertChannel, AlertSeverity, AlertType
+from src.alerting.alert_manager import Alert, AlertSeverity, AlertType
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__, component="alert_templates")
@@ -349,8 +349,6 @@ class AlertTemplateRenderer:
 
     def _render_dashboard(self, alert: Alert) -> RenderedAlert:
         """Render alert as structured dashboard notification."""
-        s = lambda key: _get_string(self._locale, key)  # noqa: E731
-
         body_data = {
             "alert_id": alert.alert_id,
             "title": self._get_type_title(alert.alert_type),
@@ -419,7 +417,6 @@ class AlertTemplateRenderer:
 
     def _get_email_subject(self, alert: Alert) -> str:
         """Generate email subject line based on alert severity and type."""
-        s = lambda key: _get_string(self._locale, key)  # noqa: E731
         severity_prefix = {
             AlertSeverity.LOW: "[LOW]",
             AlertSeverity.MEDIUM: "[MEDIUM]",

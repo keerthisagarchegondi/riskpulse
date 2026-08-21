@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import signal
 import time
-import uuid
 from dataclasses import dataclass, field
 from threading import Event, Lock
 from typing import Any, Callable
@@ -28,7 +27,6 @@ from src.monitoring.cloudwatch_logger import configure_cloudwatch_logging, set_c
 from src.monitoring.metrics_collector import CloudWatchMetricsCollector
 from src.pipeline_orchestrator import (
     BatchResult,
-    PipelineMetrics,
     PipelineOrchestrator,
     StageErrorPolicy,
 )
@@ -37,10 +35,7 @@ from src.utils.constants import (
     BATCH_SIZE_DEFAULT,
     MAX_BATCH_SIZE,
     POLL_TIMEOUT_MS,
-    TOPIC_DLQ,
-    TOPIC_ENRICHED,
     TOPIC_RAW_EVENTS,
-    TOPIC_VALIDATED,
 )
 from src.utils.logger import get_logger
 
@@ -342,6 +337,8 @@ class TransactionConsumer:
 
             if msg.error():
                 error = msg.error()
+                if error is None:
+                    continue
                 if error.code() == KafkaError._PARTITION_EOF:
                     continue
                 elif error.code() == KafkaError._ALL_BROKERS_DOWN:
@@ -479,8 +476,12 @@ class TransactionConsumer:
             KafkaError.BROKER_NOT_AVAILABLE,
         }
         kafka_error = error.args[0] if error.args else None
-        if hasattr(kafka_error, "code"):
-            return kafka_error.code() in fatal_codes
+        if kafka_error is None:
+            return False
+        code_method = getattr(kafka_error, "code", None)
+        if callable(code_method):
+            code = code_method() if callable(code_method) else None
+            return code in fatal_codes if code is not None else False
         return False
 
 

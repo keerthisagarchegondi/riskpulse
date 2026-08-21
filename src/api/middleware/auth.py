@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+from collections.abc import Callable
 from typing import Any
 
 import structlog
@@ -133,17 +134,17 @@ async def verify_api_key(
 
     if api_key is not None:
         manager = get_key_manager()
-        metadata = manager.validate_key(api_key)
+        api_metadata = manager.validate_key(api_key)
 
-        if metadata is None:
+        if api_metadata is None:
             logger.warning("api_key_invalid", path=request.url.path)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API key.",
             )
 
-        _bind_auth_metadata(request, metadata)
-        return metadata
+        _bind_auth_metadata(request, api_metadata)
+        return api_metadata
 
     logger.warning("auth_missing", path=request.url.path)
     raise HTTPException(
@@ -181,7 +182,7 @@ async def verify_api_key_only(
     return metadata
 
 
-def require_permission(permission: str):
+def require_permission(permission: str) -> Callable[..., Any]:
     """Factory for creating permission-checking dependencies.
 
     Usage:

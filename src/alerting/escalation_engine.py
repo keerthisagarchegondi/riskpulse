@@ -11,9 +11,7 @@ Production-grade escalation system with:
 
 from __future__ import annotations
 
-import asyncio
 import uuid
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -23,7 +21,7 @@ from typing import Any, Callable
 
 import yaml
 
-from src.alerting.alert_manager import Alert, AlertSeverity, AlertStatus
+from src.alerting.alert_manager import Alert, AlertSeverity
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__, component="escalation_engine")
@@ -202,6 +200,7 @@ class EscalationEngine:
         self._oncall_schedules: dict[str, OnCallSchedule] = {}
         self._active_escalations: dict[str, EscalationRecord] = {}
         self._escalation_by_alert: dict[str, str] = {}
+        self._active_alerts: dict[str, Alert] = {}
         self._audit_log: list[dict[str, Any]] = []
         self._lock = Lock()
 
@@ -392,6 +391,7 @@ class EscalationEngine:
         with self._lock:
             self._active_escalations[record.escalation_id] = record
             self._escalation_by_alert[alert.alert_id] = record.escalation_id
+            self._active_alerts[alert.alert_id] = alert
 
         self._record_audit(
             action="escalation_started",
@@ -407,7 +407,9 @@ class EscalationEngine:
             policy=policy.policy_id,
             level=first_level.level.value,
             recipients=recipients,
-            next_escalation_at=record.next_escalation_at.isoformat(),
+            next_escalation_at=(
+                record.next_escalation_at.isoformat() if record.next_escalation_at else None
+            ),
         )
 
         return record
@@ -487,6 +489,7 @@ class EscalationEngine:
 
             # Move to completed
             del self._escalation_by_alert[alert_id]
+            self._active_alerts.pop(alert_id, None)
 
         self._record_audit(
             action="escalation_resolved",
@@ -596,7 +599,9 @@ class EscalationEngine:
         # Trigger callback
         if self._on_escalate:
             try:
-                self._on_escalate(record, None)
+                alert = self._active_alerts.get(record.alert_id)
+                if alert is not None:
+                    self._on_escalate(record, alert)
             except Exception as e:
                 logger.error("escalation_callback_error", error=str(e))
 

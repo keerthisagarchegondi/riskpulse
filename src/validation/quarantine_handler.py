@@ -6,7 +6,6 @@ tracks failure reasons, provides metrics, and supports re-processing.
 
 from __future__ import annotations
 
-import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -14,7 +13,7 @@ from threading import Lock
 from typing import Any
 
 from src.utils.logger import get_logger
-from src.validation.schema_validator import ValidationResult, ValidationSeverity
+from src.validation.schema_validator import ValidationResult
 
 logger = get_logger(__name__, component="quarantine_handler")
 
@@ -217,8 +216,8 @@ class QuarantineHandler:
 
         with self._lock:
             if quarantine_id:
-                candidates = [self._store.get(quarantine_id)]
-                candidates = [c for c in candidates if c is not None]
+                entry = self._store.get(quarantine_id)
+                candidates: list[QuarantinedRecord] = [entry] if entry is not None else []
             else:
                 candidates = [
                     r

@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -41,8 +41,8 @@ def _resolve_env_vars(config: Any) -> Any:
             expr = match.group(1)
             if ":-" in expr:
                 var_name, default = expr.split(":-", 1)
-                return os.environ.get(var_name, default)
-            return os.environ.get(expr, match.group(0))
+                return cast(str, os.environ.get(var_name, default))
+            return cast(str, os.environ.get(expr, match.group(0)))
 
         return re.sub(r"\$\{([^}]+)\}", _replace, config)
     return config
@@ -74,13 +74,13 @@ class Settings:
         base_path = config_dir / "settings.yaml"
         if base_path.exists():
             with open(base_path, "r") as f:
-                self._config = yaml.safe_load(f) or {}
+                self._config = cast(dict[str, Any], yaml.safe_load(f) or {})
 
         # Load environment-specific overrides
         env_path = config_dir / "environments" / f"{self._environment}.yaml"
         if env_path.exists():
             with open(env_path, "r") as f:
-                env_config = yaml.safe_load(f) or {}
+                env_config = cast(dict[str, Any], yaml.safe_load(f) or {})
                 self._config = _deep_merge(self._config, env_config)
 
         # Resolve environment variable references
@@ -137,7 +137,7 @@ class Settings:
             Configuration value or default
         """
         keys = key_path.split(".")
-        value = self._config
+        value: Any = self._config
         for key in keys:
             if isinstance(value, dict):
                 value = value.get(key)
@@ -190,7 +190,7 @@ class Settings:
     @property
     def is_debug(self) -> bool:
         """Whether debug mode is enabled."""
-        return self.get("app.debug", False)
+        return bool(self.get("app.debug", False))
 
     def as_dict(self) -> dict[str, Any]:
         """Return full configuration as dictionary (for debugging)."""

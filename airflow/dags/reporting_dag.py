@@ -334,7 +334,7 @@ def _send_daily_digest(**context: Any) -> dict[str, Any]:
     """Send daily fraud digest email to operations team."""
     ti = context["ti"]
     summary = ti.xcom_pull(task_ids="generate_daily_summary", key="daily_summary")
-    settings = get_settings()
+    get_settings()
 
     if not summary or not summary.get("has_data"):
         logger.info("No data for digest email, skipping")

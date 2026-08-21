@@ -15,10 +15,8 @@ from typing import Any
 
 from airflow.operators.python import PythonOperator
 from operators.data_quality_operator import (
-    CheckResult,
     CheckSeverity,
     DataQualityOperator,
-    QualityReport,
 )
 
 from airflow import DAG

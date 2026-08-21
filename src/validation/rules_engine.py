@@ -14,7 +14,6 @@ Performance target: < 10ms per transaction evaluation.
 from __future__ import annotations
 
 import hashlib
-import math
 import time
 import uuid
 from collections import defaultdict, deque
@@ -722,7 +721,7 @@ class RulesEngine:
         operator = condition.get("operator")
         expected_value = condition.get("value")
 
-        if not field_name or not operator:
+        if not isinstance(field_name, str) or not isinstance(operator, str):
             return False
 
         actual_value = transaction.get(field_name)
@@ -736,44 +735,52 @@ class RulesEngine:
 
         if actual_value is None:
             return False
+        if expected_value is None and operator not in {"is_null", "is_not_null"}:
+            return False
+        actual: Any = actual_value
+        expected: Any = expected_value
 
         # Comparison operators
         if operator == "equals":
-            return actual_value == expected_value
+            return bool(actual == expected)
 
         if operator == "not_equals":
-            return actual_value != expected_value
+            return bool(actual != expected)
 
         if operator == "greater_than":
-            return float(actual_value) > float(expected_value)
+            return float(actual) > float(expected)
 
         if operator == "less_than":
-            return float(actual_value) < float(expected_value)
+            return float(actual) < float(expected)
 
         if operator == "greater_than_or_equals":
-            return float(actual_value) >= float(expected_value)
+            return float(actual) >= float(expected)
 
         if operator == "less_than_or_equals":
-            return float(actual_value) <= float(expected_value)
+            return float(actual) <= float(expected)
 
         if operator == "in":
-            return actual_value in expected_value
+            if not isinstance(expected, (list, tuple, set, frozenset, str)):
+                return False
+            return actual in expected
 
         if operator == "not_in":
-            return actual_value not in expected_value
+            if not isinstance(expected, (list, tuple, set, frozenset, str)):
+                return False
+            return actual not in expected
 
         if operator == "contains":
-            return expected_value in str(actual_value)
+            return str(expected) in str(actual)
 
         if operator == "starts_with":
-            return str(actual_value).startswith(str(expected_value))
+            return str(actual).startswith(str(expected))
 
         if operator == "ends_with":
-            return str(actual_value).endswith(str(expected_value))
+            return str(actual).endswith(str(expected))
 
         if operator == "modulo_equals":
-            modulo = condition.get("modulo", 1)
-            return float(actual_value) % modulo == float(expected_value)
+            modulo = float(condition.get("modulo", 1))
+            return float(actual) % modulo == float(expected)
 
         if operator == "regex_match":
             import re
@@ -785,13 +792,13 @@ class RulesEngine:
 
     def _evaluate_velocity(self, condition: dict[str, Any], transaction: dict[str, Any]) -> bool:
         """Evaluate a velocity rule (transaction count in time window)."""
-        field_name = condition.get("field", "account_id")
+        field_name = str(condition.get("field", "account_id"))
         entity_value = transaction.get(field_name)
         if not entity_value:
             return False
 
-        max_count = condition.get("max_count", 10)
-        window_seconds = condition.get("time_window_seconds", 300)
+        max_count = int(condition.get("max_count", 10))
+        window_seconds = int(condition.get("time_window_seconds", 300))
         amount_threshold = condition.get("amount_threshold")
 
         entity_key = f"account:{entity_value}"
@@ -806,13 +813,13 @@ class RulesEngine:
         self, condition: dict[str, Any], transaction: dict[str, Any]
     ) -> bool:
         """Evaluate cumulative amount velocity rule."""
-        field_name = condition.get("field", "account_id")
+        field_name = str(condition.get("field", "account_id"))
         entity_value = transaction.get(field_name)
         if not entity_value:
             return False
 
-        max_amount = condition.get("max_amount", 100000.0)
-        window_seconds = condition.get("time_window_seconds", 86400)
+        max_amount = float(condition.get("max_amount", 100000.0))
+        window_seconds = int(condition.get("time_window_seconds", 86400))
 
         entity_key = f"account:{entity_value}"
         cumulative = self.velocity_tracker.get_cumulative_amount(
@@ -845,8 +852,10 @@ class RulesEngine:
         """Evaluate cardinality rule (distinct values per group)."""
         group_by = condition.get("group_by")
         count_field = condition.get("count_field")
-        max_distinct = condition.get("max_distinct", 3)
-        window_seconds = condition.get("time_window_seconds", 3600)
+        if not isinstance(group_by, str) or not isinstance(count_field, str):
+            return False
+        max_distinct = int(condition.get("max_distinct", 3))
+        window_seconds = int(condition.get("time_window_seconds", 3600))
 
         group_value = transaction.get(group_by)
         if not group_value:

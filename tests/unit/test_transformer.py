@@ -14,7 +14,6 @@ from __future__ import annotations
 import copy
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 import yaml

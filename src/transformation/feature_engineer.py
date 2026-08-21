@@ -17,8 +17,6 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import Any
 
-import numpy as np
-
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__, component="feature_engineer")

@@ -16,17 +16,15 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Generator
+from typing import Any, cast
 
 import pyarrow as pa
 import pyarrow.csv as pa_csv
-import pyarrow.json as pa_json
 import pyarrow.parquet as pq
 import structlog
 
 from src.storage.s3_handler import (
     S3_BUCKET_PROCESSED,
-    S3_BUCKET_RAW,
     S3DownloadError,
     S3Handler,
     S3UploadError,
@@ -589,11 +587,11 @@ class BatchIngestionHandler:
                 Key=key,
                 Range=f"bytes=0-{STREAM_CHUNK_SIZE - 1}",
             )
-            return response["Body"].read()
+            return cast(bytes, response["Body"].read())
         except Exception:
             # Fallback: download entire file if Range not supported
             response = self._s3._s3_client.get_object(Bucket=bucket, Key=key)
-            return response["Body"].read()
+            return cast(bytes, response["Body"].read())
 
     def _detect_csv_schema(self, sample: bytes) -> DetectedSchema:
         """Detect CSV schema from sample bytes."""

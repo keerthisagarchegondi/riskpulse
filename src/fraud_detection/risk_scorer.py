@@ -12,16 +12,14 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import joblib
 import numpy as np
-import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from src.fraud_detection.feature_store import (
     FEATURE_CATALOG,
-    FEATURE_DEFAULTS,
     FeatureStore,
     FeatureVector,
 )
@@ -362,9 +360,15 @@ class RiskScorer:
             self.load_model(self._model_path)
             logger.info("Hot-reloaded model version=%s", self.model_version)
 
+    def _require_artifact(self) -> ModelArtifact:
+        """Return the loaded model artifact or fail with a clear operational error."""
+        if self._artifact is None:
+            raise RuntimeError("Model not loaded. Call load_model() before scoring.")
+        return self._artifact
+
     def _get_raw_score(self, X: np.ndarray) -> float:
         """Get raw model prediction score."""
-        model = self._artifact.model
+        model = self._require_artifact().model
         if hasattr(model, "predict_proba"):
             proba = model.predict_proba(X)
             return float(proba[0, 1]) if proba.shape[1] > 1 else float(proba[0, 0])
@@ -375,25 +379,26 @@ class RiskScorer:
 
     def _get_raw_scores_batch(self, X: np.ndarray) -> np.ndarray:
         """Get raw model prediction scores for a batch."""
-        model = self._artifact.model
+        model = self._require_artifact().model
         if hasattr(model, "predict_proba"):
             proba = model.predict_proba(X)
-            return proba[:, 1] if proba.shape[1] > 1 else proba[:, 0]
+            return cast(np.ndarray, proba[:, 1] if proba.shape[1] > 1 else proba[:, 0])
         elif hasattr(model, "decision_function"):
-            return model.decision_function(X)
+            return cast(np.ndarray, model.decision_function(X))
         else:
-            return model.predict(X).astype(float)
+            return cast(np.ndarray, model.predict(X).astype(float))
 
     def _calibrate_score(self, raw_score: float, X: np.ndarray) -> float:
         """Calibrate raw score to probability using isotonic regression or Platt scaling."""
-        if self._artifact.calibrator is not None:
+        artifact = self._require_artifact()
+        if artifact.calibrator is not None:
             try:
-                if hasattr(self._artifact.calibrator, "predict_proba"):
-                    proba = self._artifact.calibrator.predict_proba(X)
+                if hasattr(artifact.calibrator, "predict_proba"):
+                    proba = artifact.calibrator.predict_proba(X)
                     return float(np.clip(proba[0, 1], 0.0, 1.0))
-                elif hasattr(self._artifact.calibrator, "transform"):
+                elif hasattr(artifact.calibrator, "transform"):
                     return float(
-                        np.clip(self._artifact.calibrator.transform([[raw_score]])[0, 0], 0.0, 1.0)
+                        np.clip(artifact.calibrator.transform([[raw_score]])[0, 0], 0.0, 1.0)
                     )
             except Exception as e:
                 logger.debug("Calibration fallback: %s", e)
@@ -403,14 +408,15 @@ class RiskScorer:
 
     def _calibrate_scores_batch(self, raw_scores: np.ndarray, X: np.ndarray) -> np.ndarray:
         """Calibrate a batch of raw scores."""
-        if self._artifact.calibrator is not None:
+        artifact = self._require_artifact()
+        if artifact.calibrator is not None:
             try:
-                if hasattr(self._artifact.calibrator, "predict_proba"):
-                    proba = self._artifact.calibrator.predict_proba(X)
-                    return np.clip(proba[:, 1], 0.0, 1.0)
+                if hasattr(artifact.calibrator, "predict_proba"):
+                    proba = artifact.calibrator.predict_proba(X)
+                    return cast(np.ndarray, np.clip(proba[:, 1], 0.0, 1.0))
             except Exception as e:
                 logger.debug("Batch calibration fallback: %s", e)
-        return np.clip(raw_scores, 0.0, 1.0)
+        return cast(np.ndarray, np.clip(raw_scores, 0.0, 1.0))
 
     def _classify_risk(self, score: float) -> str:
         """Classify calibrated score into risk level."""
@@ -452,8 +458,9 @@ class RiskScorer:
         try:
             import shap
 
-            model = self._artifact.model
-            model_type = self._artifact.model_type
+            artifact = self._require_artifact()
+            model = artifact.model
+            model_type = artifact.model_type
 
             if model_type in ("xgboost", "lightgbm"):
                 self._shap_explainer = shap.TreeExplainer(model)
@@ -476,7 +483,7 @@ class RiskScorer:
             return self._fallback_explanation(X, feature_vector)
 
         try:
-            import shap
+            pass
 
             shap_values = self._shap_explainer.shap_values(X)
 
@@ -484,11 +491,11 @@ class RiskScorer:
             if isinstance(shap_values, list):
                 shap_values = shap_values[1]  # Use positive class
 
-            feature_names = self._artifact.feature_names
+            feature_names = self._require_artifact().feature_names
             contributions = shap_values[0] if shap_values.ndim > 1 else shap_values
 
             # Build feature importance list
-            importance_list = []
+            importance_list: list[dict[str, Any]] = []
             for i, (name, shap_val) in enumerate(zip(feature_names, contributions)):
                 feat_value = feature_vector.features.get(name, 0.0)
                 importance_list.append(
@@ -501,7 +508,7 @@ class RiskScorer:
                 )
 
             # Sort by absolute SHAP value and take top N
-            importance_list.sort(key=lambda x: abs(x["shap_value"]), reverse=True)
+            importance_list.sort(key=lambda x: abs(float(x["shap_value"])), reverse=True)
             return importance_list[: self._shap_max_features]
 
         except Exception as e:
@@ -512,13 +519,14 @@ class RiskScorer:
         self, X: np.ndarray, feature_vector: FeatureVector
     ) -> list[dict[str, Any]]:
         """Fallback explanation using feature importances from the model."""
-        if not hasattr(self._artifact.model, "feature_importances_"):
+        artifact = self._require_artifact()
+        if not hasattr(artifact.model, "feature_importances_"):
             return []
 
-        importances = self._artifact.model.feature_importances_
-        feature_names = self._artifact.feature_names
+        importances = artifact.model.feature_importances_
+        feature_names = artifact.feature_names
 
-        importance_list = []
+        importance_list: list[dict[str, Any]] = []
         for name, imp in zip(feature_names, importances):
             if imp > 0:
                 feat_value = feature_vector.features.get(name, 0.0)
@@ -531,7 +539,7 @@ class RiskScorer:
                     }
                 )
 
-        importance_list.sort(key=lambda x: x["importance"], reverse=True)
+        importance_list.sort(key=lambda x: float(x["importance"]), reverse=True)
         return importance_list[: self._shap_max_features]
 
     @staticmethod

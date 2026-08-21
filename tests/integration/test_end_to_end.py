@@ -488,7 +488,7 @@ class TestPipelinePerformance:
 
         throughput = result.succeeded / elapsed if elapsed > 0 else 0
         print(f"\n{'='*60}")
-        print(f"End-to-End Pipeline Benchmark (10,000 transactions)")
+        print("End-to-End Pipeline Benchmark (10,000 transactions)")
         print(f"{'='*60}")
         print(f"  Total Records:      {result.total:,}")
         print(f"  Succeeded:          {result.succeeded:,}")
@@ -501,7 +501,7 @@ class TestPipelinePerformance:
         print(f"{'='*60}")
 
         # Stage-level metrics
-        print(f"\n  Stage Metrics:")
+        print("\n  Stage Metrics:")
         for stage_name, stage_data in pipeline.get_stage_metrics().items():
             processed = stage_data.get("records_processed", 0)
             avg_lat = stage_data.get("avg_latency_ms", 0)

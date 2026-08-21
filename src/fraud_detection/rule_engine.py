@@ -11,11 +11,9 @@ import math
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from enum import IntEnum
-from functools import lru_cache
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, cast
 
 import yaml
 
@@ -380,7 +378,7 @@ class FraudRuleEngine:
     ) -> Optional[RuleMatch]:
         evaluator = _RULE_EVALUATORS.get(rule.id)
         if evaluator is not None:
-            return evaluator(self, rule, txn, ctx)
+            return cast(Optional[RuleMatch], evaluator(self, rule, txn, ctx))
         return None
 
     # ── Amount Rules ─────────────────────────────────────────────────

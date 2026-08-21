@@ -9,14 +9,11 @@ from __future__ import annotations
 import copy
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import pytest
 
 from src.fraud_detection.rule_engine import (
     FraudRuleEngine,
-    RuleEvaluationResult,
-    RuleMatch,
     RulePerformanceMetrics,
     _haversine_miles,
     _parse_timestamp,

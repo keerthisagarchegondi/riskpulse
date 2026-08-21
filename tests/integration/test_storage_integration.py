@@ -14,11 +14,8 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import time
-from datetime import datetime, timezone
-from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -28,7 +25,6 @@ from src.storage.cache_handler import (
     PREFIX_DEDUP,
     PREFIX_MODEL_PREDICTION,
     PREFIX_RECENT_TRANSACTIONS,
-    PREFIX_VELOCITY,
     CacheHandler,
     CacheMetrics,
 )
@@ -381,7 +377,7 @@ class TestCacheHandlerLocking:
         result = cache_handler.acquire_processing_lock("TXN-001")
 
         assert result is True
-        mock_redis_client.set.assert_called_with(f"lock:TXN-001", "1", nx=True, ex=30)
+        mock_redis_client.set.assert_called_with("lock:TXN-001", "1", nx=True, ex=30)
 
     def test_acquire_processing_lock_already_held(self, cache_handler, mock_redis_client):
         mock_redis_client.set.return_value = None
@@ -394,7 +390,7 @@ class TestCacheHandlerLocking:
         result = cache_handler.release_processing_lock("TXN-001")
 
         assert result is True
-        mock_redis_client.delete.assert_called_with(f"lock:TXN-001")
+        mock_redis_client.delete.assert_called_with("lock:TXN-001")
 
 
 class TestCacheHandlerWriteAhead:
@@ -446,7 +442,7 @@ class TestCacheHandlerBulkOperations:
             "TXN-001": {"amount": "100"},
             "TXN-002": {"amount": "200"},
         }
-        pipe = mock_redis_client.pipeline.return_value
+        mock_redis_client.pipeline.return_value
 
         count = cache_handler.bulk_cache_transactions(transactions)
 

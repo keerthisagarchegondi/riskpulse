@@ -8,16 +8,15 @@ warehouse and publishes a quality report.
 from __future__ import annotations
 
 import statistics
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Sequence
 
 import sqlalchemy as sa
-from airflow.exceptions import AirflowException, AirflowSkipException
+from airflow.exceptions import AirflowException
 from airflow.hooks.base import BaseHook
 from airflow.models import BaseOperator
-from airflow.providers.common.sql.hooks.sql import DbApiHook
 from airflow.utils.context import Context
 
 from src.utils.logger import get_logger

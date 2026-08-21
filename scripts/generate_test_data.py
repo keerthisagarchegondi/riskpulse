@@ -974,7 +974,7 @@ Examples:
         random.seed(args.seed)
 
     print(f"{'=' * 60}")
-    print(f"RiskPulse Synthetic Transaction Generator")
+    print("RiskPulse Synthetic Transaction Generator")
     print(f"{'=' * 60}")
     print(f"  Count:      {args.count:,}")
     print(f"  Fraud rate: {args.fraud_rate:.1%}")
@@ -1017,7 +1017,7 @@ Examples:
             rate_limit=args.rate,
             bootstrap_servers=args.bootstrap_servers,
         )
-        print(f"\nKafka Publishing Results:")
+        print("\nKafka Publishing Results:")
         print(f"  Produced:    {result['produced']:,}")
         print(f"  Failed:      {result['failed']:,}")
         print(f"  Throughput:  {result['events_per_second']:,.1f} events/sec")
@@ -1027,7 +1027,7 @@ Examples:
 
         if args.load_test:
             metrics = result["producer_metrics"]
-            print(f"\nLoad Test Metrics:")
+            print("\nLoad Test Metrics:")
             print(f"  Avg latency:  {metrics['average_latency_ms']:.2f}ms")
             print(f"  Error rate:   {metrics['error_rate']:.4f}")
             print(f"  Bytes sent:   {metrics['bytes_produced']:,}")
@@ -1049,7 +1049,7 @@ Examples:
         for txn in dataset:
             print(json.dumps(txn, default=str))
 
-    print(f"\nDone.")
+    print("\nDone.")
 
 
 if __name__ == "__main__":

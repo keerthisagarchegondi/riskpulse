@@ -20,7 +20,6 @@ from datetime import datetime, timezone
 from typing import Any, Generator
 
 import boto3
-import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from botocore.config import Config as BotoConfig
@@ -32,7 +31,6 @@ from src.storage.s3_handler import (
     S3_BUCKET_PROCESSED,
     S3_BUCKET_RAW,
     S3Handler,
-    StorageLayer,
 )
 
 # ---------------------------------------------------------------------------

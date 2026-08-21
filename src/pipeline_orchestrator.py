@@ -283,44 +283,50 @@ class PipelineOrchestrator:
             current_record = dict(record)
 
             # Stage 1: Schema Validation
-            current_record = self._run_validation(current_record, txn_id)
-            if current_record is None:
+            validated_record = self._run_validation(current_record, txn_id)
+            if validated_record is None:
                 return self._make_failure(
                     txn_id, PipelineStage.VALIDATION, "Schema validation failed", start
                 )
+            current_record = validated_record
 
             # Stage 2: Business Rules
-            current_record = self._run_rules_engine(current_record, txn_id)
-            if current_record is None:
+            rules_record = self._run_rules_engine(current_record, txn_id)
+            if rules_record is None:
                 return self._make_failure(
                     txn_id, PipelineStage.VALIDATION, "Blocked by rules engine", start
                 )
+            current_record = rules_record
 
             # Stage 3: Cleaning
-            current_record = self._run_cleaning(current_record, txn_id)
-            if current_record is None:
+            cleaned_record = self._run_cleaning(current_record, txn_id)
+            if cleaned_record is None:
                 return self._make_failure(txn_id, PipelineStage.CLEANING, "Cleaning failed", start)
+            current_record = cleaned_record
 
             # Stage 4: Normalization
-            current_record = self._run_normalization(current_record, txn_id)
-            if current_record is None:
+            normalized_record = self._run_normalization(current_record, txn_id)
+            if normalized_record is None:
                 return self._make_failure(
                     txn_id, PipelineStage.NORMALIZATION, "Normalization failed", start
                 )
+            current_record = normalized_record
 
             # Stage 5: Feature Engineering
-            current_record = self._run_feature_engineering(current_record, txn_id)
-            if current_record is None:
+            featured_record = self._run_feature_engineering(current_record, txn_id)
+            if featured_record is None:
                 return self._make_failure(
                     txn_id, PipelineStage.FEATURE_ENGINEERING, "Feature engineering failed", start
                 )
+            current_record = featured_record
 
             # Stage 6: Enrichment (Geo + Device + Merchant + Velocity)
-            current_record = self._run_enrichment(current_record, txn_id)
-            if current_record is None:
+            enriched_record = self._run_enrichment(current_record, txn_id)
+            if enriched_record is None:
                 return self._make_failure(
                     txn_id, PipelineStage.ENRICHMENT, "Enrichment failed", start
                 )
+            current_record = enriched_record
 
             # Mark pipeline metadata
             current_record["_pipeline_processed"] = True

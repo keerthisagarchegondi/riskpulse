@@ -187,7 +187,7 @@ def _fetch_live_feed(engine: Engine, filters: dict[str, Any], limit: int = 100) 
     params: dict[str, Any] = {"time_start": filters["time_start"], "time_end": filters["time_end"]}
     cond, params = _apply_optional_filters(filters, params)
     sql += cond
-    sql += f" ORDER BY t.transaction_timestamp DESC LIMIT :feed_limit"
+    sql += " ORDER BY t.transaction_timestamp DESC LIMIT :feed_limit"
     params["feed_limit"] = limit
     return _run_query(engine, sql, params)
 

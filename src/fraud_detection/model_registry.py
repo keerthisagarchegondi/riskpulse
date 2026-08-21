@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import joblib
 import numpy as np
@@ -201,7 +201,7 @@ class ModelRegistry:
         """Load registry state from disk."""
         if self._registry_file.exists():
             with open(self._registry_file, "r") as f:
-                return json.load(f)
+                return cast(dict[str, Any], json.load(f))
         return {"models": {}, "ab_tests": {}, "promotion_history": []}
 
     def _save_registry(self) -> None:
@@ -585,7 +585,7 @@ class ModelRegistry:
             history = self._registry.get("promotion_history", [])
             if name:
                 history = [h for h in history if h["name"] == name]
-            return history
+            return cast(list[dict[str, Any]], history)
 
 
 class ModelServer:
@@ -864,11 +864,11 @@ class ModelServer:
 
         try:
             if hasattr(fallback, "predict_proba"):
-                return fallback.predict_proba(features)[:, 1]
+                return cast(np.ndarray, fallback.predict_proba(features)[:, 1])
             elif hasattr(fallback, "decision_function"):
-                return fallback.decision_function(features)
+                return cast(np.ndarray, fallback.decision_function(features))
             else:
-                return fallback.predict(features)
+                return cast(np.ndarray, fallback.predict(features))
         except Exception as exc:
             raise RuntimeError(
                 f"Both primary and fallback models failed for '{self._model_name}': {exc}"

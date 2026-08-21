@@ -26,7 +26,7 @@ from src.enrichment import (
 )
 from src.storage.s3_handler import S3Handler, StorageLayer
 from src.utils.config import get_settings
-from src.utils.constants import TOPIC_ENRICHED, TOPIC_METRICS
+from src.utils.constants import TOPIC_METRICS
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__, component="enrichment_dag")
@@ -300,7 +300,7 @@ def _update_customer_profiles(**context: Any) -> dict[str, Any]:
 
     handler = S3Handler()
     partition = ti.xcom_pull(task_ids="load_processed_data", key="partition")
-    settings = get_settings()
+    get_settings()
 
     records = handler.read_batch(
         storage_layer=StorageLayer.RAW,

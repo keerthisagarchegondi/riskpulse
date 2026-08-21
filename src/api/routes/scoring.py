@@ -14,10 +14,10 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.api.middleware.auth import require_permission, verify_api_key
+from src.api.middleware.auth import verify_api_key
 from src.utils.constants import API_PREFIX
 
 if TYPE_CHECKING:

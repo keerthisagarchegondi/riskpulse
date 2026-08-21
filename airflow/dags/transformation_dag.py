@@ -9,7 +9,6 @@ Schedule: every 30 minutes (runs after ingestion lands validated data)
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -21,9 +20,8 @@ from airflow import DAG
 from src.storage.s3_handler import S3Handler, StorageLayer
 from src.transformation.cleaner import DataCleaner
 from src.transformation.feature_engineer import FeatureEngineer
-from src.transformation.normalizer import DataNormalizer, get_normalizer
+from src.transformation.normalizer import get_normalizer
 from src.utils.config import get_settings
-from src.utils.constants import TOPIC_VALIDATED
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__, component="transformation_dag")
@@ -61,7 +59,7 @@ def _check_validated_data(**context: Any) -> bool:
     """
     import boto3
 
-    settings = get_settings()
+    get_settings()
     s3 = boto3.client("s3")
     bucket = "riskpulse-raw"
     prefix = "validated/"
@@ -138,7 +136,7 @@ def _run_cleaning(**context: Any) -> dict[str, Any]:
 
 def _run_normalization(**context: Any) -> dict[str, Any]:
     """Normalize cleaned records (currency conversion, field standardisation)."""
-    ti = context["ti"]
+    context["ti"]
     handler = S3Handler()
 
     execution_date: datetime = context["execution_date"]
@@ -179,7 +177,7 @@ def _run_normalization(**context: Any) -> dict[str, Any]:
 
 def _run_feature_engineering(**context: Any) -> dict[str, Any]:
     """Compute derived features for each normalised transaction."""
-    ti = context["ti"]
+    context["ti"]
     handler = S3Handler()
 
     execution_date: datetime = context["execution_date"]
@@ -230,7 +228,7 @@ def _run_feature_engineering(**context: Any) -> dict[str, Any]:
 
 def _write_processed_data(**context: Any) -> dict[str, Any]:
     """Write final processed data to the processed S3 bucket."""
-    ti = context["ti"]
+    context["ti"]
     handler = S3Handler()
 
     execution_date: datetime = context["execution_date"]

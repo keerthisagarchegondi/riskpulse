@@ -11,13 +11,9 @@ Tests:
 
 from __future__ import annotations
 
-import hashlib
 import statistics
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -30,8 +26,6 @@ from src.fraud_detection.model_monitor import (
     PredictionDistributionTracker,
 )
 from src.fraud_detection.model_registry import (
-    ABTestConfig,
-    ModelMetadata,
     ModelRegistry,
     ModelServer,
     ModelStage,
@@ -611,7 +605,7 @@ class TestModelMonitor:
 
         # Run checks - should be clean
         alerts = monitor.run_all_checks()
-        initial_alert_count = len(alerts)
+        len(alerts)
 
         # Now simulate high latency
         monitor.record_prediction(score=0.5, latency_ms=100.0)

@@ -12,7 +12,7 @@ import json
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import avro.io
 import avro.schema
@@ -155,7 +155,7 @@ class SchemaRegistry:
         reader = avro.io.DatumReader(schema)
         buffer = io.BytesIO(data)
         decoder = avro.io.BinaryDecoder(buffer)
-        return reader.read(decoder)
+        return cast(dict[str, Any], reader.read(decoder))
 
     def _coerce_types(self, schema: avro.schema.Schema, record: dict[str, Any]) -> dict[str, Any]:
         """Coerce Python types to Avro-compatible types.
@@ -247,7 +247,7 @@ class SchemaRegistry:
             raise SchemaRegistryError(f"Schema file not found: {schema_path}")
 
         with open(schema_path, "r") as f:
-            return json.load(f)
+            return cast(dict[str, Any], json.load(f))
 
     def list_schemas(self) -> list[str]:
         """List all available schema names in the schemas directory."""

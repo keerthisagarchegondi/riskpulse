@@ -9,15 +9,12 @@ Performance target: aggregate 1000 records in < 20ms.
 
 from __future__ import annotations
 
-import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from threading import Lock
 from typing import Any
-
-import numpy as np
 
 from src.utils.logger import get_logger
 
@@ -112,7 +109,7 @@ class RunningStatistics:
 
     @property
     def std(self) -> float:
-        return self.variance**0.5
+        return float(self.variance**0.5)
 
     @property
     def min_val(self) -> float:

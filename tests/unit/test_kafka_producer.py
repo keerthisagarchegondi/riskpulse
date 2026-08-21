@@ -14,8 +14,7 @@ Tests cover:
 from __future__ import annotations
 
 import time
-from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -190,7 +189,7 @@ class TestMessageProduction:
         producer.produce(valid_transaction)
 
         call_kwargs = mock_confluent_producer.produce.call_args[1]
-        headers = dict(call_kwargs["headers"])
+        dict(call_kwargs["headers"])
         assert b"event_id" in {
             h[0].encode() if isinstance(h[0], str) else h[0] for h in call_kwargs["headers"]
         }
