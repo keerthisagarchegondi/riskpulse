@@ -13,10 +13,9 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -75,13 +74,13 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Lint with black
-        run: black --check src tests scripts
+        run: black --check src tests scripts dashboards ml airflow
 
       - name: Lint with isort
-        run: isort --check-only src tests scripts
+        run: isort --check-only src tests scripts dashboards ml airflow
 
       - name: Lint with flake8
-        run: flake8 src tests scripts
+        run: flake8 src tests scripts dashboards ml airflow
 
       - name: Type check with mypy
         run: mypy src
@@ -142,7 +141,7 @@ jobs:
         run: pytest tests/performance/test_latency.py -m performance
 
       - name: Security scan with bandit
-        run: bandit -r src -c pyproject.toml -f json -o bandit-report.json
+        run: bandit -r src scripts dashboards ml airflow -c pyproject.toml -ll -f json -o bandit-report.json
 
       - name: Dependency vulnerability scan with safety
         run: safety check --full-report

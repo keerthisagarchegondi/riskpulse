@@ -26,14 +26,16 @@ concurrency:
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
-  IMAGE_TAG: ${{ inputs.image_tag || format('production-{0}', github.sha) }}
+  IMAGE_TAG: ${{ github.event.inputs.image_tag || format('production-{0}', github.sha) }}
   ECS_CLUSTER: ${{ vars.PRODUCTION_ECS_CLUSTER }}
   ECS_SERVICE_PREFIX: ${{ vars.PRODUCTION_ECS_SERVICE_PREFIX || 'riskpulse-prod' }}
   DEPLOY_ENVIRONMENT: production
 
 jobs:
   ci:
-    if: github.event_name == 'push' || inputs.confirm_production == 'deploy-production'
+    if: github.event_name == 'push' || github.event.inputs.confirm_production == 'deploy-production'
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
 
   build-push:

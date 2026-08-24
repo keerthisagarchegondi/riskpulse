@@ -23,6 +23,8 @@ env:
 
 jobs:
   ci:
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
 
   build-push:
