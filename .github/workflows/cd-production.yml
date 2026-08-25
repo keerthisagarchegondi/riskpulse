@@ -46,10 +46,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.PRODUCTION_AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -80,10 +80,10 @@ jobs:
       url: ${{ vars.PRODUCTION_BASE_URL }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.PRODUCTION_AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -129,7 +129,7 @@ jobs:
 
       - name: Upload smoke reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: production-smoke-reports
           path: smoke-production*.json
