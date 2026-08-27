@@ -33,7 +33,7 @@ def test_ci_workflow_has_required_triggers_and_quality_gates() -> None:
     assert "bandit -r src" in content
     assert "safety check" in content
     assert "docker compose -f docker-compose.yml build api worker streamlit airflow" in content
-    assert "actions/upload-artifact@v4" in content
+    assert "actions/upload-artifact@v6" in content
 
 
 def test_staging_workflow_runs_ci_pushes_ecr_and_deploys() -> None:
@@ -43,7 +43,7 @@ def test_staging_workflow_runs_ci_pushes_ecr_and_deploys() -> None:
     assert workflow["name"] == "CD Staging"
     assert workflow[True]["push"]["branches"] == ["develop"]
     assert workflow["jobs"]["ci"]["uses"] == "./.github/workflows/ci.yml"
-    assert "aws-actions/configure-aws-credentials@v4" in content
+    assert "aws-actions/configure-aws-credentials@v6" in content
     assert "aws-actions/amazon-ecr-login@v2" in content
     assert "docker push" in content
     assert "bash scripts/deploy.sh staging" in content

@@ -50,6 +50,12 @@ python -m pip install -e ".[dev]"
 pre-commit install
 ```
 
+If `python` is not available on PATH, pass a specific interpreter to Make commands:
+
+```bash
+make test PYTHON="/absolute/path/to/python"
+```
+
 ## Environment Configuration
 
 Create a local environment file from the example:

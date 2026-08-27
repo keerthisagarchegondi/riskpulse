@@ -204,7 +204,7 @@ Pull request to develop or main:
 - Setup Python.
 - Install dependencies.
 - Run black, isort, flake8, and mypy.
-- Run unit tests with coverage gate.
+- Run unit tests with the 90 percent coverage gate.
 - Run security regression tests.
 - Run data quality validation tests.
 - Run ML model validation tests.
@@ -246,7 +246,7 @@ DRY_RUN=true scripts/deploy.sh production <image-tag>
 Deploy:
 scripts/deploy.sh production <image-tag>
 
-Rollback
+Rollback Flow
 Rollback requires task definition state files, one per service:
 - deployment-state/api.taskdef
 - deployment-state/worker.taskdef

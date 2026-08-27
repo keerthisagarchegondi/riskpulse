@@ -1,3 +1,6 @@
+PYTHON ?= python
+PIP := $(PYTHON) -m pip
+
 .PHONY: install install-dev lint format test test-unit test-integration test-coverage run docker-up docker-down docker-build docker-test smoke-test verify-deployment clean help
 
 # Default target
@@ -13,67 +16,67 @@ help: ## Show this help message
 # =============================================================================
 
 install: ## Install production dependencies
-	python -m pip install --upgrade pip
-	pip install -e .
+	$(PIP) install --upgrade pip
+	$(PIP) install -e .
 
 install-dev: ## Install development dependencies
-	python -m pip install --upgrade pip
-	pip install -e ".[dev]"
-	pre-commit install
+	$(PIP) install --upgrade pip
+	$(PIP) install -e ".[dev]"
+	$(PYTHON) -m pre_commit install
 
 install-airflow: ## Install with Airflow dependencies
-	python -m pip install --upgrade pip
-	pip install -e ".[airflow]"
+	$(PIP) install --upgrade pip
+	$(PIP) install -e ".[airflow]"
 
 # =============================================================================
 # Code Quality
 # =============================================================================
 
 lint: ## Run all linters
-	black --check src/ tests/
-	isort --check-only src/ tests/
-	flake8 src/ tests/
-	mypy src/
+	$(PYTHON) -m black --check src/ tests/
+	$(PYTHON) -m isort --check-only src/ tests/
+	$(PYTHON) -m flake8 src/ tests/
+	$(PYTHON) -m mypy src/
 
 format: ## Auto-format code
-	black src/ tests/
-	isort src/ tests/
+	$(PYTHON) -m black src/ tests/
+	$(PYTHON) -m isort src/ tests/
 
 security-scan: ## Run security checks
-	bandit -r src/ -c pyproject.toml
-	safety check
+	$(PYTHON) -m bandit -r src/ -c pyproject.toml
+	$(PYTHON) -m safety check
 
 # =============================================================================
 # Testing
 # =============================================================================
 
 test: ## Run all tests
-	pytest tests/ -v
+	$(PYTHON) -m pytest tests/ -v
 
 test-unit: ## Run unit tests only
-	pytest tests/unit/ -v -m unit
+	$(PYTHON) -m pytest tests/unit/ -v -m unit
 
 test-integration: ## Run integration tests
-	pytest tests/integration/ -v -m integration
+	$(PYTHON) -m pytest tests/integration/ -v -m integration
 
 test-coverage: ## Run tests with coverage report
-	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
+	$(PYTHON) -m pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
 
 test-performance: ## Run performance tests
-	pytest tests/performance/ -v -m performance
+	$(PYTHON) -m pytest tests/performance/ -v -m performance
 
 # =============================================================================
 # Application
 # =============================================================================
 
 run: ## Run the API server
-	uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+	$(PYTHON) -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 
 run-worker: ## Run the Kafka consumer worker
-	python -m src.ingestion.kafka_consumer
+	$(PYTHON) -m src.ingestion.kafka_consumer
 
 run-streamlit: ## Run the Streamlit dashboard
-	streamlit run dashboards/streamlit/app.py --server.port 8501
+	$(PYTHON) -m streamlit run dashboards/streamlit/app.py --server.port 8501
 
 # =============================================================================
 # Docker
@@ -99,7 +102,7 @@ docker-test: ## Validate compose files and run container health smoke checks
 	docker compose -f docker-compose.yml down
 
 smoke-test: ## Run API/dashboard deployment smoke tests
-	python scripts/smoke_test.py --base-url $${RISKPULSE_BASE_URL:-http://127.0.0.1:8000}
+	$(PYTHON) scripts/smoke_test.py --base-url $${RISKPULSE_BASE_URL:-http://127.0.0.1:8000}
 
 verify-deployment: ## Run production deployment verification gates
 	./scripts/verify_deployment.sh production
@@ -137,7 +140,7 @@ db-reset: ## Reset database (drop and recreate)
 # =============================================================================
 
 generate-data: ## Generate synthetic test data
-	python scripts/generate_test_data.py
+	$(PYTHON) scripts/generate_test_data.py
 
 clean: ## Clean build artifacts
 	rm -rf build/ dist/ *.egg-info .pytest_cache htmlcov .coverage .mypy_cache
