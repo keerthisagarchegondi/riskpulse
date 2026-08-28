@@ -100,17 +100,15 @@ def generate_synthetic_data(
 
     X = pd.concat([legit_df, fraud_df], ignore_index=True)
     y = np.concatenate([np.zeros(n_legit), np.ones(n_fraud)])
+    shuffle_idx = rng.permutation(n_samples)
+    X = X.iloc[shuffle_idx].reset_index(drop=True)
+    y = y[shuffle_idx]
 
     # Add timestamps for time-based splitting
     base_time = pd.Timestamp("2026-01-01")
     timestamps = pd.date_range(start=base_time, periods=n_samples, freq="5min")
     X["timestamp"] = timestamps
     X["transaction_id"] = [f"TXN-SYNTH-{i:06d}" for i in range(n_samples)]
-
-    # Shuffle preserving time order for splits
-    sort_idx = np.argsort(timestamps)
-    X = X.iloc[sort_idx].reset_index(drop=True)
-    y = y[sort_idx]
 
     return X, y
 

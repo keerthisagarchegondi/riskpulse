@@ -13,6 +13,7 @@ Delivers fraud alerts across multiple channels with:
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 import uuid
 from collections import defaultdict
@@ -32,6 +33,12 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__, component="notification_service")
 
 _CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
+_DEFAULT_DASHBOARD_BASE_URL = "http://localhost:8501"
+
+
+def _alert_dashboard_url(alert_id: str) -> str:
+    base_url = os.environ.get("RISKPULSE_DASHBOARD_BASE_URL", _DEFAULT_DASHBOARD_BASE_URL)
+    return f"{base_url.rstrip('/')}/alerts/{alert_id}"
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
@@ -646,7 +653,7 @@ class WebhookFormatter:
                             {
                                 "type": "Action.OpenUrl",
                                 "title": "Investigate",
-                                "url": f"https://dashboard.riskpulse.io/alerts/{alert.alert_id}",
+                                "url": _alert_dashboard_url(alert.alert_id),
                             },
                         ],
                     },
@@ -685,7 +692,7 @@ class WebhookFormatter:
             },
             "links": [
                 {
-                    "href": f"https://dashboard.riskpulse.io/alerts/{alert.alert_id}",
+                    "href": _alert_dashboard_url(alert.alert_id),
                     "text": "View in RiskPulse",
                 }
             ],
@@ -921,7 +928,9 @@ class NotificationService:
             raise RuntimeError(f"No webhook configuration for recipient: {recipient}")
 
         target = WebhookTarget(webhook_config.get("type", "custom"))
-        url = webhook_config["url"]
+        url = str(webhook_config.get("url") or "").strip()
+        if not url:
+            raise RuntimeError(f"Webhook URL not configured for recipient: {recipient}")
 
         if target == WebhookTarget.SLACK:
             payload = self._webhook_formatter.format_slack(alert, rendered)
@@ -929,7 +938,12 @@ class NotificationService:
             payload = self._webhook_formatter.format_teams(alert, rendered)
         elif target == WebhookTarget.PAGERDUTY:
             payload = self._webhook_formatter.format_pagerduty(alert, rendered)
-            payload["routing_key"] = webhook_config.get("routing_key", "")
+            routing_key = str(webhook_config.get("routing_key") or "").strip()
+            if not routing_key:
+                raise RuntimeError(
+                    f"PagerDuty routing key not configured for recipient: {recipient}"
+                )
+            payload["routing_key"] = routing_key
         else:
             payload = {
                 "alert_id": alert.alert_id,
@@ -940,7 +954,12 @@ class NotificationService:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
-        headers = webhook_config.get("headers")
+        raw_headers = webhook_config.get("headers")
+        headers = (
+            {str(key): str(value) for key, value in raw_headers.items() if value}
+            if isinstance(raw_headers, dict)
+            else None
+        )
         result = await self._webhook_provider.send_webhook(url, payload, headers)
         self._tracker.mark_delivered(record.notification_id)
         logger.info(

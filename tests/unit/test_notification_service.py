@@ -526,6 +526,48 @@ class TestNotificationService:
         mock_webhook_provider.send_webhook.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_notify_fails_cleanly_when_webhook_url_missing(
+        self, notification_service, critical_alert, mock_webhook_provider
+    ):
+        """Should not attempt delivery when webhook URL is not configured."""
+        notification_service._config["webhooks"] = {"slack-channel": {"type": "slack", "url": ""}}
+
+        records = await notification_service.notify(
+            alert=critical_alert,
+            recipients=["slack-channel"],
+            channels=[NotificationChannel.WEBHOOK],
+        )
+
+        assert len(records) == 1
+        assert records[0].status == DeliveryStatus.FAILED
+        assert "Webhook URL not configured" in str(records[0].failure_reason)
+        mock_webhook_provider.send_webhook.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_notify_fails_cleanly_when_pagerduty_key_missing(
+        self, notification_service, critical_alert, mock_webhook_provider
+    ):
+        """Should not send PagerDuty event without a routing key."""
+        notification_service._config["webhooks"] = {
+            "pagerduty-channel": {
+                "type": "pagerduty",
+                "url": "https://events.pagerduty.com/v2/enqueue",
+                "routing_key": "",
+            }
+        }
+
+        records = await notification_service.notify(
+            alert=critical_alert,
+            recipients=["pagerduty-channel"],
+            channels=[NotificationChannel.WEBHOOK],
+        )
+
+        assert len(records) == 1
+        assert records[0].status == DeliveryStatus.FAILED
+        assert "PagerDuty routing key not configured" in str(records[0].failure_reason)
+        mock_webhook_provider.send_webhook.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_notify_sends_in_app(
         self, notification_service, sample_alert, mock_websocket_provider
     ):
@@ -705,21 +747,25 @@ class TestWebhookFormatter:
         assert "blocks" in payload
         assert len(payload["blocks"]) >= 3
 
-    def test_format_teams(self, sample_alert):
+    def test_format_teams(self, sample_alert, monkeypatch):
         """Should format Microsoft Teams Adaptive Card."""
         from src.alerting.alert_templates import AlertTemplateRenderer
 
+        monkeypatch.setenv("RISKPULSE_DASHBOARD_BASE_URL", "https://dashboard.example.test")
         renderer = AlertTemplateRenderer()
         rendered = renderer.render(sample_alert, "webhook")
 
         payload = WebhookFormatter.format_teams(sample_alert, rendered)
         assert "attachments" in payload
         assert payload["type"] == "message"
+        action_url = payload["attachments"][0]["content"]["actions"][0]["url"]
+        assert action_url == "https://dashboard.example.test/alerts/ALT-TEST-001"
 
-    def test_format_pagerduty(self, critical_alert):
+    def test_format_pagerduty(self, critical_alert, monkeypatch):
         """Should format PagerDuty Events API v2 payload."""
         from src.alerting.alert_templates import AlertTemplateRenderer
 
+        monkeypatch.setenv("RISKPULSE_DASHBOARD_BASE_URL", "https://dashboard.example.test/")
         renderer = AlertTemplateRenderer()
         rendered = renderer.render(critical_alert, "webhook")
 
@@ -728,6 +774,7 @@ class TestWebhookFormatter:
         assert "payload" in payload
         assert payload["payload"]["severity"] == "critical"
         assert "dedup_key" in payload
+        assert payload["links"][0]["href"] == "https://dashboard.example.test/alerts/ALT-CRIT-001"
 
 
 # ── Escalation Engine Tests ──────────────────────────────────────────────────

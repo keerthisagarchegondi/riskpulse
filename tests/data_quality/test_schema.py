@@ -146,4 +146,4 @@ def test_test_fixtures_are_anonymized(data_quality_dataset: dict[str, Any]) -> N
         assert row["customer_id"].startswith("ANON-")
         assert row["account_id"].startswith("ANON-")
         assert row["device_id"].startswith("ANON-")
-        assert row["ip_address"] == "0.0.0.0"
+        assert row["ip_address"] == "192.0.2.0"

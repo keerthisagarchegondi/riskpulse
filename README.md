@@ -84,6 +84,7 @@ Update `.env` before running real services. At minimum, configure:
 - `RISKPULSE_JWT_SECRET`
 - `RISKPULSE_API_KEY`
 - `RISKPULSE_ENCRYPTION_KEY`
+- `RISKPULSE_DASHBOARD_BASE_URL`
 - `AWS_REGION`
 - `SNOWFLAKE_ACCOUNT`
 - `SNOWFLAKE_USER`

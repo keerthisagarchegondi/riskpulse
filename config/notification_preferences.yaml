@@ -88,27 +88,27 @@ teams:
 webhooks:
   slack-fraud-channel:
     type: slack
-    url: ${RISKPULSE_SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/placeholder}
+    url: ${RISKPULSE_SLACK_WEBHOOK_URL:-}
     headers: null
 
   teams-fraud-channel:
     type: teams
-    url: ${RISKPULSE_TEAMS_WEBHOOK_URL:-https://outlook.office.com/webhook/placeholder}
+    url: ${RISKPULSE_TEAMS_WEBHOOK_URL:-}
     headers: null
 
   pagerduty-fraud:
     type: pagerduty
     url: https://events.pagerduty.com/v2/enqueue
-    routing_key: ${RISKPULSE_PAGERDUTY_ROUTING_KEY:-placeholder}
+    routing_key: ${RISKPULSE_PAGERDUTY_ROUTING_KEY:-}
     headers:
       Content-Type: application/json
 
   custom-siem:
     type: custom
-    url: ${RISKPULSE_SIEM_WEBHOOK_URL:-https://siem.internal/api/alerts}
+    url: ${RISKPULSE_SIEM_WEBHOOK_URL:-}
     headers:
       Content-Type: application/json
-      X-API-Key: ${RISKPULSE_SIEM_API_KEY:-placeholder}
+      X-API-Key: ${RISKPULSE_SIEM_API_KEY:-}
 
 # Channel-specific settings
 channels:
