@@ -30,6 +30,9 @@ env:
   ECS_CLUSTER: ${{ vars.PRODUCTION_ECS_CLUSTER }}
   ECS_SERVICE_PREFIX: ${{ vars.PRODUCTION_ECS_SERVICE_PREFIX || 'riskpulse-prod' }}
   DEPLOY_ENVIRONMENT: production
+  RISKPULSE_DB_PASSWORD: ci-build-placeholder-not-secret
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://riskpulse:ci-build-placeholder-not-secret@postgres:5432/riskpulse
+  AIRFLOW__WEBSERVER__SECRET_KEY: ci-airflow-webserver-secret-for-compose-build
 
 jobs:
   ci:

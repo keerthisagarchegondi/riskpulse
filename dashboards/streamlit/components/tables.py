@@ -137,4 +137,4 @@ def render_alert_queue_table(df: pd.DataFrame) -> None:
             subset=["status"],
         )
     )
-    st.dataframe(styled, use_container_width=True)
+    st.dataframe(styled, width="stretch")

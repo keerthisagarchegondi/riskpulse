@@ -13,6 +13,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import quote_plus
 
 import yaml
 
@@ -157,22 +158,37 @@ class Settings:
     @property
     def database_url(self) -> str:
         """Construct PostgreSQL database URL from config."""
-        host = os.environ.get("RISKPULSE_DB_HOST", "localhost")
-        port = os.environ.get("RISKPULSE_DB_PORT", "5432")
-        name = os.environ.get("RISKPULSE_DB_NAME", "riskpulse")
-        user = os.environ.get("RISKPULSE_DB_USER", "riskpulse")
-        password = os.environ.get("RISKPULSE_DB_PASSWORD", "riskpulse")
-        return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{name}"
+        credentials = self._database_credentials()
+        return self._format_database_url(credentials, driver="asyncpg")
 
     @property
     def database_url_sync(self) -> str:
         """Construct synchronous PostgreSQL URL (for migrations, scripts)."""
-        host = os.environ.get("RISKPULSE_DB_HOST", "localhost")
-        port = os.environ.get("RISKPULSE_DB_PORT", "5432")
-        name = os.environ.get("RISKPULSE_DB_NAME", "riskpulse")
-        user = os.environ.get("RISKPULSE_DB_USER", "riskpulse")
-        password = os.environ.get("RISKPULSE_DB_PASSWORD", "riskpulse")
-        return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}"
+        credentials = self._database_credentials()
+        return self._format_database_url(credentials, driver="psycopg2")
+
+    def _database_credentials(self) -> dict[str, Any]:
+        """Load database credentials through Secrets Manager guardrails in production."""
+        if self.environment.lower() in {"prod", "production", "staging"}:
+            from src.utils.secrets_manager import get_secrets_manager
+
+            return get_secrets_manager().get_database_credentials()
+        return {
+            "host": os.environ.get("RISKPULSE_DB_HOST", "localhost"),
+            "port": os.environ.get("RISKPULSE_DB_PORT", "5432"),
+            "database": os.environ.get("RISKPULSE_DB_NAME", "riskpulse"),
+            "username": os.environ.get("RISKPULSE_DB_USER", "riskpulse"),
+            "password": os.environ.get("RISKPULSE_DB_PASSWORD", "riskpulse"),
+        }
+
+    @staticmethod
+    def _format_database_url(credentials: dict[str, Any], *, driver: str) -> str:
+        host = quote_plus(str(credentials.get("host", "localhost")))
+        port = quote_plus(str(credentials.get("port", "5432")))
+        name = quote_plus(str(credentials.get("database", "riskpulse")))
+        user = quote_plus(str(credentials.get("username", "riskpulse")))
+        password = quote_plus(str(credentials.get("password", "")))
+        return f"postgresql+{driver}://{user}:{password}@{host}:{port}/{name}"
 
     @property
     def redis_url(self) -> str:

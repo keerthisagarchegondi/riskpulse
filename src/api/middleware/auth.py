@@ -43,6 +43,9 @@ class APIKeyManager:
         try:
             configured_keys = get_secrets_manager().get_api_keys()
         except SecretsManagerError as exc:
+            if settings.environment.lower() in {"prod", "production", "staging"}:
+                logger.error("api_keys_secret_unavailable", error=str(exc))
+                raise
             logger.warning("api_keys_secret_unavailable", error=str(exc))
             configured_keys = settings.get("api.api_keys", [])
 

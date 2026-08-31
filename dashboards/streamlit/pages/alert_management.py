@@ -309,7 +309,7 @@ def _render_alert_volume(volume_df: pd.DataFrame) -> None:
         },
     )
     fig.update_layout(template="plotly_dark", height=380)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_response_metrics(alerts: pd.DataFrame) -> None:
@@ -331,7 +331,7 @@ def _render_response_metrics(alerts: pd.DataFrame) -> None:
             title="Response Hours by Severity",
         )
         fig.update_layout(template="plotly_dark", height=360)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with c2:
         fig = px.box(
             resolution,
@@ -341,7 +341,7 @@ def _render_response_metrics(alerts: pd.DataFrame) -> None:
             title="Resolution Hours by Severity",
         )
         fig.update_layout(template="plotly_dark", height=360)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def _render_resolution_by_analyst(alerts: pd.DataFrame) -> None:
@@ -361,8 +361,8 @@ def _render_resolution_by_analyst(alerts: pd.DataFrame) -> None:
     )
     fig.update_yaxes(range=[0, 1], tickformat=".0%")
     fig.update_layout(template="plotly_dark", height=360)
-    st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(analyst_df, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
+    st.dataframe(analyst_df, width="stretch")
 
 
 def _render_false_positive_tracking(alerts: pd.DataFrame) -> None:
@@ -395,7 +395,7 @@ def _render_false_positive_tracking(alerts: pd.DataFrame) -> None:
     )
     fig.update_yaxes(range=[0, 1], tickformat=".0%")
     fig.update_layout(template="plotly_dark", height=360)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_sla_compliance(alerts: pd.DataFrame) -> None:
@@ -425,7 +425,7 @@ def _render_sla_compliance(alerts: pd.DataFrame) -> None:
         },
     )
     fig.update_layout(template="plotly_dark", height=360)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     breached = sla_df.loc[
         ~sla_df["sla_met"],
@@ -439,7 +439,7 @@ def _render_sla_compliance(alerts: pd.DataFrame) -> None:
         ],
     ].sort_values("elapsed_hours", ascending=False)
     if not breached.empty:
-        st.dataframe(breached.head(100), use_container_width=True)
+        st.dataframe(breached.head(100), width="stretch")
 
 
 def _render_rule_effectiveness(rule_df: pd.DataFrame) -> None:
@@ -461,7 +461,7 @@ def _render_rule_effectiveness(rule_df: pd.DataFrame) -> None:
         )
         fig.update_yaxes(range=[0, 1], tickformat=".0%")
         fig.update_layout(template="plotly_dark", height=420)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with c2:
         fig = go.Figure(
             go.Bar(
@@ -478,9 +478,9 @@ def _render_rule_effectiveness(rule_df: pd.DataFrame) -> None:
             yaxis={"autorange": "reversed"},
         )
         fig.update_xaxes(range=[0, 1], tickformat=".0%")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
-    st.dataframe(rule_df, use_container_width=True)
+    st.dataframe(rule_df, width="stretch")
 
 
 def render(engine: Engine) -> None:

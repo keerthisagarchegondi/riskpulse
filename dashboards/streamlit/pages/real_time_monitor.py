@@ -272,12 +272,12 @@ def render(engine: Engine) -> None:
     with col_vol:
         vol_df = _fetch_transaction_volume(engine, filters)
         if not vol_df.empty:
-            st.plotly_chart(transaction_volume_chart(vol_df), use_container_width=True)
+            st.plotly_chart(transaction_volume_chart(vol_df), width="stretch")
         else:
             st.info("No transaction volume data for the selected window.")
 
     with col_gauge:
-        st.plotly_chart(fraud_rate_gauge(fraud_rate), use_container_width=True)
+        st.plotly_chart(fraud_rate_gauge(fraud_rate), width="stretch")
 
     # --- Row 2: Risk Histogram + Alert Severity ---
     col_hist, col_pie = st.columns(2)
@@ -285,14 +285,14 @@ def render(engine: Engine) -> None:
     with col_hist:
         risk_df = _fetch_risk_scores(engine, filters)
         if not risk_df.empty:
-            st.plotly_chart(risk_score_histogram(risk_df), use_container_width=True)
+            st.plotly_chart(risk_score_histogram(risk_df), width="stretch")
         else:
             st.info("No risk score data available.")
 
     with col_pie:
         sev_df = _fetch_alert_severity(engine, filters)
         if not sev_df.empty:
-            st.plotly_chart(alert_severity_pie(sev_df), use_container_width=True)
+            st.plotly_chart(alert_severity_pie(sev_df), width="stretch")
         else:
             st.info("No alert data available.")
 
@@ -302,14 +302,14 @@ def render(engine: Engine) -> None:
     with col_geo:
         geo_df = _fetch_geo_distribution(engine, filters)
         if not geo_df.empty:
-            st.plotly_chart(geo_heatmap(geo_df), use_container_width=True)
+            st.plotly_chart(geo_heatmap(geo_df), width="stretch")
         else:
             st.info("No geographic data available.")
 
     with col_chan:
         chan_df = _fetch_channel_breakdown(engine, filters)
         if not chan_df.empty:
-            st.plotly_chart(channel_breakdown_bar(chan_df), use_container_width=True)
+            st.plotly_chart(channel_breakdown_bar(chan_df), width="stretch")
         else:
             st.info("No channel data available.")
 

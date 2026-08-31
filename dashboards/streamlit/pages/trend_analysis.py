@@ -198,7 +198,7 @@ def _render_fraud_trends(trends: pd.DataFrame, grain_label: str) -> None:
         },
     )
     fig.update_layout(template="plotly_dark", height=380)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     st.download_button(
         "Export Trend Data (CSV)",
@@ -231,8 +231,8 @@ def _render_category_charts(
                 title="Top Merchants by Alert Volume",
             )
             fig.update_layout(template="plotly_dark", height=500)
-            st.plotly_chart(fig, use_container_width=True)
-            st.dataframe(merchant_df, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
+            st.dataframe(merchant_df, width="stretch")
 
     with tab_channel:
         if channel_df.empty:
@@ -247,8 +247,8 @@ def _render_category_charts(
                 color_discrete_sequence=["#3498db", "#e74c3c"],
             )
             fig.update_layout(template="plotly_dark", height=380)
-            st.plotly_chart(fig, use_container_width=True)
-            st.dataframe(channel_df, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
+            st.dataframe(channel_df, width="stretch")
 
     with tab_geo:
         if geography_df.empty:
@@ -264,8 +264,8 @@ def _render_category_charts(
                 title="Fraud Alerts by Country",
             )
             fig.update_layout(template="plotly_dark", height=430)
-            st.plotly_chart(fig, use_container_width=True)
-            st.dataframe(geography_df, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
+            st.dataframe(geography_df, width="stretch")
 
 
 def _render_model_performance(model_df: pd.DataFrame, grain_label: str) -> None:
@@ -284,7 +284,7 @@ def _render_model_performance(model_df: pd.DataFrame, grain_label: str) -> None:
         title=f"Average Model Risk Score ({grain_label})",
     )
     score_fig.update_layout(template="plotly_dark", height=360)
-    st.plotly_chart(score_fig, use_container_width=True)
+    st.plotly_chart(score_fig, width="stretch")
 
     precision_fig = px.line(
         model_df,
@@ -296,9 +296,9 @@ def _render_model_performance(model_df: pd.DataFrame, grain_label: str) -> None:
     )
     precision_fig.update_yaxes(range=[0, 1])
     precision_fig.update_layout(template="plotly_dark", height=360)
-    st.plotly_chart(precision_fig, use_container_width=True)
+    st.plotly_chart(precision_fig, width="stretch")
 
-    st.dataframe(model_df, use_container_width=True)
+    st.dataframe(model_df, width="stretch")
 
 
 def _render_rule_effectiveness(rule_df: pd.DataFrame) -> None:
@@ -319,9 +319,9 @@ def _render_rule_effectiveness(rule_df: pd.DataFrame) -> None:
     )
     fig.update_yaxes(range=[0, 1])
     fig.update_layout(template="plotly_dark", height=450)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
-    st.dataframe(rule_df, use_container_width=True)
+    st.dataframe(rule_df, width="stretch")
 
     st.download_button(
         "Export Rule Effectiveness (CSV)",

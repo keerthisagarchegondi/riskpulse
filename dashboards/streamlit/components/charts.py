@@ -74,19 +74,20 @@ def transaction_volume_chart(df: pd.DataFrame) -> go.Figure:
 
 def fraud_rate_gauge(fraud_rate: float) -> go.Figure:
     """Gauge chart showing current fraud rate percentage."""
+    upper_bound = max(10.0, round(float(fraud_rate) * 1.25, 1))
     fig = go.Figure(
         go.Indicator(
             mode="gauge+number+delta",
             value=fraud_rate,
             number={"suffix": "%", "font": {"size": 36}},
             gauge={
-                "axis": {"range": [0, 10], "ticksuffix": "%"},
+                "axis": {"range": [0, upper_bound], "ticksuffix": "%"},
                 "bar": {"color": "#e74c3c"},
                 "bgcolor": "rgba(0,0,0,0)",
                 "steps": [
                     {"range": [0, 1], "color": "rgba(46,204,113,0.3)"},
                     {"range": [1, 3], "color": "rgba(243,156,18,0.3)"},
-                    {"range": [3, 10], "color": "rgba(231,76,60,0.3)"},
+                    {"range": [3, upper_bound], "color": "rgba(231,76,60,0.3)"},
                 ],
                 "threshold": {
                     "line": {"color": "#ffffff", "width": 2},

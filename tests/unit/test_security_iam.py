@@ -11,9 +11,13 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from src.api.app import create_app
-from src.api.middleware.auth import reset_key_manager
+from src.api.middleware.auth import APIKeyManager, reset_key_manager
 from src.utils.config import get_settings
-from src.utils.secrets_manager import SecretsManager, SecretsManagerError
+from src.utils.secrets_manager import (
+    SecretsManager,
+    SecretsManagerError,
+    reset_secrets_manager,
+)
 from src.utils.security import (
     SecurityValidationError,
     create_jwt_token,
@@ -64,8 +68,10 @@ class FakeBoto3:
 @pytest.fixture(autouse=True)
 def _reset_auth_state():
     reset_key_manager()
+    reset_secrets_manager()
     yield
     reset_key_manager()
+    reset_secrets_manager()
 
 
 @pytest.fixture
@@ -135,6 +141,110 @@ def test_prod_jwt_secret_accepts_explicit_environment_secret(
         manager = SecretsManager(enabled=False)
 
         assert manager.get_jwt_secret() == PROD_SECRET
+    finally:
+        get_settings.cache_clear()
+
+
+def test_prod_api_keys_refuse_missing_secret_or_environment_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.delenv("RISKPULSE_API_KEY", raising=False)
+    monkeypatch.delenv("RISKPULSE_API_KEYS", raising=False)
+    monkeypatch.delenv("RISKPULSE_SECURITY__SECRETS_MANAGER__API_KEYS_SECRET_ID", raising=False)
+    get_settings.cache_clear()
+
+    try:
+        manager = SecretsManager(enabled=False)
+
+        with pytest.raises(SecretsManagerError, match="Production API keys"):
+            manager.get_api_keys()
+    finally:
+        get_settings.cache_clear()
+
+
+def test_prod_api_keys_refuse_development_placeholder(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.setenv("RISKPULSE_API_KEY", "dev-api-key-riskpulse-2024")
+    get_settings.cache_clear()
+
+    try:
+        manager = SecretsManager(enabled=False)
+
+        with pytest.raises(SecretsManagerError, match="placeholder"):
+            manager.get_api_keys()
+    finally:
+        get_settings.cache_clear()
+
+
+def test_prod_api_keys_accept_explicit_environment_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.setenv("RISKPULSE_API_KEY", "rp_live_unit_test_key")
+    monkeypatch.setenv("RISKPULSE_API_KEY_PERMISSIONS", "read,write,admin")
+    get_settings.cache_clear()
+
+    try:
+        manager = SecretsManager(enabled=False)
+
+        assert manager.get_api_keys() == [
+            {
+                "name": "environment",
+                "key": "rp_live_unit_test_key",
+                "permissions": ["read", "write", "admin"],
+                "rate_limit": None,
+            }
+        ]
+    finally:
+        get_settings.cache_clear()
+
+
+def test_prod_database_url_refuses_placeholder_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.setenv("RISKPULSE_DB_PASSWORD", "change-me")
+    monkeypatch.delenv("RISKPULSE_SECURITY__SECRETS_MANAGER__DATABASE_SECRET_ID", raising=False)
+    get_settings.cache_clear()
+
+    try:
+        with pytest.raises(SecretsManagerError, match="Production database credentials"):
+            _ = get_settings().database_url
+    finally:
+        get_settings.cache_clear()
+
+
+def test_database_url_encodes_special_characters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "dev")
+    monkeypatch.setenv("RISKPULSE_DB_USER", "risk user")
+    monkeypatch.setenv("RISKPULSE_DB_PASSWORD", "pa:ss/word@123")
+    get_settings.cache_clear()
+
+    try:
+        assert (
+            get_settings().database_url
+            == "postgresql+asyncpg://risk+user:pa%3Ass%2Fword%40123@localhost:5432/riskpulse"
+        )
+    finally:
+        get_settings.cache_clear()
+
+
+def test_api_key_manager_fails_closed_when_prod_keys_are_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.delenv("RISKPULSE_API_KEY", raising=False)
+    monkeypatch.delenv("RISKPULSE_API_KEYS", raising=False)
+    get_settings.cache_clear()
+
+    try:
+        with pytest.raises(SecretsManagerError, match="Production API keys"):
+            APIKeyManager()
     finally:
         get_settings.cache_clear()
 

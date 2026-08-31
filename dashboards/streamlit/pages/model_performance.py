@@ -438,7 +438,7 @@ def _render_confusion_matrix(df: pd.DataFrame, threshold: float) -> None:
         aspect="auto",
     )
     fig.update_layout(template="plotly_dark", height=360)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_roc_pr_curves(df: pd.DataFrame) -> None:
@@ -483,8 +483,8 @@ def _render_roc_pr_curves(df: pd.DataFrame) -> None:
         fig.update_yaxes(title=y_title, range=[0, 1])
 
     c1, c2 = st.columns(2)
-    c1.plotly_chart(roc_fig, use_container_width=True)
-    c2.plotly_chart(pr_fig, use_container_width=True)
+    c1.plotly_chart(roc_fig, width="stretch")
+    c2.plotly_chart(pr_fig, width="stretch")
 
 
 def _render_score_distribution(df: pd.DataFrame) -> None:
@@ -506,7 +506,7 @@ def _render_score_distribution(df: pd.DataFrame) -> None:
     )
     fig.update_layout(template="plotly_dark", height=360)
     fig.update_xaxes(range=[0, 1])
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_feature_importance(feature_df: pd.DataFrame) -> None:
@@ -525,7 +525,7 @@ def _render_feature_importance(feature_df: pd.DataFrame) -> None:
         color_continuous_scale="Teal",
     )
     fig.update_layout(template="plotly_dark", height=500)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_auc_trend(df: pd.DataFrame, grain: str) -> None:
@@ -543,7 +543,7 @@ def _render_auc_trend(df: pd.DataFrame, grain: str) -> None:
     )
     fig.update_yaxes(range=[0, 1])
     fig.update_layout(template="plotly_dark", height=360)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_model_comparison(labeled_df: pd.DataFrame, registry_df: pd.DataFrame) -> None:
@@ -583,7 +583,7 @@ def _render_model_comparison(labeled_df: pd.DataFrame, registry_df: pd.DataFrame
         if not registry_metrics.empty and not observed.empty
         else registry_metrics if not registry_metrics.empty else observed
     )
-    st.dataframe(comparison, use_container_width=True)
+    st.dataframe(comparison, width="stretch")
 
     metric_cols = [col for col in ["auc", "observed_auc", "average_precision"] if col in comparison]
     if metric_cols:
@@ -603,7 +603,7 @@ def _render_model_comparison(labeled_df: pd.DataFrame, registry_df: pd.DataFrame
         )
         fig.update_yaxes(range=[0, 1])
         fig.update_layout(template="plotly_dark", height=360)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def _render_drift(baseline_scores: pd.Series, current_scores: pd.Series) -> float:
@@ -629,7 +629,7 @@ def _render_drift(baseline_scores: pd.Series, current_scores: pd.Series) -> floa
     )
     fig.update_xaxes(range=[0, 1])
     fig.update_layout(template="plotly_dark", height=360)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     return psi
 
 
@@ -638,7 +638,7 @@ def _render_degradation_alerts(alerts: pd.DataFrame) -> None:
     if alerts.empty:
         st.success("No model degradation alerts for the selected window.")
         return
-    st.dataframe(alerts, use_container_width=True)
+    st.dataframe(alerts, width="stretch")
 
 
 def render(engine: Engine) -> None:
@@ -685,7 +685,7 @@ def render(engine: Engine) -> None:
         _render_roc_pr_curves(scored_df)
         _render_auc_trend(scored_df, filters["grain"])
         if not pr_summary.empty:
-            st.dataframe(pr_summary, use_container_width=True)
+            st.dataframe(pr_summary, width="stretch")
 
     with tabs[1]:
         _render_feature_importance(feature_df)

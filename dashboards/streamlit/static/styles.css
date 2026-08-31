@@ -12,8 +12,79 @@
     border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+[data-testid="stSidebarNav"] {
+    display: none;
+}
+
+body:has(.login-hero) [data-testid="stSidebar"] {
+    display: none;
+}
+
 [data-testid="stHeader"] {
     background: transparent;
+}
+
+[data-testid="stAppDeployButton"] {
+    display: none;
+}
+
+#MainMenu,
+footer,
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"] {
+    visibility: hidden;
+    height: 0;
+}
+
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] p,
+[data-testid="stAppViewContainer"] label,
+[data-testid="stAppViewContainer"] span,
+[data-testid="stAppViewContainer"] div {
+    color: #f5f8fb;
+}
+
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] p {
+    color: #c4d0dc !important;
+}
+
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] div {
+    color: #dce7f2 !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stSidebar"] [role="radiogroup"] label p {
+    color: #f7fafc !important;
+    font-weight: 650;
+}
+
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p {
+    color: #ffffff !important;
+}
+
+[data-testid="stAppViewContainer"] h1,
+[data-testid="stAppViewContainer"] h2,
+[data-testid="stAppViewContainer"] h3,
+[data-testid="stAppViewContainer"] h4 {
+    color: #ffffff !important;
+    letter-spacing: 0;
+}
+
+[data-testid="stTextInput"] input,
+[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+[data-testid="stDateInput"] input,
+[data-testid="stNumberInput"] input {
+    color: #111827 !important;
+    background: #f8fafc !important;
+}
+
+[data-testid="stSlider"] [data-testid="stThumbValue"] {
+    color: #ffffff !important;
+    font-weight: 700;
 }
 
 /* --- KPI Cards --- */
@@ -137,6 +208,10 @@
     border-left-color: #f39c12;
 }
 
+.dashboard-feedback.preview {
+    border-left-color: #38bdf8;
+}
+
 /* --- Badges --- */
 .status-badge {
     display: inline-block;
@@ -217,7 +292,36 @@ hr {
 }
 
 /* --- Login form centering --- */
+.login-hero {
+    width: min(100%, 520px);
+    margin: 56px auto 18px;
+    text-align: center;
+}
+
+.login-logo {
+    font-size: 42px;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+
+.login-hero h1 {
+    margin: 0;
+    font-size: clamp(2rem, 4vw, 3.1rem);
+    line-height: 1.08;
+    color: #ffffff;
+    letter-spacing: 0;
+}
+
+.login-hero p {
+    margin: 12px auto 0;
+    color: #95a5a6;
+    font-size: 1rem;
+    line-height: 1.45;
+}
+
 [data-testid="stForm"] {
+    width: min(100%, 420px);
+    margin: 0 auto;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
@@ -258,6 +362,16 @@ hr {
 
     [data-testid="stPlotlyChart"] {
         padding: 2px;
+    }
+
+    .login-hero {
+        margin-top: 36px;
+    }
+}
+
+@media (min-width: 700px) and (max-width: 900px) {
+    body:not(:has(.login-hero)):has([data-testid="stSidebar"][aria-expanded="true"]) [data-testid="stAppViewContainer"] .block-container {
+        padding-left: 20rem;
     }
 }
 

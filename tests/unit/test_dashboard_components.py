@@ -19,6 +19,11 @@ from dashboards.streamlit.pages.alert_management import (
     calculate_rule_effectiveness,
     calculate_sla_metrics,
 )
+from dashboards.streamlit.pages.demo_fallback import (
+    demo_alerts,
+    demo_model_scores,
+    demo_transactions,
+)
 from dashboards.streamlit.pages.model_performance import (
     build_auc_trend,
     build_confusion_matrix,
@@ -180,3 +185,25 @@ def test_rule_effectiveness_flags_noisy_rules() -> None:
 
     assert result.loc[result["rule_id"] == "R1", "action_hint"].item() == "review_threshold"
     assert result.loc[result["rule_id"] == "R2", "action_hint"].item() == "high_value"
+
+
+def test_demo_fallback_data_matches_dashboard_contracts() -> None:
+    txns = demo_transactions()
+    scores = demo_model_scores()
+    alerts = demo_alerts()
+
+    assert {
+        "transaction_id",
+        "transaction_amount",
+        "status",
+        "risk_score",
+        "channel",
+        "geo_country",
+        "transaction_timestamp",
+    }.issubset(txns.columns)
+    assert {"overall_score", "actual_label", "model_version", "latency_ms"}.issubset(scores.columns)
+    assert {"alert_id", "severity", "status", "assigned_to", "created_at"}.issubset(alerts.columns)
+    assert txns["risk_score"].between(0, 1).all()
+    assert scores["overall_score"].between(0, 1).all()
+    assert 0 < (txns["status"] == "flagged").mean() < 0.15
+    assert calculate_alert_kpis(alerts)["total_alerts"] > 0

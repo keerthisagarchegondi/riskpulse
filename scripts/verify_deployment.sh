@@ -50,6 +50,25 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+is_placeholder_secret() {
+  case "${1:-}" in
+    ""|"riskpulse"|"riskpulse_dev_password"|"change-me"|"dev-api-key-riskpulse-2024"|"dev-jwt-secret")
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+require_non_placeholder_secret() {
+  local name="$1"
+  local value="${2:-}"
+  if is_placeholder_secret "${value}"; then
+    fail "${name} must be set to a non-placeholder value for production"
+  fi
+}
+
 log "RiskPulse deployment verification started for ${ENVIRONMENT}"
 
 log "Checking repository artifacts"
@@ -80,6 +99,16 @@ if find docs -maxdepth 2 -type f \( -name 'production_readiness_checklist.md' -o
 fi
 
 if [[ "${RUN_DOCKER}" == "true" ]]; then
+  if [[ "${ENVIRONMENT}" == "production" ]]; then
+    require_non_placeholder_secret "RISKPULSE_DB_PASSWORD" "${RISKPULSE_DB_PASSWORD:-}"
+    require_non_placeholder_secret \
+      "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN" \
+      "${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-}"
+    require_non_placeholder_secret \
+      "AIRFLOW__WEBSERVER__SECRET_KEY" \
+      "${AIRFLOW__WEBSERVER__SECRET_KEY:-}"
+  fi
+
   if command_exists docker; then
     log "Validating Docker Compose development config"
     docker compose -f docker-compose.yml config --quiet
@@ -90,6 +119,27 @@ if [[ "${RUN_DOCKER}" == "true" ]]; then
   fi
 else
   warn "RUN_DOCKER=false; skipping Docker checks"
+fi
+
+if [[ "${ENVIRONMENT}" == "production" ]]; then
+  if [[ -z "${RISKPULSE_API_KEY:-}" \
+    && -z "${RISKPULSE_API_KEYS:-}" \
+    && -z "${RISKPULSE_API_KEYS_SECRET_ID:-}" \
+    && -z "${RISKPULSE_SECURITY__SECRETS_MANAGER__API_KEYS_SECRET_ID:-}" ]]; then
+    fail "Production API keys must be configured through RISKPULSE_API_KEY, RISKPULSE_API_KEYS, or Secrets Manager"
+  fi
+  if [[ -n "${RISKPULSE_API_KEY:-}" ]]; then
+    require_non_placeholder_secret "RISKPULSE_API_KEY" "${RISKPULSE_API_KEY}"
+  fi
+
+  if [[ -z "${RISKPULSE_JWT_SECRET:-}" \
+    && -z "${RISKPULSE_JWT_SECRET_ID:-}" \
+    && -z "${RISKPULSE_SECURITY__SECRETS_MANAGER__JWT_SECRET_ID:-}" ]]; then
+    fail "Production JWT secret must be configured through RISKPULSE_JWT_SECRET or Secrets Manager"
+  fi
+  if [[ -n "${RISKPULSE_JWT_SECRET:-}" ]]; then
+    require_non_placeholder_secret "RISKPULSE_JWT_SECRET" "${RISKPULSE_JWT_SECRET}"
+  fi
 fi
 
 if [[ "${RUN_TERRAFORM}" == "true" ]]; then

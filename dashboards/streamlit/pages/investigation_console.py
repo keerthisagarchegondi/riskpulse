@@ -507,7 +507,7 @@ def _render_geo_view(detail_row: pd.Series) -> None:
             template="plotly_dark",
             height=360,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     elif country:
         df = pd.DataFrame({"geo_country": [country], "txn_count": [1]})
         fig = px.choropleth(
@@ -519,7 +519,7 @@ def _render_geo_view(detail_row: pd.Series) -> None:
             color_continuous_scale="Reds",
         )
         fig.update_layout(template="plotly_dark", height=360)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("No geographic coordinates available for this transaction.")
 
@@ -660,7 +660,7 @@ def _render_detail_view(engine: Engine, analyst: str, alert_id: str) -> None:
                 "Flagged Count",
                 int((customer_history["status"] == "flagged").sum()),
             )
-            st.dataframe(customer_history, use_container_width=True)
+            st.dataframe(customer_history, width="stretch")
 
     with tabs[2]:
         risk_df = _fetch_risk_breakdown(engine, transaction_id=str(row["transaction_id"]))
@@ -693,7 +693,7 @@ def _render_detail_view(engine: Engine, analyst: str, alert_id: str) -> None:
                 color_discrete_sequence=["#3498db", "#f39c12", "#e74c3c"],
             )
             fig.update_layout(template="plotly_dark", height=320)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             feature_contribs = score_row.get("feature_contributions") or {}
             if isinstance(feature_contribs, dict) and feature_contribs:
@@ -702,7 +702,7 @@ def _render_detail_view(engine: Engine, analyst: str, alert_id: str) -> None:
                     columns=["feature", "contribution"],
                 ).sort_values("contribution", key=lambda s: s.abs(), ascending=False)
                 st.markdown("Top Feature Contributions")
-                st.dataframe(contrib_df.head(20), use_container_width=True)
+                st.dataframe(contrib_df.head(20), width="stretch")
             else:
                 st.caption("No feature contribution payload available.")
 
@@ -716,7 +716,7 @@ def _render_detail_view(engine: Engine, analyst: str, alert_id: str) -> None:
         if similar_df.empty:
             st.info("No similar historical alerts found.")
         else:
-            st.dataframe(similar_df, use_container_width=True)
+            st.dataframe(similar_df, width="stretch")
 
     with tabs[4]:
         _render_geo_view(row)
@@ -872,7 +872,7 @@ def render(engine: Engine) -> None:
         data=dataframe_to_csv_bytes(export_df),
         file_name=f"riskpulse_alerts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
         mime="text/csv",
-        use_container_width=True,
+        width="stretch",
     )
 
     if queue_df.empty:

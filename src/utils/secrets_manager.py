@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,6 +19,15 @@ import structlog
 from src.utils.config import get_settings
 
 logger = structlog.get_logger(__name__)
+
+_DEVELOPMENT_PLACEHOLDERS = {
+    "",
+    "riskpulse",
+    "riskpulse_dev_password",
+    "change-me",
+    "dev-api-key-riskpulse-2024",
+    "dev-jwt-secret",
+}
 
 
 class SecretsManagerError(Exception):
@@ -63,6 +73,47 @@ class SecretsManager:
     @staticmethod
     def _is_managed_environment(environment: str) -> bool:
         return environment.lower() in {"prod", "production", "staging"}
+
+    @staticmethod
+    def _coerce_api_key_entries(value: Any) -> list[dict[str, Any]]:
+        if not isinstance(value, Iterable) or isinstance(value, (str, bytes, dict)):
+            return []
+        return [item for item in value if isinstance(item, dict) and item.get("key")]
+
+    def _get_api_keys_from_environment(self, *, managed_environment: bool) -> list[dict[str, Any]]:
+        raw_json = os.environ.get("RISKPULSE_API_KEYS")
+        if raw_json:
+            try:
+                parsed = json.loads(raw_json)
+            except json.JSONDecodeError as exc:
+                raise SecretsManagerError("RISKPULSE_API_KEYS must be valid JSON") from exc
+            keys = self._coerce_api_key_entries(parsed)
+            if not keys:
+                raise SecretsManagerError("RISKPULSE_API_KEYS must contain API key entries")
+            return keys
+
+        single_key = os.environ.get("RISKPULSE_API_KEY", "")
+        if single_key:
+            if managed_environment and single_key in _DEVELOPMENT_PLACEHOLDERS:
+                raise SecretsManagerError(
+                    "Production API key cannot use a development placeholder value"
+                )
+            return [
+                {
+                    "name": os.environ.get("RISKPULSE_API_KEY_NAME", "environment"),
+                    "key": single_key,
+                    "permissions": [
+                        item.strip()
+                        for item in os.environ.get(
+                            "RISKPULSE_API_KEY_PERMISSIONS", "read,write"
+                        ).split(",")
+                        if item.strip()
+                    ],
+                    "rate_limit": os.environ.get("RISKPULSE_API_KEY_RATE_LIMIT"),
+                }
+            ]
+
+        return []
 
     def get_secret(self, secret_id: str, *, force_refresh: bool = False) -> dict[str, Any]:
         """Return a secret as a dictionary.
@@ -122,12 +173,10 @@ class SecretsManager:
             "username": os.environ.get("RISKPULSE_DB_USER", "riskpulse"),
             "password": os.environ.get("RISKPULSE_DB_PASSWORD", "riskpulse"),
         }
-        if self._is_managed_environment(settings.environment) and credentials["password"] in {
-            "",
-            "riskpulse",
-            "riskpulse_dev_password",
-            "change-me",
-        }:
+        if (
+            self._is_managed_environment(settings.environment)
+            and credentials["password"] in _DEVELOPMENT_PLACEHOLDERS
+        ):
             raise SecretsManagerError(
                 "Production database credentials must come from Secrets Manager "
                 "or a non-default RISKPULSE_DB_PASSWORD value"
@@ -137,15 +186,30 @@ class SecretsManager:
     def get_api_keys(self, secret_id: str | None = None) -> list[dict[str, Any]]:
         settings = get_settings()
         configured_id = secret_id or settings.get("security.secrets_manager.api_keys_secret_id")
-        if not configured_id:
-            configured = settings.get("api.api_keys", [])
-            return configured if isinstance(configured, list) else []
+        managed_environment = self._is_managed_environment(settings.environment)
+        if configured_id:
+            secret = self.get_secret(configured_id)
+            keys = secret.get("api_keys", secret.get("keys", []))
+            if not isinstance(keys, list):
+                raise SecretsManagerError("API key secret must contain an api_keys list")
+            return self._coerce_api_key_entries(keys)
 
-        secret = self.get_secret(configured_id)
-        keys = secret.get("api_keys", secret.get("keys", []))
-        if not isinstance(keys, list):
-            raise SecretsManagerError("API key secret must contain an api_keys list")
-        return [item for item in keys if isinstance(item, dict)]
+        env_keys = self._get_api_keys_from_environment(managed_environment=managed_environment)
+        if env_keys:
+            return env_keys
+
+        configured = settings.get("api.api_keys", [])
+        configured_keys = self._coerce_api_key_entries(configured)
+        if configured_keys:
+            return configured_keys
+
+        if managed_environment:
+            raise SecretsManagerError(
+                "Production API keys must come from Secrets Manager, RISKPULSE_API_KEYS, "
+                "or a non-placeholder RISKPULSE_API_KEY value"
+            )
+
+        return []
 
     def get_jwt_secret(self, secret_id: str | None = None) -> str:
         settings = get_settings()
@@ -157,7 +221,7 @@ class SecretsManager:
                 return str(value)
 
         env_secret = os.environ.get("RISKPULSE_JWT_SECRET")
-        if env_secret and env_secret != "dev-jwt-secret":
+        if env_secret and env_secret not in _DEVELOPMENT_PLACEHOLDERS:
             return env_secret
 
         if self._is_managed_environment(settings.environment):

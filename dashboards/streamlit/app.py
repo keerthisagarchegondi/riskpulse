@@ -20,6 +20,7 @@ from typing import Callable
 import streamlit as st
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 # ---------------------------------------------------------------------------
 # Ensure project root is on sys.path so relative imports resolve correctly
@@ -36,6 +37,7 @@ from dashboards.streamlit.auth.roles import (  # noqa: E402
 )
 from dashboards.streamlit.pages import (  # noqa: E402
     alert_management,
+    demo_fallback,
     investigation_console,
     model_performance,
     real_time_monitor,
@@ -68,13 +70,17 @@ _CSS_PATH = Path(__file__).parent / "static" / "styles.css"
 
 
 @st.cache_data(show_spinner=False)
-def _read_css(path: str) -> str:
+def _read_css(path: str, updated_at: float) -> str:
     """Read dashboard CSS once per process for faster reruns."""
+    _ = updated_at
     return Path(path).read_text(encoding="utf-8")
 
 
 if _CSS_PATH.exists():
-    st.markdown(f"<style>{_read_css(str(_CSS_PATH))}</style>", unsafe_allow_html=True)
+    st.markdown(
+        f"<style>{_read_css(str(_CSS_PATH), _CSS_PATH.stat().st_mtime)}</style>",
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -112,28 +118,27 @@ def _login_form() -> bool:
         return True
 
     st.markdown(
-        "<div style='text-align:center;margin-top:60px'>"
-        "<h1>🛡️ RiskPulse</h1>"
-        "<p style='color:#95a5a6'>Fraud Detection & Risk Monitoring Platform</p>"
+        "<div class='login-hero'>"
+        "<div class='login-logo'>🛡️</div>"
+        "<h1>RiskPulse</h1>"
+        "<p>Fraud Detection & Risk Monitoring Platform</p>"
         "</div>",
         unsafe_allow_html=True,
     )
 
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        with st.form("login_form"):
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Sign In", use_container_width=True)
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Sign In", width="stretch")
 
-        if submitted:
-            if _check_credentials(username, password):
-                st.session_state["authenticated"] = True
-                st.session_state["username"] = username
-                st.session_state["role"] = role_for_user(username).value
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
+    if submitted:
+        if _check_credentials(username, password):
+            st.session_state["authenticated"] = True
+            st.session_state["username"] = username
+            st.session_state["role"] = role_for_user(username).value
+            st.rerun()
+        else:
+            st.error("Invalid username or password.")
     return False
 
 
@@ -206,6 +211,12 @@ def _render_page_safely(page_key: str, engine: Engine) -> None:
     try:
         with st.spinner("Loading dashboard data..."):
             renderer(engine)
+    except OperationalError as exc:
+        logger.warning("dashboard_database_unavailable", extra={"page_key": page_key})
+        _render_data_source_unavailable(page_key, exc)
+    except SQLAlchemyError as exc:
+        logger.exception("dashboard_database_error", extra={"page_key": page_key})
+        _render_data_source_unavailable(page_key, exc)
     except Exception as exc:
         logger.exception("dashboard_page_render_failed", extra={"page_key": page_key})
         st.error("This dashboard could not be loaded. Please refresh or contact support.")
@@ -217,6 +228,43 @@ def _render_page_safely(page_key: str, engine: Engine) -> None:
                     "message": str(exc),
                 }
             )
+
+
+def _render_data_source_unavailable(page_key: str, exc: Exception) -> None:
+    """Render a focused empty state when dashboard data sources are offline."""
+    st.markdown(
+        """
+        <div class="dashboard-feedback warning">
+            <strong>Dashboard data source unavailable.</strong><br>
+            PostgreSQL is not reachable from this Streamlit session, so live metrics
+            cannot be loaded right now.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.expander("Connection details"):
+        st.write(
+            {
+                "page": page_key,
+                "error_type": type(exc).__name__,
+                "db_host": os.environ.get("RISKPULSE_DB_HOST", "localhost"),
+                "db_port": os.environ.get("RISKPULSE_DB_PORT", "5432"),
+                "db_name": os.environ.get("RISKPULSE_DB_NAME", "riskpulse"),
+            }
+        )
+
+    if _demo_fallback_enabled():
+        demo_fallback.render_demo_page(page_key)
+
+
+def _demo_fallback_enabled() -> bool:
+    """Allow synthetic preview data only outside managed environments by default."""
+    explicit = os.environ.get("RISKPULSE_DASHBOARD_DEMO_ON_DB_ERROR")
+    if explicit is not None:
+        return explicit.strip().lower() in {"1", "true", "yes", "on"}
+
+    environment = os.environ.get("RISKPULSE_ENV", "dev").strip().lower()
+    return environment not in {"prod", "production", "staging"}
 
 
 def _render_sidebar(engine: Engine) -> str:
@@ -250,7 +298,7 @@ def _render_sidebar(engine: Engine) -> str:
     st.sidebar.markdown(f"**DB Status:** {status_icon}")
 
     # Logout
-    if st.sidebar.button("🚪 Logout", use_container_width=True):
+    if st.sidebar.button("🚪 Logout", width="stretch"):
         st.session_state.clear()
         st.rerun()
 
