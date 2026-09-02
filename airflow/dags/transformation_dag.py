@@ -17,11 +17,10 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sensors.python import PythonSensor
 
 from airflow import DAG
-from src.storage.s3_handler import S3Handler, StorageLayer
+from src.storage.s3_handler import StorageLayer, get_s3_handler
 from src.transformation.cleaner import DataCleaner
 from src.transformation.feature_engineer import FeatureEngineer
 from src.transformation.normalizer import get_normalizer
-from src.utils.config import get_settings
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__, component="transformation_dag")
@@ -54,13 +53,10 @@ default_args = {
 def _check_validated_data(**context: Any) -> bool:
     """Return True when new validated data is available for processing.
 
-    Checks S3 for validated-data partitions created since the last
+    Checks object storage for validated-data partitions created since the last
     successful DAG run.
     """
-    import boto3
-
-    get_settings()
-    s3 = boto3.client("s3")
+    handler = get_s3_handler()
     bucket = "riskpulse-raw"
     prefix = "validated/"
 
@@ -68,7 +64,7 @@ def _check_validated_data(**context: Any) -> bool:
     partition = execution_date.strftime("year=%Y/month=%m/day=%d/")
 
     try:
-        response = s3.list_objects_v2(
+        response = handler._s3_client.list_objects_v2(
             Bucket=bucket,
             Prefix=f"{prefix}{partition}",
             MaxKeys=1,
@@ -88,7 +84,7 @@ def _check_validated_data(**context: Any) -> bool:
 def _run_cleaning(**context: Any) -> dict[str, Any]:
     """Run the data cleaning pipeline on validated records."""
     ti = context["ti"]
-    handler = S3Handler()
+    handler = get_s3_handler()
 
     execution_date: datetime = context["execution_date"]
     partition = execution_date.strftime("year=%Y/month=%m/day=%d/hour=%H")
@@ -137,7 +133,7 @@ def _run_cleaning(**context: Any) -> dict[str, Any]:
 def _run_normalization(**context: Any) -> dict[str, Any]:
     """Normalize cleaned records (currency conversion, field standardisation)."""
     context["ti"]
-    handler = S3Handler()
+    handler = get_s3_handler()
 
     execution_date: datetime = context["execution_date"]
     partition = execution_date.strftime("year=%Y/month=%m/day=%d/hour=%H")
@@ -178,7 +174,7 @@ def _run_normalization(**context: Any) -> dict[str, Any]:
 def _run_feature_engineering(**context: Any) -> dict[str, Any]:
     """Compute derived features for each normalised transaction."""
     context["ti"]
-    handler = S3Handler()
+    handler = get_s3_handler()
 
     execution_date: datetime = context["execution_date"]
     partition = execution_date.strftime("year=%Y/month=%m/day=%d/hour=%H")
@@ -229,7 +225,7 @@ def _run_feature_engineering(**context: Any) -> dict[str, Any]:
 def _write_processed_data(**context: Any) -> dict[str, Any]:
     """Write final processed data to the processed S3 bucket."""
     context["ti"]
-    handler = S3Handler()
+    handler = get_s3_handler()
 
     execution_date: datetime = context["execution_date"]
     partition = execution_date.strftime("year=%Y/month=%m/day=%d/hour=%H")

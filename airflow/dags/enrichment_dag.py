@@ -24,7 +24,7 @@ from src.enrichment import (
     MerchantEnricher,
     VelocityCalculator,
 )
-from src.storage.s3_handler import S3Handler, StorageLayer
+from src.storage.s3_handler import StorageLayer, get_s3_handler
 from src.utils.config import get_settings
 from src.utils.constants import TOPIC_METRICS
 from src.utils.logger import get_logger
@@ -58,7 +58,7 @@ default_args = {
 
 def _load_processed_data(**context: Any) -> dict[str, Any]:
     """Load feature-engineered data from S3 processed layer."""
-    handler = S3Handler()
+    handler = get_s3_handler()
 
     execution_date: datetime = context["execution_date"]
     partition = execution_date.strftime("year=%Y/month=%m/day=%d/hour=%H")
@@ -88,7 +88,7 @@ def _run_geo_enrichment(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"records_enriched": 0, "geo_hits": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_processed_data", key="partition")
 
     records = handler.read_batch(
@@ -140,7 +140,7 @@ def _run_device_enrichment(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"records_enriched": 0, "device_matches": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_processed_data", key="partition")
 
     records = handler.read_batch(
@@ -193,7 +193,7 @@ def _run_merchant_enrichment(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"records_enriched": 0, "merchant_matches": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_processed_data", key="partition")
 
     records = handler.read_batch(
@@ -242,7 +242,7 @@ def _compute_velocity(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"records_processed": 0, "velocity_alerts": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_processed_data", key="partition")
 
     records = handler.read_batch(
@@ -298,7 +298,7 @@ def _update_customer_profiles(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"profiles_updated": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_processed_data", key="partition")
     get_settings()
 
@@ -364,7 +364,7 @@ def _write_enriched_data(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"files_written": 0, "record_count": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_processed_data", key="partition")
 
     records = handler.read_batch(

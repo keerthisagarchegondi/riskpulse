@@ -12,6 +12,7 @@ Production-grade S3 handler with:
 from __future__ import annotations
 
 import io
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -61,6 +62,7 @@ class StorageLayer(str, Enum):
 
     RAW = "raw"
     VALIDATED = "validated"
+    PROCESSED = "processed"
     ENRICHED = "enriched"
     MODELS = "models"
     ARCHIVE = "archive"
@@ -154,6 +156,22 @@ def _generate_file_key(partition_path: str, file_format: str = "parquet") -> str
     batch_id = uuid.uuid4().hex[:12]
     timestamp_suffix = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     return f"{partition_path}/{timestamp_suffix}_{batch_id}.{file_format}"
+
+
+def _bucket_for_storage_layer(storage_layer: StorageLayer) -> str:
+    """Resolve a storage layer to its backing object bucket."""
+    return {
+        StorageLayer.RAW: S3_BUCKET_RAW,
+        StorageLayer.VALIDATED: S3_BUCKET_RAW,
+        StorageLayer.ENRICHED: S3_BUCKET_PROCESSED,
+        StorageLayer.MODELS: S3_BUCKET_MODELS,
+        StorageLayer.ARCHIVE: S3_BUCKET_ARCHIVE,
+        StorageLayer.PROCESSED: S3_BUCKET_PROCESSED,
+    }[storage_layer]
+
+
+def _normalize_object_prefix(prefix: str) -> str:
+    return prefix.strip().strip("/")
 
 
 class S3Handler:
@@ -406,6 +424,43 @@ class S3Handler:
         )
         return keys
 
+    def write_batch(
+        self,
+        records: list[dict[str, Any]],
+        storage_layer: StorageLayer,
+        partition_path: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        """Write records to the object-store layer used by Airflow pipelines."""
+        bucket = _bucket_for_storage_layer(storage_layer)
+        normalized_partition = _normalize_object_prefix(partition_path)
+        object_metadata = {
+            "record_count": str(len(records)),
+            "storage_layer": storage_layer.value,
+        }
+        if metadata:
+            object_metadata.update({str(key): str(value) for key, value in metadata.items()})
+
+        if not records:
+            key = _generate_file_key(normalized_partition or storage_layer.value, "empty.json")
+            return self.upload_raw_file(
+                b"[]",
+                key,
+                bucket=bucket,
+                content_type="application/json",
+                metadata=object_metadata,
+            )
+
+        key = _generate_file_key(normalized_partition or storage_layer.value, "parquet")
+        parquet_buffer = self._transactions_to_parquet(records)
+        return self.upload_raw_file(
+            parquet_buffer.getvalue(),
+            key,
+            bucket=bucket,
+            content_type="application/x-parquet",
+            metadata=object_metadata,
+        )
+
     # =========================================================================
     # Download Operations
     # =========================================================================
@@ -453,6 +508,27 @@ class S3Handler:
             self._metrics.record_download_error()
             logger.error("parquet_parse_failed", error=str(e), key=key)
             raise S3DownloadError(f"Failed to parse Parquet file s3://{bucket}/{key}: {e}") from e
+
+    def read_batch(
+        self,
+        storage_layer: StorageLayer,
+        partition_path: str,
+    ) -> list[dict[str, Any]]:
+        """Read all Parquet objects for a partition from the selected layer."""
+        bucket = _bucket_for_storage_layer(storage_layer)
+        prefix = _normalize_object_prefix(partition_path)
+        records: list[dict[str, Any]] = []
+
+        paginator = self._s3_client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj.get("Key", "")
+                if not key.endswith(".parquet"):
+                    continue
+                table = self.download_parquet(bucket, key)
+                records.extend(table.to_pylist())
+
+        return records
 
     def stream_download(
         self, bucket: str, key: str, chunk_size: int = MULTIPART_CHUNK_SIZE
@@ -709,14 +785,23 @@ class S3Handler:
 def get_s3_handler(
     region_name: str | None = None,
     endpoint_url: str | None = None,
-) -> S3Handler:
-    """Factory function to create an S3Handler instance.
+) -> Any:
+    """Factory function to create an object storage handler.
 
     Args:
         region_name: AWS region override
         endpoint_url: Endpoint URL override (for LocalStack)
 
     Returns:
-        Configured S3Handler instance
+        Configured S3Handler or local filesystem-backed compatible handler
     """
+    settings = get_settings()
+    backend = str(
+        os.environ.get("RISKPULSE_STORAGE_BACKEND") or settings.get("storage.backend", "s3")
+    ).lower()
+    if backend in {"local", "filesystem", "file"}:
+        from src.storage.local_object_storage import LocalObjectStorageHandler
+
+        return LocalObjectStorageHandler()
+
     return S3Handler(region_name=region_name, endpoint_url=endpoint_url)

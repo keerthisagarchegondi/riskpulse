@@ -10,6 +10,10 @@ x-app-env: &app-env
   RISKPULSE_DB_PASSWORD: riskpulse_dev_password
   RISKPULSE_REDIS_HOST: redis
   RISKPULSE_REDIS_PORT: "6379"
+  RISKPULSE_STORAGE_BACKEND: ${RISKPULSE_STORAGE_BACKEND:-local}
+  RISKPULSE_LOCAL_STORAGE_ROOT: ${RISKPULSE_LOCAL_STORAGE_ROOT:-.local_storage}
+  RISKPULSE_METRICS_BACKEND: ${RISKPULSE_METRICS_BACKEND:-local}
+  RISKPULSE_LOCAL_METRICS_PATH: ${RISKPULSE_LOCAL_METRICS_PATH:-.local_storage/metrics/metrics.jsonl}
   AWS_REGION: ${AWS_REGION:-us-east-1}
 
 x-health-defaults: &health-defaults
@@ -120,6 +124,7 @@ services:
       - ./src:/app/src:ro
       - ./config:/app/config:ro
       - ./schemas:/app/schemas:ro
+      - riskpulse-local-storage:/app/.local_storage
     networks:
       - public
       - backend
@@ -151,6 +156,7 @@ services:
       - ./src:/app/src:ro
       - ./config:/app/config:ro
       - ./schemas:/app/schemas:ro
+      - riskpulse-local-storage:/app/.local_storage
     networks:
       - backend
 
@@ -179,6 +185,7 @@ services:
       - ./dashboards/streamlit:/app/dashboards/streamlit:ro
       - ./src/utils:/app/src/utils:ro
       - ./config:/app/config:ro
+      - riskpulse-local-storage:/app/.local_storage
     networks:
       - public
       - backend
@@ -216,6 +223,7 @@ services:
       - ./src:/opt/airflow/src:ro
       - ./config:/opt/airflow/config:ro
       - airflow-logs:/opt/airflow/logs
+      - riskpulse-local-storage:/opt/airflow/.local_storage
     networks:
       - public
       - backend
@@ -226,6 +234,7 @@ volumes:
   postgres-data:
   redis-data:
   airflow-logs:
+  riskpulse-local-storage:
 
 networks:
   public:

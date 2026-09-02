@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+import os
 import time
 from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Generator
 
 from src.utils.config import get_settings
@@ -67,10 +69,13 @@ class CloudWatchMetricsCollector:
         self.environment = environment or settings.environment
         self.namespace = namespace
         self.batch_size = batch_size
+        metrics_backend = str(os.environ.get("RISKPULSE_METRICS_BACKEND", "")).lower()
+        self._local_sink_path = self._resolve_local_sink_path(metrics_backend)
+        default_enabled = self.environment.lower() in {"staging", "prod", "production"}
         self.enabled = (
             enabled
             if enabled is not None
-            else bool(settings.get("monitoring.cloudwatch.metrics_enabled", True))
+            else bool(settings.get("monitoring.cloudwatch.metrics_enabled", default_enabled))
         )
         self._client = client or (self._create_client() if self.enabled else None)
         self._buffer: list[dict[str, Any]] = []
@@ -80,6 +85,18 @@ class CloudWatchMetricsCollector:
         import boto3
 
         return boto3.client("cloudwatch")
+
+    @staticmethod
+    def _resolve_local_sink_path(metrics_backend: str) -> Path | None:
+        if metrics_backend not in {"local", "filesystem", "file"}:
+            return None
+        sink_path = Path(
+            os.environ.get("RISKPULSE_LOCAL_METRICS_PATH", ".local_storage/metrics/metrics.jsonl")
+        )
+        if not sink_path.is_absolute():
+            sink_path = Path.cwd() / sink_path
+        sink_path.parent.mkdir(parents=True, exist_ok=True)
+        return sink_path
 
     def put_metric(
         self,
@@ -93,7 +110,7 @@ class CloudWatchMetricsCollector:
         storage_resolution: int = 60,
     ) -> None:
         """Buffer one metric datum and flush when the batch is full."""
-        if not self.enabled:
+        if not self.enabled and self._local_sink_path is None:
             return
 
         datum = {
@@ -108,9 +125,28 @@ class CloudWatchMetricsCollector:
             "Unit": unit,
             "StorageResolution": storage_resolution,
         }
+
+        if not self.enabled:
+            self._write_local_metric(datum)
+            return
+
         self._buffer.append(datum)
         if len(self._buffer) >= self.batch_size:
             self.flush()
+
+    def _write_local_metric(self, datum: dict[str, Any]) -> None:
+        if self._local_sink_path is None:
+            return
+        serializable = {
+            **datum,
+            "Namespace": self.namespace,
+            "Timestamp": datum["Timestamp"].isoformat(),
+        }
+        with self._local_sink_path.open("a", encoding="utf-8") as handle:
+            import json
+
+            handle.write(json.dumps(serializable, default=str))
+            handle.write("\n")
 
     def flush(self) -> None:
         """Publish all buffered metrics to CloudWatch."""

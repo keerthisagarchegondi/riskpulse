@@ -22,7 +22,7 @@ from src.fraud_detection.anomaly_detector import AnomalyDetector
 from src.fraud_detection.risk_scorer import RiskScorer
 from src.fraud_detection.rule_engine import FraudRuleEngine
 from src.fraud_detection.scoring_pipeline import RiskClassification
-from src.storage.s3_handler import S3Handler, StorageLayer
+from src.storage.s3_handler import StorageLayer, get_s3_handler
 from src.utils.config import get_settings
 from src.utils.constants import (
     SCORE_THRESHOLD_CRITICAL,
@@ -62,7 +62,7 @@ default_args = {
 
 def _load_enriched_data(**context: Any) -> dict[str, Any]:
     """Load enriched transaction data from S3 for fraud scoring."""
-    handler = S3Handler()
+    handler = get_s3_handler()
 
     execution_date: datetime = context["execution_date"]
     partition = execution_date.strftime("year=%Y/month=%m/day=%d/hour=%H")
@@ -92,7 +92,7 @@ def _run_rule_based_scoring(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"records_scored": 0, "rules_triggered": 0, "high_risk": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_enriched_data", key="partition")
 
     records = handler.read_batch(
@@ -151,7 +151,7 @@ def _run_anomaly_detection(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"records_scored": 0, "anomalies_detected": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_enriched_data", key="partition")
 
     records = handler.read_batch(
@@ -208,7 +208,7 @@ def _run_ml_scoring(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"records_scored": 0, "high_risk": 0, "critical": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_enriched_data", key="partition")
 
     records = handler.read_batch(
@@ -277,7 +277,7 @@ def _compute_ensemble_score(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"records_scored": 0, "high_risk": 0, "critical": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_enriched_data", key="partition")
     get_settings()
 
@@ -356,7 +356,7 @@ def _generate_alerts(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"alerts_generated": 0, "critical_alerts": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_enriched_data", key="partition")
     settings = get_settings()
 
@@ -436,7 +436,7 @@ def _write_scored_data(**context: Any) -> dict[str, Any]:
     if not record_count:
         return {"files_written": 0, "record_count": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
     partition = ti.xcom_pull(task_ids="load_enriched_data", key="partition")
 
     records = handler.read_batch(

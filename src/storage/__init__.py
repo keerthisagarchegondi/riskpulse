@@ -9,6 +9,12 @@ from src.storage.cache_handler import (
     CacheStrategy,
     create_cache_handler,
 )
+from src.storage.local_object_storage import (
+    LocalObjectNotFoundError,
+    LocalObjectStorageClient,
+    LocalObjectStorageError,
+    LocalObjectStorageHandler,
+)
 from src.storage.models import (
     AuditLog,
     Base,
@@ -100,6 +106,10 @@ __all__ = [
     "S3_BUCKET_PROCESSED",
     "S3_BUCKET_MODELS",
     "S3_BUCKET_ARCHIVE",
+    "LocalObjectStorageHandler",
+    "LocalObjectStorageClient",
+    "LocalObjectStorageError",
+    "LocalObjectNotFoundError",
     # Snowflake
     "SnowflakeHandler",
     "SnowflakeHandlerError",

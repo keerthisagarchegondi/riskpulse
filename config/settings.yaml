@@ -82,7 +82,7 @@ monitoring:
   log_level: "INFO"
   cloudwatch:
     enabled: false
-    metrics_enabled: true
+    metrics_enabled: false
     namespace: "RiskPulse/Platform"
     log_retention_days: 30
     services:
@@ -108,6 +108,11 @@ security:
   audit:
     enabled: true
     log_name: "riskpulse.security_audit"
+
+storage:
+  backend: "local"
+  local:
+    root: ".local_storage"
 
 s3:
   partitioning: "year/month/day/hour"

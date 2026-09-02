@@ -10,23 +10,26 @@ x-app-env: &app-env
   RISKPULSE_DB_PASSWORD: ${RISKPULSE_DB_PASSWORD:?RISKPULSE_DB_PASSWORD is required for production compose}
   RISKPULSE_REDIS_HOST: ${RISKPULSE_REDIS_HOST:-redis}
   RISKPULSE_REDIS_PORT: ${RISKPULSE_REDIS_PORT:-6379}
+  RISKPULSE_STORAGE_BACKEND: ${RISKPULSE_STORAGE_BACKEND:-local}
+  RISKPULSE_LOCAL_STORAGE_ROOT: ${RISKPULSE_LOCAL_STORAGE_ROOT:-.local_storage}
+  RISKPULSE_METRICS_BACKEND: ${RISKPULSE_METRICS_BACKEND:-local}
+  RISKPULSE_LOCAL_METRICS_PATH: ${RISKPULSE_LOCAL_METRICS_PATH:-.local_storage/metrics/metrics.jsonl}
   RISKPULSE_API_KEY: ${RISKPULSE_API_KEY:-}
   RISKPULSE_API_KEYS: ${RISKPULSE_API_KEYS:-}
   RISKPULSE_JWT_SECRET: ${RISKPULSE_JWT_SECRET:-}
   AWS_REGION: ${AWS_REGION:-us-east-1}
   AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
-  RISKPULSE_SECURITY__SECRETS_MANAGER__ENABLED: "true"
+  RISKPULSE_SECURITY__SECRETS_MANAGER__ENABLED: ${RISKPULSE_SECURITY__SECRETS_MANAGER__ENABLED:-false}
   RISKPULSE_SECURITY__SECRETS_MANAGER__DATABASE_SECRET_ID: ${RISKPULSE_DATABASE_SECRET_ID:-}
   RISKPULSE_SECURITY__SECRETS_MANAGER__API_KEYS_SECRET_ID: ${RISKPULSE_API_KEYS_SECRET_ID:-}
   RISKPULSE_SECURITY__SECRETS_MANAGER__JWT_SECRET_ID: ${RISKPULSE_JWT_SECRET_ID:-}
-  RISKPULSE_MONITORING__CLOUDWATCH__ENABLED: "true"
+  RISKPULSE_MONITORING__CLOUDWATCH__ENABLED: ${RISKPULSE_MONITORING__CLOUDWATCH__ENABLED:-false}
 
-x-awslogs: &awslogs
-  driver: awslogs
+x-container-logs: &container-logs
+  driver: json-file
   options:
-    awslogs-region: ${AWS_REGION:-us-east-1}
-    awslogs-create-group: "true"
-    awslogs-group: /riskpulse/prod/containers
+    max-size: ${RISKPULSE_LOG_MAX_SIZE:-10m}
+    max-file: ${RISKPULSE_LOG_MAX_FILES:-5}
 
 services:
   api:
@@ -55,12 +58,9 @@ services:
       retries: 3
       start_period: 30s
     logging:
-      <<: *awslogs
-      options:
-        awslogs-region: ${AWS_REGION:-us-east-1}
-        awslogs-create-group: "true"
-        awslogs-group: /riskpulse/prod/api
-        awslogs-stream: api
+      <<: *container-logs
+    volumes:
+      - riskpulse-local-storage:/app/.local_storage
     deploy:
       resources:
         limits:
@@ -98,12 +98,9 @@ services:
       retries: 3
       start_period: 45s
     logging:
-      <<: *awslogs
-      options:
-        awslogs-region: ${AWS_REGION:-us-east-1}
-        awslogs-create-group: "true"
-        awslogs-group: /riskpulse/prod/worker
-        awslogs-stream: worker
+      <<: *container-logs
+    volumes:
+      - riskpulse-local-storage:/app/.local_storage
     deploy:
       resources:
         limits:
@@ -140,12 +137,9 @@ services:
       retries: 3
       start_period: 30s
     logging:
-      <<: *awslogs
-      options:
-        awslogs-region: ${AWS_REGION:-us-east-1}
-        awslogs-create-group: "true"
-        awslogs-group: /riskpulse/prod/streamlit
-        awslogs-stream: streamlit
+      <<: *container-logs
+    volumes:
+      - riskpulse-local-storage:/app/.local_storage
     deploy:
       resources:
         limits:
@@ -184,12 +178,9 @@ services:
       retries: 3
       start_period: 90s
     logging:
-      <<: *awslogs
-      options:
-        awslogs-region: ${AWS_REGION:-us-east-1}
-        awslogs-create-group: "true"
-        awslogs-group: /riskpulse/prod/airflow
-        awslogs-stream: airflow
+      <<: *container-logs
+    volumes:
+      - riskpulse-local-storage:/opt/airflow/.local_storage
     deploy:
       resources:
         limits:
@@ -208,3 +199,6 @@ networks:
   backend:
     name: riskpulse-prod-backend
     internal: false
+
+volumes:
+  riskpulse-local-storage:

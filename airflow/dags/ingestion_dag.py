@@ -19,7 +19,7 @@ from airflow.sensors.python import PythonSensor
 
 from airflow import DAG
 from src.ingestion.kafka_consumer import TransactionConsumer
-from src.storage.s3_handler import S3Handler, StorageLayer
+from src.storage.s3_handler import StorageLayer, get_s3_handler
 from src.utils.config import get_settings
 from src.utils.constants import (
     TOPIC_METRICS,
@@ -155,7 +155,7 @@ def _write_raw_to_s3(**context: Any) -> dict[str, Any]:
         logger.info("No records to write to S3")
         return {"files_written": 0}
 
-    handler = S3Handler()
+    handler = get_s3_handler()
 
     execution_date: datetime = context["execution_date"]
     partition_path = execution_date.strftime("year=%Y/month=%m/day=%d/hour=%H")
