@@ -15,6 +15,7 @@ from src.storage.local_object_storage import (
     LocalObjectStorageError,
     LocalObjectStorageHandler,
 )
+from src.storage.local_warehouse_handler import LocalWarehouseHandler
 from src.storage.models import (
     AuditLog,
     Base,
@@ -110,6 +111,7 @@ __all__ = [
     "LocalObjectStorageClient",
     "LocalObjectStorageError",
     "LocalObjectNotFoundError",
+    "LocalWarehouseHandler",
     # Snowflake
     "SnowflakeHandler",
     "SnowflakeHandlerError",

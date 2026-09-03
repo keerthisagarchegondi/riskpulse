@@ -4,9 +4,10 @@ set -euo pipefail
 ENVIRONMENT="${1:-production}"
 STATE_DIR="${2:-deployment-state}"
 DRY_RUN="${DRY_RUN:-false}"
+DEPLOYMENT_BACKEND="${DEPLOYMENT_BACKEND:-local}"
 
 case "${ENVIRONMENT}" in
-  staging|production) ;;
+  dev|staging|production) ;;
   *)
     echo "Unsupported environment: ${ENVIRONMENT}" >&2
     exit 2
@@ -18,6 +19,28 @@ ECS_CLUSTER="${ECS_CLUSTER:-}"
 ECS_SERVICE_PREFIX="${ECS_SERVICE_PREFIX:-riskpulse-${ENVIRONMENT}}"
 SERVICES="${SERVICES:-api worker streamlit airflow}"
 WAIT_FOR_STABILITY="${WAIT_FOR_STABILITY:-true}"
+
+if [[ "${DEPLOYMENT_BACKEND}" == "local" ]]; then
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "Required tool not found: docker" >&2
+    exit 2
+  fi
+
+  compose_file="docker-compose.yml"
+  if [[ "${ENVIRONMENT}" == "production" ]]; then
+    compose_file="docker-compose.prod.yml"
+  fi
+
+  if [[ "${DRY_RUN}" == "true" ]]; then
+    echo "DRY_RUN: would restart local compose services from ${compose_file}"
+    exit 0
+  fi
+
+  docker compose -f "${compose_file}" up -d --force-recreate
+  docker compose -f "${compose_file}" ps
+  echo "Local rollback/recreate completed for ${ENVIRONMENT}"
+  exit 0
+fi
 
 if [[ -z "${ECS_CLUSTER}" ]]; then
   echo "ECS_CLUSTER is required" >&2

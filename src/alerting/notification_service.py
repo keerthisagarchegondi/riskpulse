@@ -226,6 +226,80 @@ class SNSSMSProvider:
         return {"message_id": response["MessageId"], "status": "sent"}
 
 
+class LocalEmailProvider:
+    """Local email provider that records outbound emails as JSONL."""
+
+    def __init__(self, output_path: Path | None = None) -> None:
+        self._output_path = output_path or _local_notification_path("emails.jsonl")
+
+    async def send_email(
+        self, to: str, subject: str, body_html: str, body_text: str
+    ) -> dict[str, Any]:
+        message_id = f"local-email-{uuid.uuid4().hex[:12]}"
+        _append_local_notification(
+            self._output_path,
+            {
+                "message_id": message_id,
+                "channel": "email",
+                "to": to,
+                "subject": subject,
+                "body_html": body_html,
+                "body_text": body_text,
+            },
+        )
+        return {"message_id": message_id, "status": "recorded"}
+
+
+class LocalSMSProvider:
+    """Local SMS provider that records outbound text messages as JSONL."""
+
+    def __init__(self, output_path: Path | None = None) -> None:
+        self._output_path = output_path or _local_notification_path("sms.jsonl")
+
+    async def send_sms(self, phone_number: str, message: str) -> dict[str, Any]:
+        message_id = f"local-sms-{uuid.uuid4().hex[:12]}"
+        _append_local_notification(
+            self._output_path,
+            {
+                "message_id": message_id,
+                "channel": "sms",
+                "phone_number": phone_number,
+                "message": message,
+            },
+        )
+        return {"message_id": message_id, "status": "recorded"}
+
+
+def _local_notification_path(filename: str) -> Path:
+    root = Path(os.environ.get("RISKPULSE_LOCAL_NOTIFICATION_ROOT", ".local_storage/notifications"))
+    if not root.is_absolute():
+        root = Path.cwd() / root
+    root.mkdir(parents=True, exist_ok=True)
+    return root / filename
+
+
+def _append_local_notification(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        import json
+
+        handle.write(
+            json.dumps(
+                {
+                    **payload,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+                default=str,
+            )
+        )
+        handle.write("\n")
+
+
+def _use_local_notifications() -> bool:
+    backend = os.environ.get("RISKPULSE_NOTIFICATION_BACKEND", "local").lower()
+    return backend in {"local", "filesystem", "file"}
+
+
 class HTTPWebhookProvider:
     """HTTP webhook provider for Slack, Teams, PagerDuty."""
 
@@ -721,8 +795,11 @@ class NotificationService:
         template_renderer: AlertTemplateRenderer | None = None,
         config_path: Path | None = None,
     ):
-        self._email_provider = email_provider
-        self._sms_provider = sms_provider
+        local_notifications = _use_local_notifications()
+        self._email_provider = email_provider or (
+            LocalEmailProvider() if local_notifications else None
+        )
+        self._sms_provider = sms_provider or (LocalSMSProvider() if local_notifications else None)
         self._webhook_provider = webhook_provider or HTTPWebhookProvider()
         self._websocket_provider = websocket_provider
         self._preferences = preferences_manager or PreferencesManager()

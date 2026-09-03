@@ -22,6 +22,8 @@ from src.alerting.escalation_engine import (
 from src.alerting.notification_service import (
     DeliveryStatus,
     DeliveryTracker,
+    LocalEmailProvider,
+    LocalSMSProvider,
     NotificationChannel,
     NotificationRateLimiter,
     NotificationRecord,
@@ -45,6 +47,8 @@ __all__ = [
     "EscalationPolicy",
     "EscalationRecord",
     "EscalationStatus",
+    "LocalEmailProvider",
+    "LocalSMSProvider",
     "NotificationChannel",
     "NotificationRateLimiter",
     "NotificationRecord",

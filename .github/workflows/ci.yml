@@ -24,6 +24,14 @@ env:
   RISKPULSE_DB_PASSWORD: ci-build-placeholder-not-secret
   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://riskpulse:ci-build-placeholder-not-secret@postgres:5432/riskpulse
   AIRFLOW__WEBSERVER__SECRET_KEY: ci-airflow-webserver-secret-for-compose-build
+  RISKPULSE_STORAGE_BACKEND: local
+  RISKPULSE_WAREHOUSE_BACKEND: local
+  RISKPULSE_METRICS_BACKEND: local
+  RISKPULSE_NOTIFICATION_BACKEND: local
+  RISKPULSE_MONITORING__CLOUDWATCH__ENABLED: "false"
+  RISKPULSE_SECURITY__SECRETS_MANAGER__ENABLED: "false"
+  POWERBI_DATA_BACKEND: local
+  RUN_AWS_CHECKS: "false"
 
 jobs:
   lint-test-scan:

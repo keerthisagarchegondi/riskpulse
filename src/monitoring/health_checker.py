@@ -181,9 +181,9 @@ class HealthChecker:
 
     async def check_snowflake(self) -> DependencyCheckResult:
         def _probe() -> bool:
-            from src.storage.snowflake_handler import SnowflakeHandler
+            from src.storage.snowflake_handler import create_snowflake_handler
 
-            handler = SnowflakeHandler(pool_size=1)
+            handler = create_snowflake_handler(pool_size=1)
             try:
                 handler.connect()
                 result = handler.execute_query("SELECT 1 AS HEALTH_CHECK")

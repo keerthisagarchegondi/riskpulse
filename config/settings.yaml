@@ -114,6 +114,11 @@ storage:
   local:
     root: ".local_storage"
 
+warehouse:
+  backend: "local"
+  local:
+    root: ".local_storage/warehouse"
+
 s3:
   partitioning: "year/month/day/hour"
   file_format: "parquet"

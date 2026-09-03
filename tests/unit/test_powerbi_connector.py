@@ -5,7 +5,10 @@ from __future__ import annotations
 import pytest
 
 from dashboards.powerbi.data_connections.snowflake_connector import (
+    LOCAL_DATASET_COLUMNS,
+    LocalPowerBIConfig,
     PowerBIConnectionError,
+    PowerBILocalConnector,
     PowerBIRefreshFrequency,
     PowerBISnowflakeConnector,
     RefreshSchedule,
@@ -97,3 +100,23 @@ def test_snowflake_rls_setup_sql_creates_security_table() -> None:
     assert "CREATE TABLE IF NOT EXISTS SECURITY.POWERBI_USER_TENANT_ACCESS" in sql
     assert "USER_PRINCIPAL_NAME" in sql
     assert "TENANT_ID" in sql
+
+
+def test_local_powerbi_connector_writes_csv_shells(tmp_path) -> None:
+    connector = PowerBILocalConnector(LocalPowerBIConfig(tmp_path))
+
+    connector.ensure_dataset_files()
+
+    executive_summary = (tmp_path / "ExecutiveSummary.csv").read_text(encoding="utf-8")
+    assert executive_summary.startswith("WEEK_START_DATE,WEEK_END_DATE")
+    assert len(list(tmp_path.glob("*.csv"))) == len(LOCAL_DATASET_COLUMNS)
+
+
+def test_local_powerbi_query_generation_uses_file_contents(tmp_path) -> None:
+    connector = PowerBILocalConnector(LocalPowerBIConfig(tmp_path))
+
+    power_query = connector.generate_power_query_m()
+
+    assert "File.Contents" in power_query
+    assert "Snowflake.Databases" not in power_query
+    assert "ExecutiveSummary.csv" in power_query

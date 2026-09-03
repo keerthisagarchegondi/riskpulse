@@ -35,6 +35,8 @@ from tenacity import (
     wait_exponential,
 )
 
+from src.utils.config import get_settings
+
 try:
     import snowflake.connector
     from snowflake.connector import DictCursor, SnowflakeConnection
@@ -1581,10 +1583,11 @@ class SnowflakeHandler:
 def create_snowflake_handler(
     pool_size: int = 5,
     query_cache_ttl: int = 300,
-) -> SnowflakeHandler:
-    """Factory function to create a configured SnowflakeHandler.
+) -> Any:
+    """Factory function to create a configured analytical warehouse handler.
 
     Reads configuration from environment variables:
+    - RISKPULSE_WAREHOUSE_BACKEND=local uses filesystem-backed local warehouse
     - SNOWFLAKE_ACCOUNT
     - SNOWFLAKE_USER
     - SNOWFLAKE_PASSWORD or SNOWFLAKE_PRIVATE_KEY_PATH
@@ -1592,6 +1595,15 @@ def create_snowflake_handler(
     - SNOWFLAKE_DATABASE
     - SNOWFLAKE_ROLE
     """
+    backend = str(
+        os.environ.get("RISKPULSE_WAREHOUSE_BACKEND")
+        or get_settings().get("warehouse.backend", "snowflake")
+    ).lower()
+    if backend in {"local", "filesystem", "file"}:
+        from src.storage.local_warehouse_handler import LocalWarehouseHandler
+
+        return LocalWarehouseHandler()
+
     handler = SnowflakeHandler(
         pool_size=pool_size,
         query_cache_ttl=query_cache_ttl,

@@ -9,6 +9,7 @@ This module supports the executive Power BI dashboards with:
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import re
@@ -350,6 +351,122 @@ QUERY_MAP: dict[str, str] = {
     """,
 }
 
+LOCAL_DATASET_COLUMNS: dict[str, list[str]] = {
+    "ExecutiveSummary": [
+        "WEEK_START_DATE",
+        "WEEK_END_DATE",
+        "TOTAL_TRANSACTIONS",
+        "TOTAL_AMOUNT",
+        "FRAUD_PREVENTED_COUNT",
+        "FRAUD_PREVENTED_AMOUNT",
+        "FRAUD_RATE_CHANGE_PCT",
+        "MODEL_ACCURACY",
+        "SYSTEM_UPTIME_PCT",
+        "AVG_DETECTION_LATENCY_MS",
+        "ALERTS_TOTAL",
+        "ALERTS_RESOLVED",
+        "FALSE_POSITIVE_RATE",
+        "TOP_FRAUD_CATEGORY",
+        "TOP_FRAUD_COUNTRY",
+        "TENANT_ID",
+    ],
+    "DailyFraudSummary": [
+        "SUMMARY_DATE",
+        "TOTAL_TRANSACTIONS",
+        "TOTAL_AMOUNT",
+        "FRAUD_TRANSACTIONS",
+        "FRAUD_AMOUNT",
+        "FRAUD_RATE",
+        "AVG_RISK_SCORE",
+        "MEDIAN_RISK_SCORE",
+        "HIGH_RISK_COUNT",
+        "CRITICAL_RISK_COUNT",
+        "ALERTS_GENERATED",
+        "ALERTS_RESOLVED",
+        "FALSE_POSITIVE_COUNT",
+        "FALSE_POSITIVE_RATE",
+        "AVG_RESOLUTION_TIME_MINUTES",
+        "UNIQUE_ACCOUNTS_FLAGGED",
+        "TENANT_ID",
+    ],
+    "FraudByGeography": [
+        "SUMMARY_DATE",
+        "COUNTRY_CODE",
+        "COUNTRY_NAME",
+        "TOTAL_TRANSACTIONS",
+        "FRAUD_TRANSACTIONS",
+        "FRAUD_RATE",
+        "TOTAL_AMOUNT",
+        "FRAUD_AMOUNT",
+        "AVG_RISK_SCORE",
+        "TENANT_ID",
+    ],
+    "FraudByMerchantCategory": [
+        "SUMMARY_DATE",
+        "CATEGORY_CODE",
+        "CATEGORY_NAME",
+        "TOTAL_TRANSACTIONS",
+        "FRAUD_TRANSACTIONS",
+        "FRAUD_RATE",
+        "TOTAL_AMOUNT",
+        "FRAUD_AMOUNT",
+        "AVG_RISK_SCORE",
+        "TENANT_ID",
+    ],
+    "FraudByChannel": [
+        "SUMMARY_DATE",
+        "CHANNEL",
+        "TOTAL_TRANSACTIONS",
+        "FRAUD_TRANSACTIONS",
+        "AVG_RISK_SCORE",
+        "TENANT_ID",
+    ],
+    "OperationalMetrics": [
+        "METRIC_HOUR",
+        "TOTAL_TRANSACTIONS",
+        "TOTAL_AMOUNT",
+        "AVG_AMOUNT",
+        "FRAUD_COUNT",
+        "HIGH_RISK_COUNT",
+        "AVG_RISK_SCORE",
+        "AVG_LATENCY_MS",
+        "ERROR_COUNT",
+        "TENANT_ID",
+    ],
+    "ModelPerformance": [
+        "SUMMARY_DATE",
+        "MODEL_NAME",
+        "MODEL_VERSION",
+        "PREDICTIONS_COUNT",
+        "AVG_SCORE",
+        "PRECISION_SCORE",
+        "RECALL_SCORE",
+        "F1_SCORE",
+        "AUC_ROC",
+        "AVG_LATENCY_MS",
+        "P95_LATENCY_MS",
+        "TENANT_ID",
+    ],
+    "AlertResolution": [
+        "SUMMARY_DATE",
+        "SEVERITY",
+        "ALERTS_CREATED",
+        "ALERTS_RESOLVED",
+        "ALERTS_ESCALATED",
+        "FALSE_POSITIVES",
+        "AVG_RESOLUTION_TIME_MINUTES",
+        "MEDIAN_RESOLUTION_TIME_MINUTES",
+        "P95_RESOLUTION_TIME_MINUTES",
+        "SLA_COMPLIANCE_RATE",
+        "TENANT_ID",
+    ],
+    "TenantAccess": [
+        "USER_PRINCIPAL_NAME",
+        "TENANT_ID",
+        "ACCESS_ROLE",
+    ],
+}
+
 
 @dataclass
 class PowerBISnowflakeConnector:
@@ -445,6 +562,55 @@ class PowerBISnowflakeConnector:
         return "section RiskPulsePowerBI;\n\n" + ";\n\n".join(sections) + ";\n"
 
 
+@dataclass(frozen=True)
+class LocalPowerBIConfig:
+    """Local CSV-backed Power BI dataset configuration."""
+
+    data_dir: Path = Path("dashboards/powerbi/local_data")
+
+    @classmethod
+    def from_env(cls) -> "LocalPowerBIConfig":
+        return cls(Path(os.environ.get("POWERBI_LOCAL_DATA_DIR", "dashboards/powerbi/local_data")))
+
+
+class PowerBILocalConnector:
+    """Power BI connector artifact generator for local CSV datasets."""
+
+    def __init__(
+        self,
+        config: LocalPowerBIConfig | None = None,
+        dataset_columns: dict[str, list[str]] | None = None,
+    ) -> None:
+        self.config = config or LocalPowerBIConfig.from_env()
+        self.dataset_columns = dataset_columns or LOCAL_DATASET_COLUMNS.copy()
+
+    def ensure_dataset_files(self) -> None:
+        self.config.data_dir.mkdir(parents=True, exist_ok=True)
+        for dataset_name, columns in self.dataset_columns.items():
+            dataset_path = self.config.data_dir / f"{dataset_name}.csv"
+            if dataset_path.exists():
+                continue
+            with dataset_path.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(columns)
+
+    def generate_power_query_m(self) -> str:
+        data_dir = self.config.data_dir.as_posix()
+        sections = []
+        for dataset_name in self.dataset_columns:
+            path = f"{data_dir}/{dataset_name}.csv"
+            sections.append(
+                f'{dataset_name} = Table.PromoteHeaders(Csv.Document(File.Contents("{path}"), '
+                '[Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]), '
+                "[PromoteAllScalars=true])"
+            )
+        return "section RiskPulsePowerBI;\n\n" + ";\n\n".join(sections) + ";\n"
+
+    def write_power_query_file(self, output_path: Path) -> None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(self.generate_power_query_m(), encoding="utf-8")
+
+
 def build_refresh_schedule(
     frequency: PowerBIRefreshFrequency = PowerBIRefreshFrequency.DAILY,
 ) -> dict[str, Any]:
@@ -512,8 +678,18 @@ WHERE IS_ACTIVE = TRUE;
 def write_artifacts(output_dir: Path) -> None:
     """Write generated Power BI connection artifacts to disk."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    connector = PowerBISnowflakeConnector()
-    connector.write_power_query_file(output_dir / "models" / "snowflake_queries.pq")
+    data_backend = os.environ.get("POWERBI_DATA_BACKEND", "local").lower()
+    if data_backend in {"local", "filesystem", "file"}:
+        connector = PowerBILocalConnector(
+            LocalPowerBIConfig(
+                Path(os.environ.get("POWERBI_LOCAL_DATA_DIR", str(output_dir / "local_data")))
+            )
+        )
+        connector.ensure_dataset_files()
+        connector.write_power_query_file(output_dir / "models" / "local_queries.pq")
+    else:
+        connector = PowerBISnowflakeConnector()
+        connector.write_power_query_file(output_dir / "models" / "snowflake_queries.pq")
     (output_dir / "refresh_schedule.json").write_text(
         json.dumps(build_refresh_schedule(), indent=2),
         encoding="utf-8",

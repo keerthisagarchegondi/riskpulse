@@ -17,18 +17,14 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: production-deploy
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   IMAGE_TAG: ${{ github.event.inputs.image_tag || format('production-{0}', github.sha) }}
-  ECS_CLUSTER: ${{ vars.PRODUCTION_ECS_CLUSTER }}
-  ECS_SERVICE_PREFIX: ${{ vars.PRODUCTION_ECS_SERVICE_PREFIX || 'riskpulse-prod' }}
+  DEPLOYMENT_BACKEND: local
   DEPLOY_ENVIRONMENT: production
   RISKPULSE_DB_PASSWORD: ci-build-placeholder-not-secret
   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://riskpulse:ci-build-placeholder-not-secret@postgres:5432/riskpulse
@@ -41,8 +37,8 @@ jobs:
       contents: read
     uses: ./.github/workflows/ci.yml
 
-  build-push:
-    name: Build and Push Production Images
+  build:
+    name: Build Production Images
     if: github.event_name == 'push'
     needs: ci
     runs-on: ubuntu-latest
@@ -51,92 +47,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.PRODUCTION_AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
       - name: Build images
         run: docker compose -f docker-compose.prod.yml build api worker streamlit airflow
 
-      - name: Tag and push images
-        run: |
-          for service in api worker streamlit airflow; do
-            docker tag riskpulse/${service}:latest "${ECR_REGISTRY}/riskpulse/${service}:${IMAGE_TAG}"
-            docker push "${ECR_REGISTRY}/riskpulse/${service}:${IMAGE_TAG}"
-          done
-
   deploy:
-    name: Deploy to Production
+    name: Validate Production Deployment Plan
     needs:
       - ci
-      - build-push
-    if: always() && needs.ci.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.build-push.result == 'success')
+      - build
+    if: always() && needs.ci.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.build.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment:
       name: production
-      url: ${{ vars.PRODUCTION_BASE_URL }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ secrets.PRODUCTION_AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Capture current task definitions
+      - name: Validate local production deployment plan
+        env:
+          DRY_RUN: "true"
         run: |
-          mkdir -p deployment-state
-          for service in api worker streamlit airflow; do
-            aws ecs describe-services \
-              --cluster "${ECS_CLUSTER}" \
-              --services "${ECS_SERVICE_PREFIX}-${service}" \
-              --query 'services[0].taskDefinition' \
-              --output text > "deployment-state/${service}.taskdef"
-          done
-
-      - name: Deploy services
-        run: bash scripts/deploy.sh production "${IMAGE_TAG}"
-
-      - name: Run smoke tests
-        env:
-          PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
-          PRODUCTION_STREAMLIT_URL: ${{ vars.PRODUCTION_STREAMLIT_URL }}
-          PRODUCTION_AIRFLOW_URL: ${{ vars.PRODUCTION_AIRFLOW_URL }}
-        run: >
-          python3 scripts/smoke_test.py
-          --retries 10
-          --retry-delay 15
-          --timeout 10
-          --report-file smoke-production.json
-
-      - name: Monitor production for 5 minutes
-        env:
-          PRODUCTION_BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
-          PRODUCTION_STREAMLIT_URL: ${{ vars.PRODUCTION_STREAMLIT_URL }}
-          PRODUCTION_AIRFLOW_URL: ${{ vars.PRODUCTION_AIRFLOW_URL }}
-        run: >
-          python3 scripts/smoke_test.py
-          --monitor-seconds 300
-          --monitor-interval 15
-          --timeout 10
-          --skip-openapi
-          --report-file smoke-production-monitor.json
-
-      - name: Upload smoke reports
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: production-smoke-reports
-          path: smoke-production*.json
-          if-no-files-found: ignore
+          bash scripts/deploy.sh production "${IMAGE_TAG}"
+          docker compose --env-file .env.example -f docker-compose.prod.yml config --quiet
 
       - name: Rollback on failure
         if: failure()

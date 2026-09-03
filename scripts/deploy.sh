@@ -4,9 +4,10 @@ set -euo pipefail
 ENVIRONMENT="${1:-staging}"
 IMAGE_TAG="${2:-${IMAGE_TAG:-latest}}"
 DRY_RUN="${DRY_RUN:-false}"
+DEPLOYMENT_BACKEND="${DEPLOYMENT_BACKEND:-local}"
 
 case "${ENVIRONMENT}" in
-  staging|production) ;;
+  dev|staging|production) ;;
   *)
     echo "Unsupported environment: ${ENVIRONMENT}" >&2
     exit 2
@@ -19,6 +20,32 @@ ECS_SERVICE_PREFIX="${ECS_SERVICE_PREFIX:-riskpulse-${ENVIRONMENT}}"
 ECR_REGISTRY="${ECR_REGISTRY:-}"
 SERVICES="${SERVICES:-api worker streamlit airflow}"
 WAIT_FOR_STABILITY="${WAIT_FOR_STABILITY:-true}"
+
+if [[ "${DEPLOYMENT_BACKEND}" == "local" ]]; then
+  require_tool() {
+    local tool="$1"
+    if ! command -v "${tool}" >/dev/null 2>&1; then
+      echo "Required tool not found: ${tool}" >&2
+      exit 2
+    fi
+  }
+
+  require_tool docker
+  compose_file="docker-compose.yml"
+  if [[ "${ENVIRONMENT}" == "production" ]]; then
+    compose_file="docker-compose.prod.yml"
+  fi
+
+  if [[ "${DRY_RUN}" == "true" ]]; then
+    echo "DRY_RUN: would run docker compose -f ${compose_file} up -d --build"
+    exit 0
+  fi
+
+  docker compose -f "${compose_file}" up -d --build
+  docker compose -f "${compose_file}" ps
+  echo "Local deployment completed for ${ENVIRONMENT} using ${compose_file}"
+  exit 0
+fi
 
 if [[ -z "${ECS_CLUSTER}" ]]; then
   echo "ECS_CLUSTER is required" >&2
