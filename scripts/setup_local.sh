@@ -5,12 +5,22 @@ set -euo pipefail
 echo "=== RiskPulse Local Setup ==="
 
 # Check prerequisites
-command -v python3 >/dev/null 2>&1 || { echo "Python 3.11+ required"; exit 1; }
+PYTHON_BIN="${PYTHON_BIN:-}"
+if [ -z "${PYTHON_BIN}" ]; then
+    for candidate in python3 python py; do
+        if command -v "${candidate}" >/dev/null 2>&1; then
+            PYTHON_BIN="${candidate}"
+            break
+        fi
+    done
+fi
+
+[ -n "${PYTHON_BIN}" ] || { echo "Python 3.11+ required"; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "Docker required"; exit 1; }
 
 # Create virtual environment
 echo "Creating virtual environment..."
-python3 -m venv .venv
+"${PYTHON_BIN}" -m venv .venv
 source .venv/bin/activate
 
 # Install dependencies
@@ -27,6 +37,9 @@ if [ ! -f .env ]; then
     echo "Creating .env from .env.example..."
     cp .env.example .env
 fi
+
+echo "Preparing local-only runtime defaults..."
+python scripts/setup_local.py --skip-compose-validation
 
 # Start Docker services
 echo "Starting Docker services..."

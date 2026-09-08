@@ -10,6 +10,7 @@ ECS_CLUSTER="${ECS_CLUSTER:-${PRODUCTION_ECS_CLUSTER:-}}"
 ECS_SERVICE_PREFIX="${ECS_SERVICE_PREFIX:-${PRODUCTION_ECS_SERVICE_PREFIX:-riskpulse-prod}}"
 SERVICES="${SERVICES:-api worker streamlit airflow}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+DEPLOYMENT_BACKEND="${DEPLOYMENT_BACKEND:-local}"
 RUN_TERRAFORM="${RUN_TERRAFORM:-false}"
 RUN_DOCKER="${RUN_DOCKER:-true}"
 RUN_AWS_CHECKS="${RUN_AWS_CHECKS:-false}"
@@ -99,7 +100,7 @@ if find docs -maxdepth 2 -type f \( -name 'production_readiness_checklist.md' -o
 fi
 
 if [[ "${RUN_DOCKER}" == "true" ]]; then
-  if [[ "${ENVIRONMENT}" == "production" ]]; then
+  if [[ "${ENVIRONMENT}" == "production" && "${DEPLOYMENT_BACKEND}" != "local" ]]; then
     require_non_placeholder_secret "RISKPULSE_DB_PASSWORD" "${RISKPULSE_DB_PASSWORD:-}"
     require_non_placeholder_secret \
       "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN" \
@@ -121,7 +122,7 @@ else
   warn "RUN_DOCKER=false; skipping Docker checks"
 fi
 
-if [[ "${ENVIRONMENT}" == "production" ]]; then
+if [[ "${ENVIRONMENT}" == "production" && "${DEPLOYMENT_BACKEND}" != "local" ]]; then
   if [[ -z "${RISKPULSE_API_KEY:-}" \
     && -z "${RISKPULSE_API_KEYS:-}" \
     && -z "${RISKPULSE_API_KEYS_SECRET_ID:-}" \

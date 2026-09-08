@@ -34,6 +34,12 @@ ENV/
 .env.production
 .env.staging
 
+# Local-only runtime state
+.local_storage/
+deployment-reports/
+dashboards/powerbi/local_data/
+dashboards/powerbi/models/local_queries.pq
+
 # Docker
 docker-compose.override.yml
 

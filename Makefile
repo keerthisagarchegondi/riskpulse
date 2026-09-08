@@ -1,7 +1,7 @@
 PYTHON ?= python
 PIP := $(PYTHON) -m pip
 
-.PHONY: install install-dev lint format test test-unit test-integration test-coverage run docker-up docker-down docker-build docker-test smoke-test verify-deployment clean help
+.PHONY: install install-dev lint format test test-unit test-integration test-coverage run docker-up docker-down docker-build docker-test smoke-test verify-deployment local-setup local-up local-verify clean help
 
 # Default target
 help: ## Show this help message
@@ -27,6 +27,15 @@ install-dev: ## Install development dependencies
 install-airflow: ## Install with Airflow dependencies
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[airflow]"
+
+local-setup: ## Prepare .env, local storage, local metrics, and Power BI CSV shells
+	$(PYTHON) scripts/setup_local.py
+
+local-up: ## Prepare local setup and start Docker services
+	$(PYTHON) scripts/setup_local.py --start-services
+
+local-verify: ## Verify local-only deployment gates
+	DEPLOYMENT_BACKEND=local RUN_AWS_CHECKS=false RUN_TERRAFORM=false ./scripts/verify_deployment.sh dev
 
 # =============================================================================
 # Code Quality
