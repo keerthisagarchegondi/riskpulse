@@ -1,4 +1,4 @@
-"""Storage module - PostgreSQL, Snowflake, S3, Redis, and unified orchestrator."""
+"""Storage module with local and cloud storage backends."""
 
 from src.storage.cache_handler import (
     CacheConnectionError,

@@ -36,18 +36,22 @@ def test_ci_workflow_has_required_triggers_and_quality_gates() -> None:
     assert "actions/upload-artifact@v6" in content
 
 
-def test_staging_workflow_runs_ci_pushes_ecr_and_deploys() -> None:
+def test_staging_workflow_runs_ci_builds_and_validates_local_deploy() -> None:
     workflow = _load_workflow("cd-staging.yml")
     content = _read(".github/workflows/cd-staging.yml")
 
     assert workflow["name"] == "CD Staging"
     assert workflow[True]["push"]["branches"] == ["develop"]
     assert workflow["jobs"]["ci"]["uses"] == "./.github/workflows/ci.yml"
-    assert "aws-actions/configure-aws-credentials@v6" in content
-    assert "aws-actions/amazon-ecr-login@v2" in content
-    assert "docker push" in content
+    assert "Build Local Images" in content
+    assert "docker compose -f docker-compose.prod.yml build api worker streamlit airflow" in content
+    assert "DEPLOYMENT_BACKEND: local" in content
+    assert 'DRY_RUN: "true"' in content
     assert "bash scripts/deploy.sh staging" in content
-    assert "/health/ready" in content
+    assert "docker compose --env-file .env.example -f docker-compose.yml config --quiet" in content
+    assert "aws-actions/configure-aws-credentials" not in content
+    assert "amazon-ecr-login" not in content
+    assert "docker push" not in content
 
 
 def test_production_workflow_has_manual_gate_monitoring_and_rollback() -> None:
@@ -59,22 +63,27 @@ def test_production_workflow_has_manual_gate_monitoring_and_rollback() -> None:
     assert workflow[True]["push"]["branches"] == ["main"]
     assert workflow["jobs"]["deploy"]["environment"]["name"] == "production"
     assert "deploy-production" in content
-    assert "Monitor production for 5 minutes" in content
+    assert "DEPLOYMENT_BACKEND: local" in content
+    assert "Validate local production deployment plan" in content
     assert "bash scripts/rollback.sh production deployment-state" in content
-    assert "aws ecs describe-services" in content
+    assert (
+        "docker compose --env-file .env.example -f docker-compose.prod.yml config --quiet"
+        in content
+    )
+    assert "aws ecs" not in content
 
 
-def test_deploy_and_rollback_scripts_cover_ecs_update_and_stability() -> None:
+def test_deploy_and_rollback_scripts_default_to_local_compose() -> None:
     deploy = _read("scripts/deploy.sh")
     rollback = _read("scripts/rollback.sh")
 
-    assert "aws ecs register-task-definition" in deploy
-    assert "aws ecs update-service" in deploy
-    assert "aws ecs wait services-stable" in deploy
+    assert 'DEPLOYMENT_BACKEND="${DEPLOYMENT_BACKEND:-local}"' in deploy
+    assert 'if [[ "${DEPLOYMENT_BACKEND}" == "local" ]]' in deploy
+    assert 'docker compose -f "${compose_file}" up -d --build' in deploy
     assert "DRY_RUN" in deploy
-    assert "aws ecs update-service" in rollback
-    assert "aws ecs wait services-stable" in rollback
-    assert "deployment-state" in rollback
+    assert 'DEPLOYMENT_BACKEND="${DEPLOYMENT_BACKEND:-local}"' in rollback
+    assert 'if [[ "${DEPLOYMENT_BACKEND}" == "local" ]]' in rollback
+    assert 'docker compose -f "${compose_file}" up -d --force-recreate' in rollback
 
 
 def test_deployment_guide_uses_txt_not_markdown() -> None:

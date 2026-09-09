@@ -34,7 +34,9 @@ LOCAL_DEFAULTS = {
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--start-services", action="store_true", help="Start Docker Compose services")
+    parser.add_argument(
+        "--start-services", action="store_true", help="Start Docker Compose services"
+    )
     parser.add_argument(
         "--skip-compose-validation",
         action="store_true",
@@ -128,7 +130,9 @@ def validate_compose() -> None:
     if shutil.which("docker") is None:
         print("Docker not found; skipped compose validation.")
         return
-    run(["docker", "compose", "--env-file", ".env", "-f", "docker-compose.yml", "config", "--quiet"])
+    run(
+        ["docker", "compose", "--env-file", ".env", "-f", "docker-compose.yml", "config", "--quiet"]
+    )
     run(
         [
             "docker",

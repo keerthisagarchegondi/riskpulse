@@ -47,23 +47,25 @@ def test_development_compose_runs_all_platform_services() -> None:
         assert service["networks"]
 
 
-def test_production_compose_has_resource_limits_restart_policies_and_awslogs() -> None:
+def test_production_compose_has_resource_limits_restart_policies_and_local_logs() -> None:
     compose = yaml.safe_load(_read("docker-compose.prod.yml"))
 
     for service_name in ("api", "worker", "streamlit", "airflow"):
         service = compose["services"][service_name]
 
         assert service["restart"] == "unless-stopped"
-        assert service["logging"]["driver"] == "awslogs"
+        assert service["logging"]["driver"] == "json-file"
+        assert service["logging"]["options"]["max-size"]
         assert "healthcheck" in service
         assert "deploy" in service
         assert "limits" in service["deploy"]["resources"]
-        assert "volumes" not in service
+        assert service["volumes"]
         assert "no-new-privileges:true" in service["security_opt"]
 
     assert compose["services"]["api"]["read_only"] is True
     assert compose["services"]["worker"]["read_only"] is True
     assert compose["services"]["streamlit"]["read_only"] is True
+    assert "riskpulse-local-storage" in compose["volumes"]
 
 
 def test_makefile_has_docker_operation_targets() -> None:
