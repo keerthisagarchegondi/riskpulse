@@ -182,8 +182,8 @@ _PAGES: dict[str, str] = {
     "📡 Real-Time Monitor": "real_time_monitor",
     "🕵️ Investigation Console": "investigation_console",
     "📈 Trend Analysis": "trend_analysis",
-    "Model Performance": "model_performance",
-    "Alert Management": "alert_management",
+    "📊 Model Performance": "model_performance",
+    "🚨 Alert Management": "alert_management",
 }
 
 
@@ -232,6 +232,21 @@ def _render_page_safely(page_key: str, engine: Engine) -> None:
 
 def _render_data_source_unavailable(page_key: str, exc: Exception) -> None:
     """Render a focused empty state when dashboard data sources are offline."""
+    if _demo_fallback_enabled():
+        demo_fallback.render_demo_page(page_key)
+        with st.expander("Live data connection"):
+            st.write(
+                {
+                    "status": "PostgreSQL offline; preview data shown",
+                    "page": page_key,
+                    "error_type": type(exc).__name__,
+                    "db_host": os.environ.get("RISKPULSE_DB_HOST", "localhost"),
+                    "db_port": os.environ.get("RISKPULSE_DB_PORT", "5432"),
+                    "db_name": os.environ.get("RISKPULSE_DB_NAME", "riskpulse"),
+                }
+            )
+        return
+
     st.markdown(
         """
         <div class="dashboard-feedback warning">
@@ -253,9 +268,6 @@ def _render_data_source_unavailable(page_key: str, exc: Exception) -> None:
             }
         )
 
-    if _demo_fallback_enabled():
-        demo_fallback.render_demo_page(page_key)
-
 
 def _demo_fallback_enabled() -> bool:
     """Allow synthetic preview data only outside managed environments by default."""
@@ -269,9 +281,9 @@ def _demo_fallback_enabled() -> bool:
 
 def _render_sidebar(engine: Engine) -> str:
     """Render sidebar navigation and metadata; return selected page key."""
-    st.sidebar.image(
-        "https://img.icons8.com/fluency/96/shield.png",
-        width=48,
+    st.sidebar.markdown(
+        "<div class='sidebar-logo'>🛡️</div>",
+        unsafe_allow_html=True,
     )
     st.sidebar.title("RiskPulse")
     st.sidebar.caption(f"Logged in as **{st.session_state.get('username', '')}**")
@@ -284,11 +296,21 @@ def _render_sidebar(engine: Engine) -> str:
         st.sidebar.warning("No dashboard pages are available for this role.")
         return ""
 
-    selected = st.sidebar.radio(
-        "Navigation",
-        options=list(visible_pages.keys()),
-        label_visibility="collapsed",
-    )
+    current_page = str(st.session_state.get("dashboard_page") or "")
+    if current_page not in set(visible_pages.values()):
+        current_page = next(iter(visible_pages.values()))
+        st.session_state["dashboard_page"] = current_page
+
+    for label, candidate_page in visible_pages.items():
+        is_current = candidate_page == current_page
+        if st.sidebar.button(
+            label,
+            key=f"nav_{candidate_page}",
+            type="primary" if is_current else "secondary",
+            width="stretch",
+        ):
+            st.session_state["dashboard_page"] = candidate_page
+            st.rerun()
 
     st.sidebar.markdown("---")
 
@@ -302,7 +324,7 @@ def _render_sidebar(engine: Engine) -> str:
         st.session_state.clear()
         st.rerun()
 
-    return visible_pages[selected]
+    return current_page
 
 
 # ---------------------------------------------------------------------------

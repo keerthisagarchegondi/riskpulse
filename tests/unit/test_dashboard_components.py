@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -207,3 +208,10 @@ def test_demo_fallback_data_matches_dashboard_contracts() -> None:
     assert scores["overall_score"].between(0, 1).all()
     assert 0 < (txns["status"] == "flagged").mean() < 0.15
     assert calculate_alert_kpis(alerts)["total_alerts"] > 0
+
+
+def test_demo_fallback_uses_supported_numpy_api() -> None:
+    content = Path("dashboards/streamlit/pages/demo_fallback.py").read_text(encoding="utf-8")
+
+    assert "np.trapz" not in content
+    assert "average_precision = auc(recall, precision)" in content

@@ -26,6 +26,7 @@ from dashboards.streamlit.pages.alert_management import (
     calculate_sla_metrics,
 )
 from dashboards.streamlit.pages.model_performance import (
+    auc,
     build_auc_trend,
     build_confusion_matrix,
     build_degradation_alerts,
@@ -193,19 +194,19 @@ def _render_real_time_preview() -> None:
 
     cards = st.columns(4)
     cards[0].markdown(
-        kpi_card_html("Transactions", f"{len(txns.index):,}", "12.4%", True, "TRX"),
+        kpi_card_html("Transactions", f"{len(txns.index):,}", "12.4%", True, "📈"),
         unsafe_allow_html=True,
     )
     cards[1].markdown(
-        kpi_card_html("Fraud Rate", f"{fraud_rate:.2f}%", "2.1%", False, "RISK"),
+        kpi_card_html("Fraud Rate", f"{fraud_rate:.2f}%", "2.1%", False, "🚨"),
         unsafe_allow_html=True,
     )
     cards[2].markdown(
-        kpi_card_html("Avg Risk", f"{txns['risk_score'].mean():.3f}", "0.8%", False, "AVG"),
+        kpi_card_html("Avg Risk", f"{txns['risk_score'].mean():.3f}", "0.8%", False, "🎯"),
         unsafe_allow_html=True,
     )
     cards[3].markdown(
-        kpi_card_html("Active Alerts", "17", "4.0%", False, "ALRT"),
+        kpi_card_html("Active Alerts", "17", "4.0%", False, "🔔"),
         unsafe_allow_html=True,
     )
 
@@ -251,7 +252,7 @@ def _render_model_performance_preview() -> None:
         fpr, tpr, _ = roc_curve(group["actual_label"], group["overall_score"])
         precision, recall, _ = precision_recall_curve(group["actual_label"], group["overall_score"])
         model_auc = roc_auc_score(group["actual_label"], group["overall_score"])
-        average_precision = float(np.trapz(precision, recall))
+        average_precision = auc(recall, precision)
         roc_fig.add_trace(
             go.Scatter(x=fpr, y=tpr, mode="lines", name=f"{model_version} AUC {model_auc:.3f}")
         )
@@ -415,13 +416,21 @@ def _render_alert_management_preview() -> None:
     )
     kpis = calculate_alert_kpis(alerts)
 
-    cols = st.columns(6)
-    cols[0].metric("Total Alerts", f"{int(kpis['total_alerts']):,}")
-    cols[1].metric("Open / Active", f"{int(kpis['open_alerts']):,}")
-    cols[2].metric("Resolution Rate", f"{kpis['resolution_rate']:.1%}")
-    cols[3].metric("False Positive Rate", f"{kpis['false_positive_rate']:.1%}")
-    cols[4].metric("SLA Compliance", f"{kpis['sla_compliance']:.1%}")
-    cols[5].metric("Avg Response", f"{kpis['avg_response_hours']:.2f}h")
+    metric_rows = [
+        [
+            ("Total Alerts", f"{int(kpis['total_alerts']):,}"),
+            ("Open / Active", f"{int(kpis['open_alerts']):,}"),
+            ("Resolution Rate", f"{kpis['resolution_rate']:.1%}"),
+        ],
+        [
+            ("False Positive Rate", f"{kpis['false_positive_rate']:.1%}"),
+            ("SLA Compliance", f"{kpis['sla_compliance']:.1%}"),
+            ("Avg Response", f"{kpis['avg_response_hours']:.2f}h"),
+        ],
+    ]
+    for row in metric_rows:
+        for col, (label, value) in zip(st.columns(3), row):
+            col.metric(label, value)
 
     c1, c2 = st.columns([2, 1])
     c1.plotly_chart(

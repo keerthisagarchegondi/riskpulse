@@ -281,13 +281,21 @@ def calculate_rule_effectiveness(rule_df: pd.DataFrame) -> pd.DataFrame:
 
 def _render_kpis(alerts: pd.DataFrame) -> None:
     kpis = calculate_alert_kpis(alerts)
-    cols = st.columns(6)
-    cols[0].metric("Total Alerts", f"{int(kpis['total_alerts']):,}")
-    cols[1].metric("Open / Active", f"{int(kpis['open_alerts']):,}")
-    cols[2].metric("Resolution Rate", f"{kpis['resolution_rate']:.1%}")
-    cols[3].metric("False Positive Rate", f"{kpis['false_positive_rate']:.1%}")
-    cols[4].metric("SLA Compliance", f"{kpis['sla_compliance']:.1%}")
-    cols[5].metric("Avg Response", f"{kpis['avg_response_hours']:.2f}h")
+    metric_rows = [
+        [
+            ("Total Alerts", f"{int(kpis['total_alerts']):,}"),
+            ("Open / Active", f"{int(kpis['open_alerts']):,}"),
+            ("Resolution Rate", f"{kpis['resolution_rate']:.1%}"),
+        ],
+        [
+            ("False Positive Rate", f"{kpis['false_positive_rate']:.1%}"),
+            ("SLA Compliance", f"{kpis['sla_compliance']:.1%}"),
+            ("Avg Response", f"{kpis['avg_response_hours']:.2f}h"),
+        ],
+    ]
+    for row in metric_rows:
+        for col, (label, value) in zip(st.columns(3), row):
+            col.metric(label, value)
 
 
 def _render_alert_volume(volume_df: pd.DataFrame) -> None:
