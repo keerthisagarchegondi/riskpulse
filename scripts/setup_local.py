@@ -15,6 +15,8 @@ ENV_FILE = ROOT / ".env"
 
 LOCAL_DEFAULTS = {
     "RISKPULSE_STORAGE_BACKEND": "local",
+    "RISKPULSE_KAFKA_ENABLED": "false",
+    "RISKPULSE_REDIS_ENABLED": "false",
     "RISKPULSE_LOCAL_STORAGE_ROOT": ".local_storage",
     "RISKPULSE_WAREHOUSE_BACKEND": "local",
     "RISKPULSE_LOCAL_WAREHOUSE_ROOT": ".local_storage/warehouse",

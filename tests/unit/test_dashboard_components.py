@@ -24,6 +24,7 @@ from dashboards.streamlit.pages.demo_fallback import (
     demo_alerts,
     demo_model_scores,
     demo_transactions,
+    local_transactions,
 )
 from dashboards.streamlit.pages.model_performance import (
     build_auc_trend,
@@ -32,6 +33,7 @@ from dashboards.streamlit.pages.model_performance import (
     build_precision_recall_summary,
     calculate_population_stability_index,
 )
+from src.utils.local_dashboard_store import record_local_score, record_local_transaction
 
 
 def _model_scores() -> pd.DataFrame:
@@ -188,7 +190,9 @@ def test_rule_effectiveness_flags_noisy_rules() -> None:
     assert result.loc[result["rule_id"] == "R2", "action_hint"].item() == "high_value"
 
 
-def test_demo_fallback_data_matches_dashboard_contracts() -> None:
+def test_demo_fallback_data_matches_dashboard_contracts(monkeypatch) -> None:
+    monkeypatch.setenv("RISKPULSE_STORAGE_BACKEND", "postgres")
+
     txns = demo_transactions()
     scores = demo_model_scores()
     alerts = demo_alerts()
@@ -208,6 +212,52 @@ def test_demo_fallback_data_matches_dashboard_contracts() -> None:
     assert scores["overall_score"].between(0, 1).all()
     assert 0 < (txns["status"] == "flagged").mean() < 0.15
     assert calculate_alert_kpis(alerts)["total_alerts"] > 0
+
+
+def test_local_dashboard_data_overrides_demo_transactions(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("RISKPULSE_STORAGE_BACKEND", "local")
+    monkeypatch.setenv("RISKPULSE_LOCAL_DASHBOARD_ROOT", str(tmp_path))
+
+    record_local_transaction(
+        "txn-local-1",
+        {
+            "external_transaction_id": "ext-local-1",
+            "account_id": "acct-local",
+            "customer_id": "cust-local",
+            "transaction_amount": 87.45,
+            "transaction_type": "purchase",
+            "channel": "pos",
+            "geo_country": "USA",
+            "transaction_timestamp": "2026-09-11T10:05:00Z",
+        },
+    )
+    record_local_score(
+        {
+            "transaction_id": "txn-local-2",
+            "customer_id": "cust-risk",
+            "transaction_amount": 9500.0,
+            "transaction_type": "purchase",
+            "channel": "online",
+            "geo_country": "NG",
+            "transaction_timestamp": "2026-09-11T10:10:00Z",
+        },
+        {
+            "transaction_id": "txn-local-2",
+            "final_score": 0.96,
+            "risk_classification": "critical",
+            "alert_recommended": True,
+            "total_latency_ms": 1.2,
+            "scoring_version": "local-rules",
+        },
+    )
+
+    txns = local_transactions()
+
+    assert set(txns["transaction_id"]) == {"txn-local-1", "txn-local-2"}
+    risky = txns.loc[txns["transaction_id"] == "txn-local-2"].iloc[0]
+    assert risky["risk_score"] == 0.96
+    assert risky["status"] == "flagged"
+    assert len(demo_transactions().index) == 2
 
 
 def test_demo_fallback_uses_supported_numpy_api() -> None:

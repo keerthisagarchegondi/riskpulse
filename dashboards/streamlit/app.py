@@ -208,6 +208,14 @@ def _render_page_safely(page_key: str, engine: Engine) -> None:
         st.error(f"Unknown page: {page_key}")
         return
 
+    if _local_storage_mode() and _demo_fallback_enabled():
+        demo_fallback.render_demo_page(page_key)
+        if demo_fallback.local_transactions().empty:
+            st.info("Local preview mode is active, so dashboard demo data is shown.")
+        else:
+            st.info("Local preview mode is active, so local API data is shown.")
+        return
+
     try:
         with st.spinner("Loading dashboard data..."):
             renderer(engine)
@@ -234,6 +242,11 @@ def _render_data_source_unavailable(page_key: str, exc: Exception) -> None:
     """Render a focused empty state when dashboard data sources are offline."""
     if _demo_fallback_enabled():
         demo_fallback.render_demo_page(page_key)
+        local_mode = _local_storage_mode()
+        if local_mode:
+            st.info("Local preview mode is active, so dashboard demo data is shown.")
+            return
+
         with st.expander("Live data connection"):
             st.write(
                 {
@@ -279,6 +292,10 @@ def _demo_fallback_enabled() -> bool:
     return environment not in {"prod", "production", "staging"}
 
 
+def _local_storage_mode() -> bool:
+    return os.environ.get("RISKPULSE_STORAGE_BACKEND", "").strip().lower() == "local"
+
+
 def _render_sidebar(engine: Engine) -> str:
     """Render sidebar navigation and metadata; return selected page key."""
     st.sidebar.markdown(
@@ -315,9 +332,12 @@ def _render_sidebar(engine: Engine) -> str:
     st.sidebar.markdown("---")
 
     # Database health indicator
-    healthy = _db_healthy(engine)
-    status_icon = "🟢" if healthy else "🔴"
-    st.sidebar.markdown(f"**DB Status:** {status_icon}")
+    if _local_storage_mode():
+        st.sidebar.markdown("**Data:** Local preview 🟡")
+    else:
+        healthy = _db_healthy(engine)
+        status_icon = "🟢" if healthy else "🔴"
+        st.sidebar.markdown(f"**DB Status:** {status_icon}")
 
     # Logout
     if st.sidebar.button("🚪 Logout", width="stretch"):

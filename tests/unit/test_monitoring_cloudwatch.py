@@ -163,6 +163,31 @@ def test_health_checker_marks_critical_failure_degraded() -> None:
     assert health.dependencies[1].detail == "timeout"
 
 
+async def test_health_checker_treats_disabled_local_dependencies_as_healthy(monkeypatch) -> None:
+    monkeypatch.setenv("RISKPULSE_KAFKA_ENABLED", "false")
+    monkeypatch.setenv("RISKPULSE_REDIS_ENABLED", "false")
+    monkeypatch.setenv("RISKPULSE_STORAGE_BACKEND", "local")
+    monkeypatch.setenv("RISKPULSE_WAREHOUSE_BACKEND", "local")
+
+    checker = HealthChecker(environment="dev", start_time=1000.0)
+
+    readiness = await checker.readiness()
+    health = await checker.check_all()
+
+    assert readiness == {"status": "ready"}
+    assert health.status == "healthy"
+    assert {
+        item.name: item.detail
+        for item in health.dependencies
+        if item.name in {"kafka", "postgresql", "redis", "snowflake"}
+    } == {
+        "kafka": "disabled",
+        "postgresql": "local storage backend",
+        "redis": "disabled",
+        "snowflake": "local warehouse backend",
+    }
+
+
 def test_cloudwatch_dashboard_and_alarm_artifacts_are_valid() -> None:
     dashboard_path = Path("infrastructure/aws/cloudwatch/dashboards/platform_dashboard.json")
     high_fraud_path = Path("infrastructure/aws/cloudwatch/alarms/high_fraud_rate.json")

@@ -6,6 +6,7 @@ exception handlers, and lifecycle management.
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -44,18 +45,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize Redis connection for rate limiting (optional)
     redis_client = None
-    try:
-        import redis.asyncio as aioredis
-
-        redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
-        await redis_client.ping()
-        app.state.redis_client = redis_client
-        logger.info("redis_connected", url=settings.redis_url)
-    except Exception as exc:
-        logger.warning(
-            "redis_unavailable", error=str(exc), msg="Rate limiting will use in-memory fallback"
-        )
+    redis_disabled = os.environ.get("RISKPULSE_REDIS_ENABLED", "true").strip().lower() in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+    if redis_disabled:
         app.state.redis_client = None
+        logger.info("redis_disabled", msg="Rate limiting will use in-memory fallback")
+    else:
+        try:
+            import redis.asyncio as aioredis
+
+            redis_client = aioredis.from_url(settings.redis_url, decode_responses=True)
+            await redis_client.ping()
+            app.state.redis_client = redis_client
+            logger.info("redis_connected", url=settings.redis_url)
+        except Exception as exc:
+            logger.warning(
+                "redis_unavailable",
+                error=str(exc),
+                msg="Rate limiting will use in-memory fallback",
+            )
+            app.state.redis_client = None
 
     logger.info("api_started", service=APP_NAME)
 

@@ -17,14 +17,16 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from src.fraud_detection.anomaly_detector import AnomalyDetector, AnomalyResult
-from src.fraud_detection.risk_scorer import RiskScore, RiskScorer
-from src.fraud_detection.rule_engine import FraudRuleEngine, RuleEvaluationResult
 from src.utils.logger import get_logger
+
+if TYPE_CHECKING:
+    from src.fraud_detection.anomaly_detector import AnomalyDetector
+    from src.fraud_detection.risk_scorer import RiskScorer
+    from src.fraud_detection.rule_engine import FraudRuleEngine
 
 logger = get_logger(__name__, component="scoring_pipeline")
 
@@ -312,7 +314,7 @@ class ScoringPipeline:
                     error="Rule engine not initialized",
                 )
 
-            result: RuleEvaluationResult = self._rule_engine.evaluate(transaction, context)
+            result = self._rule_engine.evaluate(transaction, context)
 
             # Normalize rule score to [0, 1]
             # Use the rule_score already computed by the engine
@@ -365,7 +367,7 @@ class ScoringPipeline:
                     error="Anomaly detector not initialized",
                 )
 
-            result: AnomalyResult = self._anomaly_detector.predict(transaction)
+            result = self._anomaly_detector.predict(transaction)
 
             # Normalize Isolation Forest score to [0, 1]
             # IF score: negative = anomalous, positive = normal
@@ -423,7 +425,7 @@ class ScoringPipeline:
                     error="ML risk scorer not initialized",
                 )
 
-            result: RiskScore = self._risk_scorer.predict(transaction)
+            result = self._risk_scorer.predict(transaction)
 
             # ML model output is already a calibrated probability [0, 1]
             normalized = max(0.0, min(1.0, result.risk_score))

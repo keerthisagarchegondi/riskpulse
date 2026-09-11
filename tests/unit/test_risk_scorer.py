@@ -540,7 +540,11 @@ class TestTrainingPipeline:
 
     def test_train_model_lightgbm(self):
         """LightGBM model trains and produces valid metrics."""
-        pytest.importorskip("lightgbm")
+        try:
+            __import__("lightgbm")
+        except (ImportError, OSError) as exc:
+            pytest.skip(f"lightgbm is unavailable: {exc}")
+
         from ml.training.train_risk_scorer import (
             generate_synthetic_data,
             get_feature_columns,

@@ -6,6 +6,7 @@ Validated transactions are published to Kafka for downstream processing.
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -26,6 +27,7 @@ from src.api.schemas.transaction_schema import (
     TransactionSubmitResponse,
 )
 from src.utils.constants import API_PREFIX, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, TOPIC_RAW_EVENTS
+from src.utils.local_dashboard_store import record_local_transaction
 from src.utils.security import SecurityValidationError, sanitize_string
 from src.utils.sql_security import SqlFilter, build_where_clause
 
@@ -94,6 +96,8 @@ async def submit_transaction(
             detail="Failed to publish transaction to processing pipeline. Please retry.",
         )
 
+    record_local_transaction(transaction_id, transaction)
+
     return TransactionSubmitResponse(
         transaction_id=transaction_id,
         external_transaction_id=transaction.external_transaction_id,
@@ -160,6 +164,9 @@ async def submit_batch(
             )
         except Exception as exc:
             logger.error("batch_publish_partial_failure", error=str(exc))
+
+    for response, transaction in zip(accepted, batch.transactions):
+        record_local_transaction(response.transaction_id, transaction)
 
     return BatchSubmitResponse(
         accepted=len(accepted),
@@ -306,6 +313,15 @@ def _get_kafka_producer() -> Any | None:
 
     Returns None if the producer is not available (graceful degradation).
     """
+    if os.environ.get("RISKPULSE_KAFKA_ENABLED", "true").strip().lower() in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }:
+        logger.info("kafka_producer_disabled")
+        return None
+
     try:
         from src.ingestion.kafka_producer import TransactionProducer
 

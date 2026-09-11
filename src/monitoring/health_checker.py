@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import os
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -14,6 +15,25 @@ from src.utils.config import get_settings
 from src.utils.constants import APP_NAME, APP_VERSION
 
 CheckCallable = Callable[[], bool | Awaitable[bool]]
+
+
+def _env_flag_disabled(name: str) -> bool:
+    env_name = f"RISKPULSE_{name.replace('.', '__').upper()}"
+    if env_name in os.environ:
+        return os.environ[env_name].strip().lower() in {"0", "false", "no", "off"}
+
+    flat_env_name = f"RISKPULSE_{name.replace('.', '_').upper()}"
+    if flat_env_name in os.environ:
+        return os.environ[flat_env_name].strip().lower() in {"0", "false", "no", "off"}
+
+    return str(get_settings().get(name, "true")).strip().lower() in {"0", "false", "no", "off"}
+
+
+def _backend_is_local(env_name: str, setting_name: str) -> bool:
+    return (
+        os.environ.get(env_name, str(get_settings().get(setting_name, ""))).strip().lower()
+        == "local"
+    )
 
 
 @dataclass(frozen=True)
@@ -126,6 +146,14 @@ class HealthChecker:
 
     async def check_kafka(self) -> DependencyCheckResult:
         settings = get_settings()
+        if _env_flag_disabled("kafka.enabled"):
+            return DependencyCheckResult(
+                name="kafka",
+                status="healthy",
+                latency_ms=0.0,
+                critical=False,
+                detail="disabled",
+            )
 
         def _probe() -> bool:
             from confluent_kafka.admin import AdminClient
@@ -137,10 +165,19 @@ class HealthChecker:
         return await self._run_check("kafka", _probe, critical=True)
 
     async def check_postgres(self) -> DependencyCheckResult:
+        settings = get_settings()
+        if _backend_is_local("RISKPULSE_STORAGE_BACKEND", "storage.backend"):
+            return DependencyCheckResult(
+                name="postgresql",
+                status="healthy",
+                latency_ms=0.0,
+                critical=False,
+                detail="local storage backend",
+            )
+
         async def _probe() -> bool:
             import asyncpg
 
-            settings = get_settings()
             host = settings.get("database.host", "localhost")
             port = settings.get("database.port", 5432)
             dbname = settings.get("database.name", "riskpulse")
@@ -163,6 +200,15 @@ class HealthChecker:
         return await self._run_check("postgresql", _probe, critical=True)
 
     async def check_redis(self) -> DependencyCheckResult:
+        if _env_flag_disabled("redis.enabled"):
+            return DependencyCheckResult(
+                name="redis",
+                status="healthy",
+                latency_ms=0.0,
+                critical=False,
+                detail="disabled",
+            )
+
         async def _probe() -> bool:
             import redis.asyncio as aioredis
 
@@ -180,6 +226,15 @@ class HealthChecker:
         return await self._run_check("redis", _probe, critical=False)
 
     async def check_snowflake(self) -> DependencyCheckResult:
+        if _backend_is_local("RISKPULSE_WAREHOUSE_BACKEND", "warehouse.backend"):
+            return DependencyCheckResult(
+                name="snowflake",
+                status="healthy",
+                latency_ms=0.0,
+                critical=False,
+                detail="local warehouse backend",
+            )
+
         def _probe() -> bool:
             from src.storage.snowflake_handler import create_snowflake_handler
 

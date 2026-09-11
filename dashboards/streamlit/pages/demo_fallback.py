@@ -36,10 +36,66 @@ from dashboards.streamlit.pages.model_performance import (
     roc_auc_score,
     roc_curve,
 )
+from src.utils.local_dashboard_store import local_dashboard_enabled, read_local_records
+
+
+def _column(df: pd.DataFrame, name: str, default: Any) -> pd.Series:
+    if name in df:
+        return df[name]
+    return pd.Series(default, index=df.index)
+
+
+def local_transactions() -> pd.DataFrame:
+    """Load locally posted/scored transactions for dashboard preview mode."""
+    txns = pd.DataFrame(read_local_records("transactions"))
+    if txns.empty:
+        return txns
+
+    scores = pd.DataFrame(read_local_records("risk_scores"))
+    if not scores.empty:
+        scores = scores.sort_values("scoring_timestamp").drop_duplicates(
+            "transaction_id", keep="last"
+        )
+        score_columns = [
+            column
+            for column in ("transaction_id", "overall_score", "risk_score", "risk_classification")
+            if column in scores
+        ]
+        txns = txns.merge(
+            scores[score_columns],
+            on="transaction_id",
+            how="left",
+            suffixes=("", "_score"),
+        )
+
+    if "transaction_timestamp" not in txns or txns["transaction_timestamp"].isna().all():
+        txns["transaction_timestamp"] = txns.get("created_at")
+    txns["transaction_timestamp"] = pd.to_datetime(
+        txns["transaction_timestamp"], utc=True, errors="coerce"
+    )
+    txns = txns.dropna(subset=["transaction_timestamp"])
+    txns["transaction_amount"] = pd.to_numeric(
+        _column(txns, "transaction_amount", 0.0), errors="coerce"
+    ).fillna(0.0)
+    txns["risk_score"] = pd.to_numeric(_column(txns, "risk_score", 0.0), errors="coerce").fillna(
+        0.0
+    )
+    txns["overall_score"] = pd.to_numeric(
+        _column(txns, "overall_score", txns["risk_score"]), errors="coerce"
+    ).fillna(txns["risk_score"])
+    txns["status"] = _column(txns, "status", "accepted").fillna("accepted")
+    txns["channel"] = _column(txns, "channel", "unknown").fillna("unknown")
+    txns["geo_country"] = _column(txns, "geo_country", "unknown").fillna("unknown")
+    txns["risk_classification"] = _column(txns, "risk_classification", "low").fillna("low")
+    return txns.sort_values("transaction_timestamp", ascending=False)
 
 
 def demo_transactions(now: datetime | None = None) -> pd.DataFrame:
     """Build deterministic transaction preview data for local UI review."""
+    local = local_transactions() if local_dashboard_enabled() else pd.DataFrame()
+    if local_dashboard_enabled() and not local.empty:
+        return local
+
     base = now or datetime.now(timezone.utc).replace(second=0, microsecond=0)
     channels = ["online", "pos", "atm", "online", "pos", "online"]
     countries = ["USA", "CAN", "GBR", "MEX", "USA", "BRA"]
@@ -147,6 +203,19 @@ def demo_alerts(now: datetime | None = None) -> pd.DataFrame:
 
 def render_preview_banner(page_key: str) -> None:
     """Show a clear banner that preview data is synthetic."""
+    if local_dashboard_enabled() and not local_transactions().empty:
+        st.markdown(
+            f"""
+            <div class="dashboard-feedback preview">
+                <strong>Local data mode.</strong><br>
+                This {page_key.replace("_", " ")} view is using transactions and scores
+                posted to the local API.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
     st.markdown(
         f"""
         <div class="dashboard-feedback preview">
@@ -178,19 +247,29 @@ def render_demo_page(page_key: str) -> None:
 
 def _render_real_time_preview() -> None:
     txns = demo_transactions()
+    local_mode = local_dashboard_enabled() and not local_transactions().empty
     volume = (
         txns.assign(time_bucket=txns["transaction_timestamp"].dt.floor("15min"))
         .groupby("time_bucket", as_index=False)
         .size()
         .rename(columns={"size": "txn_count"})
     )
-    severity = pd.DataFrame(
-        {
-            "severity": ["critical", "high", "medium", "low"],
-            "count": [6, 11, 18, 25],
-        }
-    )
+    if local_mode:
+        severity = (
+            txns.loc[txns["status"] == "flagged"]
+            .groupby("risk_classification", as_index=False)
+            .size()
+            .rename(columns={"risk_classification": "severity", "size": "count"})
+        )
+    else:
+        severity = pd.DataFrame(
+            {
+                "severity": ["critical", "high", "medium", "low"],
+                "count": [6, 11, 18, 25],
+            }
+        )
     fraud_rate = float((txns["status"] == "flagged").mean() * 100)
+    active_alerts = int((txns["status"] == "flagged").sum()) if local_mode else 17
 
     cards = st.columns(4)
     cards[0].markdown(
@@ -206,7 +285,9 @@ def _render_real_time_preview() -> None:
         unsafe_allow_html=True,
     )
     cards[3].markdown(
-        kpi_card_html("Active Alerts", "17", "4.0%", False, "🔔"),
+        kpi_card_html(
+            "Active Alerts", f"{active_alerts:,}", "local" if local_mode else "4.0%", False, "🔔"
+        ),
         unsafe_allow_html=True,
     )
 
@@ -216,7 +297,10 @@ def _render_real_time_preview() -> None:
 
     c3, c4 = st.columns(2)
     c3.plotly_chart(risk_score_histogram(txns), width="stretch")
-    c4.plotly_chart(alert_severity_pie(severity), width="stretch")
+    if not severity.empty:
+        c4.plotly_chart(alert_severity_pie(severity), width="stretch")
+    else:
+        c4.info("No local alert data yet.")
     st.markdown("### Live Transaction Feed")
     st.markdown(live_feed_table_html(txns.head(12)), unsafe_allow_html=True)
 

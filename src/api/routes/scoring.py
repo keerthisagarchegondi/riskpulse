@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.api.middleware.auth import verify_api_key
 from src.utils.constants import API_PREFIX
+from src.utils.local_dashboard_store import record_local_score
 
 if TYPE_CHECKING:
     from src.fraud_detection.scoring_pipeline import ScoringPipeline
@@ -145,9 +146,10 @@ def get_scoring_pipeline() -> "ScoringPipeline":
     """Get or create the singleton scoring pipeline instance."""
     global _pipeline_instance
     if _pipeline_instance is None:
+        from src.fraud_detection.rule_engine import FraudRuleEngine
         from src.fraud_detection.scoring_pipeline import ScoringPipeline
 
-        _pipeline_instance = ScoringPipeline()
+        _pipeline_instance = ScoringPipeline(rule_engine=FraudRuleEngine())
     return _pipeline_instance
 
 
@@ -258,7 +260,9 @@ async def score_transaction(
             detail=f"Scoring failed: {type(exc).__name__}",
         )
 
-    return _unified_score_to_response(score)
+    response = _unified_score_to_response(score)
+    record_local_score(txn_dict, response)
+    return response
 
 
 @router.post(

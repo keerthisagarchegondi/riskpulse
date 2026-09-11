@@ -242,6 +242,18 @@ class TestTransactionSubmission:
         # Graceful degradation: accepted but won't be processed immediately
         assert response.status_code == status.HTTP_202_ACCEPTED
 
+    def test_kafka_disabled_graceful(self, monkeypatch, client, auth_headers, valid_transaction):
+        """Local-only API runs should accept transactions without Kafka startup delay."""
+        monkeypatch.setenv("RISKPULSE_KAFKA_ENABLED", "false")
+
+        response = client.post(
+            "/api/v1/transactions",
+            json=valid_transaction,
+            headers=auth_headers,
+        )
+
+        assert response.status_code == status.HTTP_202_ACCEPTED
+
 
 # --- Batch Submission Tests ---
 
@@ -765,6 +777,45 @@ class TestHealthEndpoints:
 
         data = response.json()
         assert data["status"] == "degraded"
+
+
+class TestScoringEndpoints:
+    """Test API scoring behavior."""
+
+    def test_score_transaction_uses_default_rule_engine(self, client, auth_headers):
+        """Default local API scoring should evaluate fraud rules without ML services."""
+        response = client.post(
+            "/api/v1/score",
+            json={
+                "transaction_id": "TXN-RULE-001",
+                "customer_id": "CUST-001",
+                "transaction_amount": 9500.0,
+                "transaction_currency": "USD",
+                "transaction_type": "purchase",
+                "channel": "online",
+                "merchant_category_code": "5999",
+                "geo_country": "NG",
+                "is_international": True,
+                "transaction_timestamp": "2026-09-11T02:13:00Z",
+                "context": {
+                    "customer_avg_amount": 100.0,
+                    "customer_history_count": 20,
+                    "is_domestic_only": True,
+                    "is_new_device": True,
+                    "device_age_days": 0,
+                    "accounts_on_device": 4,
+                    "days_since_last_transaction": 120,
+                },
+                "use_cache": False,
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["risk_classification"] == "critical"
+        assert data["final_score"] >= 0.85
+        assert data["alert_recommended"] is True
 
 
 # --- Correlation ID Tests ---
