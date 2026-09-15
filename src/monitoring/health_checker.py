@@ -242,7 +242,7 @@ class HealthChecker:
             try:
                 handler.connect()
                 result = handler.execute_query("SELECT 1 AS HEALTH_CHECK")
-                return result.row_count >= 1
+                return bool(result.row_count >= 1)
             finally:
                 handler.close()
 

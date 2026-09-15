@@ -9,7 +9,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 def local_dashboard_enabled() -> bool:
@@ -39,7 +39,7 @@ def _json_default(value: Any) -> str | float:
 
 def _dump_model(value: Any) -> dict[str, Any]:
     if hasattr(value, "model_dump"):
-        return value.model_dump(mode="json")
+        return cast(dict[str, Any], value.model_dump(mode="json"))
     return dict(value)
 
 

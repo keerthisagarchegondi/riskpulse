@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.12"
   COVERAGE_MINIMUM: "90"
   RISKPULSE_DB_PASSWORD: ci-build-placeholder-not-secret
   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://riskpulse:ci-build-placeholder-not-secret@postgres:5432/riskpulse

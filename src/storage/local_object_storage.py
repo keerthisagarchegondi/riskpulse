@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any, Generator, cast
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -191,7 +191,7 @@ class LocalObjectStorageClient:
         metadata_path = self._metadata_path(object_path)
         if not metadata_path.exists():
             return {}
-        return json.loads(metadata_path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(metadata_path.read_text(encoding="utf-8")))
 
     @staticmethod
     def _coerce_body(body: bytes | str | io.BufferedIOBase) -> bytes:
