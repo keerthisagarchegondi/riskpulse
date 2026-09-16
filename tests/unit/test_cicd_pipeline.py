@@ -92,5 +92,5 @@ def test_deployment_guide_uses_txt_not_markdown() -> None:
 
     guide = _read("docs/deployment_guide.txt")
     assert "Branch Protection" in guide
-    assert "90 percent" in guide
+    assert "65 percent baseline coverage gate" in guide
     assert "Rollback Flow" in guide

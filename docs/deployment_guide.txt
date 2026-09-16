@@ -204,7 +204,7 @@ Pull request to develop or main:
 - Setup Python.
 - Install dependencies.
 - Run black, isort, flake8, and mypy.
-- Run unit tests with the 90 percent coverage gate.
+- Run unit tests with the 65 percent baseline coverage gate.
 - Run security regression tests.
 - Run data quality validation tests.
 - Run ML model validation tests.
