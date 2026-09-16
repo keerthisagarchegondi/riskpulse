@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,28 @@ from src.validation.schema_validator import (
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
 VALIDATION_RULES_PATH = CONFIG_DIR / "validation_rules.yaml"
+
+
+def _recent_timestamp() -> str:
+    return (
+        (datetime.now(timezone.utc) - timedelta(days=1))
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def _recent_timestamp_with_offset() -> str:
+    offset = timezone(timedelta(hours=5, minutes=30))
+    return (datetime.now(offset) - timedelta(days=1)).replace(microsecond=0).isoformat()
+
+
+def _recent_timestamp_without_timezone() -> str:
+    return (
+        (datetime.now(timezone.utc) - timedelta(days=1))
+        .replace(microsecond=0, tzinfo=None)
+        .isoformat()
+    )
 
 
 @pytest.fixture
@@ -68,7 +91,7 @@ def valid_transaction():
         "geo_country": "USA",
         "geo_city": "New York",
         "is_international": False,
-        "transaction_timestamp": "2026-06-15T10:30:00Z",
+        "transaction_timestamp": _recent_timestamp(),
     }
 
 
@@ -430,19 +453,19 @@ class TestTimestampValidation:
         assert any(e.rule == "iso8601_format" for e in result.errors)
 
     def test_valid_timestamp_with_z(self, validator, valid_transaction):
-        valid_transaction["transaction_timestamp"] = "2026-06-15T10:30:00Z"
+        valid_transaction["transaction_timestamp"] = _recent_timestamp()
         result = validator.validate(valid_transaction)
         ts_errors = [e for e in result.errors if e.field == "transaction_timestamp"]
         assert len(ts_errors) == 0
 
     def test_valid_timestamp_with_offset(self, validator, valid_transaction):
-        valid_transaction["transaction_timestamp"] = "2026-06-15T10:30:00+05:30"
+        valid_transaction["transaction_timestamp"] = _recent_timestamp_with_offset()
         result = validator.validate(valid_transaction)
         ts_errors = [e for e in result.errors if e.field == "transaction_timestamp"]
         assert len(ts_errors) == 0
 
     def test_valid_timestamp_no_timezone(self, validator, valid_transaction):
-        valid_transaction["transaction_timestamp"] = "2026-06-15T10:30:00"
+        valid_transaction["transaction_timestamp"] = _recent_timestamp_without_timezone()
         result = validator.validate(valid_transaction)
         ts_errors = [
             e
@@ -817,7 +840,7 @@ class TestValidTransactionVariations:
             "transaction_amount": 10.00,
             "transaction_type": "purchase",
             "channel": "mobile",
-            "transaction_timestamp": "2026-06-15T10:00:00Z",
+            "transaction_timestamp": _recent_timestamp(),
         }
         result = validator.validate(record)
         assert result.is_valid is True
