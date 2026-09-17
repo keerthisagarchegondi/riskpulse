@@ -14,6 +14,8 @@ ENV_EXAMPLE = ROOT / ".env.example"
 ENV_FILE = ROOT / ".env"
 
 LOCAL_DEFAULTS = {
+    "RISKPULSE_DB_PORT": "15432",
+    "POSTGRES_PORT": "15432",
     "RISKPULSE_STORAGE_BACKEND": "local",
     "RISKPULSE_KAFKA_ENABLED": "false",
     "RISKPULSE_REDIS_ENABLED": "false",
@@ -32,6 +34,9 @@ LOCAL_DEFAULTS = {
     "RUN_AWS_CHECKS": "false",
     "RUN_TERRAFORM": "false",
     "DEPLOYMENT_BACKEND": "local",
+    "AIRFLOW__CORE__SQL_ALCHEMY_CONN": (
+        "postgresql+psycopg2://airflow:airflow@localhost:15432/airflow"
+    ),
 }
 
 

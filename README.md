@@ -156,6 +156,7 @@ Default local endpoints:
 - API docs: `http://127.0.0.1:8000/docs`
 - Streamlit: `http://127.0.0.1:8501`
 - Airflow, when enabled: `http://127.0.0.1:8080`
+- PostgreSQL from your host: `localhost:15432`
 
 ## Database Setup
 
@@ -171,7 +172,7 @@ Seed development data when needed:
 make db-seed
 ```
 
-Some shell scripts use `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD`, so keep those aligned with the `RISKPULSE_DB_*` values.
+Docker services talk to PostgreSQL on the internal address `postgres:5432`. Host-side scripts use `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD`; the default host port is `15432` to avoid conflicts with a local PostgreSQL already using `5432`.
 
 ## Quality Checks
 
