@@ -1,5 +1,7 @@
 """Pytest configuration and shared fixtures."""
 
+import os
+
 import pytest
 
 
@@ -63,7 +65,7 @@ def sample_fraud_transaction():
 def kafka_config():
     """Return Kafka configuration for testing."""
     return {
-        "bootstrap_servers": "localhost:9092",
+        "bootstrap_servers": os.getenv("RISKPULSE_KAFKA_BOOTSTRAP_SERVERS", "localhost:19092"),
         "consumer_group": "riskpulse-test",
         "auto_offset_reset": "earliest",
     }

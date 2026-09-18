@@ -157,6 +157,8 @@ Default local endpoints:
 - Streamlit: `http://127.0.0.1:8501`
 - Airflow, when enabled: `http://127.0.0.1:8080`
 - PostgreSQL from your host: `localhost:15432`
+- Redis from your host: `localhost:16379`
+- Kafka from your host: `localhost:19092`
 
 ## Database Setup
 
@@ -172,7 +174,7 @@ Seed development data when needed:
 make db-seed
 ```
 
-Docker services talk to PostgreSQL on the internal address `postgres:5432`. Host-side scripts use `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD`; the default host port is `15432` to avoid conflicts with a local PostgreSQL already using `5432`.
+Docker services talk to dependencies on internal ports such as `postgres:5432`, `redis:6379`, and `kafka:29092`. Host-side defaults use `POSTGRES_PORT=15432`, `REDIS_PORT=16379`, and `KAFKA_PORT=19092` to avoid common local port conflicts.
 
 ## Quality Checks
 

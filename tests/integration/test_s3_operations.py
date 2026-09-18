@@ -14,10 +14,13 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import socket
 import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Generator
+from urllib.parse import urlparse
 
 import boto3
 import pyarrow.parquet as pq
@@ -37,7 +40,7 @@ from src.storage.s3_handler import (
 # Configuration
 # ---------------------------------------------------------------------------
 
-LOCALSTACK_ENDPOINT = "http://localhost:4566"
+LOCALSTACK_ENDPOINT = os.getenv("LOCALSTACK_ENDPOINT_URL", "http://localhost:4566")
 TEST_REGION = "us-east-1"
 
 BUCKET_NAMES = [
@@ -48,6 +51,25 @@ BUCKET_NAMES = [
 ]
 
 SQS_QUEUE_NAME = "riskpulse-s3-events-test"
+
+
+def _endpoint_is_reachable(url: str) -> bool:
+    parsed = urlparse(url)
+    host = parsed.hostname
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    if host is None:
+        return False
+    try:
+        with socket.create_connection((host, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _endpoint_is_reachable(LOCALSTACK_ENDPOINT),
+    reason="LocalStack endpoint is not running",
+)
 
 
 # ---------------------------------------------------------------------------

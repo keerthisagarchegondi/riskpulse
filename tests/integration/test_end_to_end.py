@@ -5,6 +5,7 @@ with 10,000 synthetic transactions, throughput/latency benchmarks,
 and DLQ routing verification.
 """
 
+import os
 import random
 import time
 import uuid
@@ -206,7 +207,7 @@ def pipeline_halt_on_validation():
 def consumer(pipeline):
     """Create a TransactionConsumer with pipeline (no actual Kafka)."""
     return TransactionConsumer(
-        bootstrap_servers="localhost:9092",
+        bootstrap_servers=os.getenv("RISKPULSE_KAFKA_BOOTSTRAP_SERVERS", "localhost:19092"),
         group_id="riskpulse-test-e2e",
         pipeline=pipeline,
     )

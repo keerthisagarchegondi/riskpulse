@@ -11,6 +11,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     Numeric,
@@ -100,7 +101,10 @@ class FraudAlert(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     transaction_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("transactions.transaction_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     alert_type: Mapped[str] = mapped_column(String(50), nullable=False)
     rule_id: Mapped[str | None] = mapped_column(String(50))
@@ -147,7 +151,10 @@ class RiskScore(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     transaction_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("transactions.transaction_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     model_version: Mapped[str] = mapped_column(String(20), nullable=False)
     overall_score: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)

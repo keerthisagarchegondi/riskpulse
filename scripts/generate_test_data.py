@@ -29,6 +29,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import random
 import sys
 import time
@@ -839,7 +840,7 @@ def stream_transactions(
 def publish_to_kafka(
     transactions: list[dict],
     rate_limit: float | None = None,
-    bootstrap_servers: str = "localhost:9092",
+    bootstrap_servers: str = os.getenv("RISKPULSE_KAFKA_BOOTSTRAP_SERVERS", "localhost:19092"),
 ) -> dict:
     """Publish transactions to Kafka via the TransactionProducer.
 
@@ -948,8 +949,8 @@ Examples:
     )
     parser.add_argument(
         "--bootstrap-servers",
-        default="localhost:9092",
-        help="Kafka bootstrap servers (default: localhost:9092)",
+        default=os.getenv("RISKPULSE_KAFKA_BOOTSTRAP_SERVERS", "localhost:19092"),
+        help="Kafka bootstrap servers (default: RISKPULSE_KAFKA_BOOTSTRAP_SERVERS or localhost:19092)",
     )
     parser.add_argument(
         "--output-file",

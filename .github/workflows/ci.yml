@@ -22,6 +22,10 @@ env:
   PYTHON_VERSION: "3.12"
   COVERAGE_MINIMUM: "65"
   RISKPULSE_DB_PASSWORD: ci-build-placeholder-not-secret
+  POSTGRES_PORT: "15432"
+  REDIS_PORT: "16379"
+  KAFKA_PORT: "19092"
+  ZOOKEEPER_PORT: "12181"
   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://riskpulse:ci-build-placeholder-not-secret@postgres:5432/riskpulse
   AIRFLOW__WEBSERVER__SECRET_KEY: ci-airflow-webserver-secret-for-compose-build
   RISKPULSE_STORAGE_BACKEND: local
@@ -38,30 +42,6 @@ jobs:
     name: Lint, Test, Scan
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: riskpulse
-          POSTGRES_USER: riskpulse
-          POSTGRES_PASSWORD: riskpulse_dev_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U riskpulse -d riskpulse"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -96,16 +76,22 @@ jobs:
       - name: Type check with mypy
         run: mypy src
 
+      - name: Start Docker integration dependencies
+        run: |
+          docker compose -f docker-compose.yml up -d --wait zookeeper kafka postgres redis
+          docker compose -f docker-compose.yml ps
+
       - name: Unit tests with coverage gate
         env:
           RISKPULSE_ENV: test
           RISKPULSE_DB_HOST: localhost
-          RISKPULSE_DB_PORT: "5432"
+          RISKPULSE_DB_PORT: "15432"
           RISKPULSE_DB_NAME: riskpulse
           RISKPULSE_DB_USER: riskpulse
           RISKPULSE_DB_PASSWORD: riskpulse_dev_password
+          RISKPULSE_TEST_DATABASE_URL: postgresql+asyncpg://riskpulse:riskpulse_dev_password@localhost:15432/riskpulse
           RISKPULSE_REDIS_HOST: localhost
-          RISKPULSE_REDIS_PORT: "6379"
+          RISKPULSE_REDIS_PORT: "16379"
         run: |
           pytest tests/unit \
             --cov=src \
@@ -128,22 +114,17 @@ jobs:
           RISKPULSE_ENV: test
         run: pytest tests/ml_validation -m ml_validation
 
-      - name: Start Docker integration dependencies
-        run: |
-          docker compose -f docker-compose.yml up -d zookeeper kafka postgres redis
-          docker compose -f docker-compose.yml ps
-
       - name: Integration tests
         env:
           RISKPULSE_ENV: test
-          RISKPULSE_KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+          RISKPULSE_KAFKA_BOOTSTRAP_SERVERS: localhost:19092
           RISKPULSE_DB_HOST: localhost
-          RISKPULSE_DB_PORT: "5432"
+          RISKPULSE_DB_PORT: "15432"
           RISKPULSE_DB_NAME: riskpulse
           RISKPULSE_DB_USER: riskpulse
           RISKPULSE_DB_PASSWORD: riskpulse_dev_password
           RISKPULSE_REDIS_HOST: localhost
-          RISKPULSE_REDIS_PORT: "6379"
+          RISKPULSE_REDIS_PORT: "16379"
         run: pytest tests/integration -m integration
 
       - name: Performance smoke benchmarks

@@ -1,5 +1,8 @@
 """Storage module with local and cloud storage backends."""
 
+from importlib import import_module
+from typing import Any
+
 from src.storage.cache_handler import (
     CacheConnectionError,
     CacheHandler,
@@ -15,7 +18,6 @@ from src.storage.local_object_storage import (
     LocalObjectStorageError,
     LocalObjectStorageHandler,
 )
-from src.storage.local_warehouse_handler import LocalWarehouseHandler
 from src.storage.models import (
     AuditLog,
     Base,
@@ -48,34 +50,51 @@ from src.storage.s3_handler import (
     StorageLayer,
     get_s3_handler,
 )
-from src.storage.snowflake_handler import (
-    SCHEMA_ANALYTICS,
-    SCHEMA_RAW,
-    SCHEMA_REPORTING,
-    SCHEMA_STAGING,
-    FileFormat,
-    LoadMetrics,
-    LoadStrategy,
-    QueryResult,
-    SnowflakeConnectionError,
-    SnowflakeHandler,
-    SnowflakeHandlerError,
-    SnowflakeLoadError,
-    SnowflakeMetrics,
-    SnowflakeQueryError,
-    SnowflakeSchemaError,
-    WatermarkState,
-    create_snowflake_handler,
-)
-from src.storage.storage_orchestrator import (
-    BackendHealth,
-    OrchestratedWriteResult,
-    StorageBackend,
-    StorageOrchestrator,
-    StorageState,
-    WriteResult,
-    create_storage_orchestrator,
-)
+
+_LAZY_EXPORTS = {
+    "LocalWarehouseHandler": ("src.storage.local_warehouse_handler", "LocalWarehouseHandler"),
+    "SnowflakeHandler": ("src.storage.snowflake_handler", "SnowflakeHandler"),
+    "SnowflakeHandlerError": ("src.storage.snowflake_handler", "SnowflakeHandlerError"),
+    "SnowflakeConnectionError": ("src.storage.snowflake_handler", "SnowflakeConnectionError"),
+    "SnowflakeQueryError": ("src.storage.snowflake_handler", "SnowflakeQueryError"),
+    "SnowflakeLoadError": ("src.storage.snowflake_handler", "SnowflakeLoadError"),
+    "SnowflakeSchemaError": ("src.storage.snowflake_handler", "SnowflakeSchemaError"),
+    "SnowflakeMetrics": ("src.storage.snowflake_handler", "SnowflakeMetrics"),
+    "LoadMetrics": ("src.storage.snowflake_handler", "LoadMetrics"),
+    "LoadStrategy": ("src.storage.snowflake_handler", "LoadStrategy"),
+    "FileFormat": ("src.storage.snowflake_handler", "FileFormat"),
+    "QueryResult": ("src.storage.snowflake_handler", "QueryResult"),
+    "WatermarkState": ("src.storage.snowflake_handler", "WatermarkState"),
+    "create_snowflake_handler": ("src.storage.snowflake_handler", "create_snowflake_handler"),
+    "SCHEMA_RAW": ("src.storage.snowflake_handler", "SCHEMA_RAW"),
+    "SCHEMA_STAGING": ("src.storage.snowflake_handler", "SCHEMA_STAGING"),
+    "SCHEMA_ANALYTICS": ("src.storage.snowflake_handler", "SCHEMA_ANALYTICS"),
+    "SCHEMA_REPORTING": ("src.storage.snowflake_handler", "SCHEMA_REPORTING"),
+    "StorageOrchestrator": ("src.storage.storage_orchestrator", "StorageOrchestrator"),
+    "StorageBackend": ("src.storage.storage_orchestrator", "StorageBackend"),
+    "StorageState": ("src.storage.storage_orchestrator", "StorageState"),
+    "BackendHealth": ("src.storage.storage_orchestrator", "BackendHealth"),
+    "WriteResult": ("src.storage.storage_orchestrator", "WriteResult"),
+    "OrchestratedWriteResult": (
+        "src.storage.storage_orchestrator",
+        "OrchestratedWriteResult",
+    ),
+    "create_storage_orchestrator": (
+        "src.storage.storage_orchestrator",
+        "create_storage_orchestrator",
+    ),
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name not in _LAZY_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module_name, attribute = _LAZY_EXPORTS[name]
+    value = getattr(import_module(module_name), attribute)
+    globals()[name] = value
+    return value
+
 
 __all__ = [
     # PostgreSQL
