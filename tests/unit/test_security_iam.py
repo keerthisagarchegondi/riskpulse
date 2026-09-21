@@ -223,12 +223,13 @@ def test_database_url_encodes_special_characters(
     monkeypatch.setenv("RISKPULSE_ENV", "dev")
     monkeypatch.setenv("RISKPULSE_DB_USER", "risk user")
     monkeypatch.setenv("RISKPULSE_DB_PASSWORD", "pa:ss/word@123")
+    monkeypatch.setenv("RISKPULSE_DB_PORT", "15432")
     get_settings.cache_clear()
 
     try:
         assert (
             get_settings().database_url
-            == "postgresql+asyncpg://risk+user:pa%3Ass%2Fword%40123@localhost:5432/riskpulse"
+            == "postgresql+asyncpg://risk+user:pa%3Ass%2Fword%40123@localhost:15432/riskpulse"
         )
     finally:
         get_settings.cache_clear()
