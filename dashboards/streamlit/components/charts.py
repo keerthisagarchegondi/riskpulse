@@ -6,6 +6,7 @@ color coding by risk level and responsive layouts.
 
 from __future__ import annotations
 
+import html
 from typing import Any
 
 import pandas as pd
@@ -230,18 +231,22 @@ def kpi_card_html(
 
     Returns an HTML string suitable for ``st.markdown(..., unsafe_allow_html=True)``.
     """
+    safe_title = html.escape(str(title), quote=True)
+    safe_value = html.escape(str(value), quote=True)
+    safe_icon = html.escape(str(icon), quote=True)
     delta_html = ""
     if delta is not None:
         arrow = "▲" if delta_positive else "▼"
         color = "#2ecc71" if delta_positive else "#e74c3c"
-        delta_html = f'<div class="kpi-delta" style="color:{color}">{arrow} {delta}</div>'
+        safe_delta = html.escape(str(delta), quote=True)
+        delta_html = f'<div class="kpi-delta" style="color:{color}">{arrow} {safe_delta}</div>'
 
     return f"""
     <div class="kpi-card">
-        <div class="kpi-icon">{icon}</div>
+        <div class="kpi-icon">{safe_icon}</div>
         <div class="kpi-content">
-            <div class="kpi-title">{title}</div>
-            <div class="kpi-value">{value}</div>
+            <div class="kpi-title">{safe_title}</div>
+            <div class="kpi-value">{safe_value}</div>
             {delta_html}
         </div>
     </div>
@@ -272,18 +277,21 @@ def live_feed_table_html(df: pd.DataFrame) -> str:
 
         status = str(row.get("status", ""))
         status_color = STATUS_COLOR_MAP.get(status, "#95a5a6")
-        txn_id = str(row.get("transaction_id", ""))[:8]
+        txn_id = html.escape(str(row.get("transaction_id", ""))[:8], quote=True)
         amount = f"${float(row.get('transaction_amount', 0)):,.2f}"
-        ts = str(row.get("transaction_timestamp", ""))[:19]
+        ts = html.escape(str(row.get("transaction_timestamp", ""))[:19], quote=True)
+        safe_status = html.escape(status, quote=True)
+        safe_channel = html.escape(str(row.get("channel", "")), quote=True)
+        safe_country = html.escape(str(row.get("geo_country", "")), quote=True)
 
         rows.append(
             f"<tr>"
             f'<td class="feed-id">{txn_id}…</td>'
             f"<td>{amount}</td>"
-            f'<td><span class="status-badge" style="background:{status_color}">{status}</span></td>'
+            f'<td><span class="status-badge" style="background:{status_color}">{safe_status}</span></td>'
             f'<td><span class="risk-badge {risk_class}">{score:.3f}</span></td>'
-            f"<td>{row.get('channel', '')}</td>"
-            f"<td>{row.get('geo_country', '')}</td>"
+            f"<td>{safe_channel}</td>"
+            f"<td>{safe_country}</td>"
             f"<td>{ts}</td>"
             f"</tr>"
         )

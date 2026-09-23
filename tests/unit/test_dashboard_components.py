@@ -14,6 +14,7 @@ from dashboards.streamlit.auth.roles import (
     parse_role,
     visible_pages_for_role,
 )
+from dashboards.streamlit.components.charts import kpi_card_html, live_feed_table_html
 from dashboards.streamlit.pages.alert_management import (
     calculate_alert_kpis,
     calculate_resolution_by_analyst,
@@ -108,6 +109,32 @@ def test_role_based_page_visibility_restricts_admin_pages() -> None:
     assert visible_pages_for_role(DashboardRole.ANALYST, pages) == {
         "Real Time": "real_time_monitor"
     }
+
+
+def test_custom_dashboard_html_escapes_data_values() -> None:
+    html = live_feed_table_html(
+        pd.DataFrame(
+            [
+                {
+                    "transaction_id": "<script>alert(1)</script>",
+                    "transaction_amount": 10.0,
+                    "status": "<img src=x onerror=alert(1)>",
+                    "risk_score": 0.4,
+                    "channel": "<b>atm</b>",
+                    "geo_country": "<svg onload=alert(1)>",
+                    "transaction_timestamp": "2026-09-23T10:00:00<script>",
+                }
+            ]
+        )
+    )
+    card = kpi_card_html("<b>Risk</b>", "<img src=x>", "<script>alert(1)</script>", True)
+
+    assert "<script>" not in html
+    assert "<img" not in html
+    assert "<svg" not in html
+    assert "&lt;b&gt;atm&lt;/b&gt;" in html
+    assert "<script>" not in card
+    assert "&lt;b&gt;Risk&lt;/b&gt;" in card
 
 
 def test_confusion_matrix_uses_thresholded_scores() -> None:

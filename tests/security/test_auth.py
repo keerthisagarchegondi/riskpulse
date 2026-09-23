@@ -9,9 +9,10 @@ import pytest
 from fastapi import Depends, FastAPI, status
 from fastapi.testclient import TestClient
 
-from src.api.app import create_app
+from src.api.app import _cors_options, create_app
 from src.api.middleware.auth import require_permission, reset_key_manager
 from src.api.middleware.rate_limiter import InMemoryRateLimiter, RateLimitMiddleware
+from src.utils.config import get_settings
 from src.utils.security import (
     JWT_ALGORITHM,
     JWT_ISSUER,
@@ -103,6 +104,36 @@ def test_tampered_jwt_signature_is_rejected() -> None:
 
     with pytest.raises(SecurityValidationError):
         verify_jwt_token(token, secret=WRONG_SECRET)
+
+
+@pytest.mark.security
+def test_wildcard_cors_disables_credentials_in_dev(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "dev")
+    monkeypatch.setenv("RISKPULSE_API__CORS_ORIGINS", "*")
+    get_settings.cache_clear()
+
+    try:
+        origins, allow_credentials = _cors_options()
+    finally:
+        get_settings.cache_clear()
+
+    assert origins == ["*"]
+    assert allow_credentials is False
+
+
+@pytest.mark.security
+def test_wildcard_cors_is_rejected_in_managed_environments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.setenv("RISKPULSE_API__CORS_ORIGINS", "*")
+    get_settings.cache_clear()
+
+    try:
+        with pytest.raises(ValueError, match="Wildcard CORS"):
+            _cors_options()
+    finally:
+        get_settings.cache_clear()
 
 
 @pytest.mark.security

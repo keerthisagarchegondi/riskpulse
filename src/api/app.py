@@ -24,6 +24,30 @@ from src.utils.logger import configure_logging
 
 logger = structlog.get_logger(__name__)
 
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:8501",
+    "http://127.0.0.1:8501",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+_MANAGED_ENVIRONMENTS = {"prod", "production", "staging"}
+
+
+def _cors_options() -> tuple[list[str], bool]:
+    settings = get_settings()
+    origins_value = settings.get("api.cors_origins", _DEFAULT_CORS_ORIGINS)
+    if isinstance(origins_value, str):
+        origins = [origin.strip() for origin in origins_value.split(",") if origin.strip()]
+    else:
+        origins = [str(origin).strip() for origin in origins_value if str(origin).strip()]
+
+    origins = origins or list(_DEFAULT_CORS_ORIGINS)
+    if "*" in origins:
+        if settings.environment.lower() in _MANAGED_ENVIRONMENTS:
+            raise ValueError("Wildcard CORS origin is not allowed in managed environments.")
+        return ["*"], False
+    return origins, True
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -87,7 +111,7 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application instance.
     """
-    settings = get_settings()
+    cors_origins, cors_allow_credentials = _cors_options()
 
     app = FastAPI(
         title=f"{APP_NAME} API",
@@ -104,8 +128,8 @@ def create_app() -> FastAPI:
     # CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.get("api.cors_origins", ["*"]),
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=cors_allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )
