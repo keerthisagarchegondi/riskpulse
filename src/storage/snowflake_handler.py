@@ -13,6 +13,7 @@ Production-grade Snowflake handler providing:
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -37,36 +38,61 @@ from tenacity import (
 
 from src.utils.config import get_settings
 
-try:
-    import snowflake.connector
-    from snowflake.connector import DictCursor, SnowflakeConnection
-    from snowflake.connector.errors import (
-        DatabaseError,
-        InterfaceError,
-        OperationalError,
-        ProgrammingError,
-    )
-except ImportError:
-    snowflake = None  # type: ignore[assignment]
+_SNOWFLAKE_UNLOADED = object()
+snowflake: Any = _SNOWFLAKE_UNLOADED
 
-    # Define stub exception classes so the module can be imported without snowflake installed
-    class OperationalError(Exception):  # type: ignore[no-redef]
-        pass
 
-    class InterfaceError(Exception):  # type: ignore[no-redef]
-        pass
+# Define stubs so this module imports cleanly without loading the optional
+# Snowflake connector. The real classes are loaded lazily by connect().
+class OperationalError(Exception):
+    pass
 
-    class ProgrammingError(Exception):  # type: ignore[no-redef]
-        pass
 
-    class DatabaseError(Exception):  # type: ignore[no-redef]
-        pass
+class InterfaceError(Exception):
+    pass
 
-    class DictCursor:  # type: ignore[no-redef]
-        pass
 
-    class SnowflakeConnection:  # type: ignore[no-redef]
-        pass
+class ProgrammingError(Exception):
+    pass
+
+
+class DatabaseError(Exception):
+    pass
+
+
+DictCursor: Any = None
+
+
+def _load_snowflake_connector() -> Any:
+    """Import snowflake-connector-python only when Snowflake is actually used."""
+    global snowflake, DictCursor
+
+    if snowflake is None:
+        raise SnowflakeConnectionError(
+            "snowflake-connector-python is not installed. "
+            "Install with: pip install snowflake-connector-python"
+        )
+    if snowflake is not _SNOWFLAKE_UNLOADED:
+        return snowflake
+
+    try:
+        connector_module = importlib.import_module("snowflake.connector")
+        errors_module = importlib.import_module("snowflake.connector.errors")
+        snowflake_module = importlib.import_module("snowflake")
+    except ImportError as exc:
+        snowflake = None
+        raise SnowflakeConnectionError(
+            "snowflake-connector-python is not installed. "
+            "Install with: pip install snowflake-connector-python"
+        ) from exc
+
+    snowflake = snowflake_module
+    DictCursor = connector_module.DictCursor
+    globals()["DatabaseError"] = errors_module.DatabaseError
+    globals()["InterfaceError"] = errors_module.InterfaceError
+    globals()["OperationalError"] = errors_module.OperationalError
+    globals()["ProgrammingError"] = errors_module.ProgrammingError
+    return snowflake
 
 
 logger = structlog.get_logger(__name__)
@@ -294,7 +320,7 @@ class SnowflakeHandler:
         self._pool_size = pool_size
         self._query_cache_ttl = query_cache_ttl
 
-        self._pool: list[SnowflakeConnection] = []
+        self._pool: list[Any] = []
         self._pool_lock = Lock()
         self._metrics = SnowflakeMetrics()
         self._query_cache: dict[str, tuple[QueryResult, float]] = {}
@@ -311,11 +337,7 @@ class SnowflakeHandler:
 
     def connect(self) -> None:
         """Initialize connection pool to Snowflake."""
-        if snowflake is None:
-            raise SnowflakeConnectionError(
-                "snowflake-connector-python is not installed. "
-                "Install with: pip install snowflake-connector-python"
-            )
+        _load_snowflake_connector()
 
         if not self._account or not self._user:
             raise SnowflakeConnectionError(
@@ -338,8 +360,9 @@ class SnowflakeHandler:
         except Exception as e:
             raise SnowflakeConnectionError(f"Failed to connect to Snowflake: {e}") from e
 
-    def _create_connection(self) -> SnowflakeConnection:
+    def _create_connection(self) -> Any:
         """Create a single Snowflake connection."""
+        connector = _load_snowflake_connector()
         connect_params: dict[str, Any] = {
             "account": self._account,
             "user": self._user,
@@ -372,10 +395,10 @@ class SnowflakeHandler:
         elif self._password:
             connect_params["password"] = self._password
 
-        return snowflake.connector.connect(**connect_params)
+        return connector.connector.connect(**connect_params)
 
     @contextmanager
-    def _get_connection(self) -> Generator[SnowflakeConnection, None, None]:
+    def _get_connection(self) -> Generator[Any, None, None]:
         """Acquire a connection from the pool."""
         conn = None
         with self._pool_lock:
@@ -399,8 +422,8 @@ class SnowflakeHandler:
                 else:
                     try:
                         conn.close()
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("snowflake_connection_close_failed", error=str(exc))
 
     def close(self) -> None:
         """Close all connections in the pool."""
@@ -408,8 +431,8 @@ class SnowflakeHandler:
             for conn in self._pool:
                 try:
                     conn.close()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("snowflake_connection_close_failed", error=str(exc))
             self._pool.clear()
         self._connected = False
         logger.info("snowflake_disconnected")

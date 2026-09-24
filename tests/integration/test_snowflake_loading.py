@@ -821,6 +821,7 @@ class TestFactory:
         with patch.dict(
             os.environ,
             {
+                "RISKPULSE_WAREHOUSE_BACKEND": "snowflake",
                 "SNOWFLAKE_ACCOUNT": "test_account",
                 "SNOWFLAKE_USER": "test_user",
                 "SNOWFLAKE_PASSWORD": "test_pass",

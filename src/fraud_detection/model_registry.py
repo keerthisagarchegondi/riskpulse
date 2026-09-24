@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import secrets
 import threading
 import time
 from dataclasses import dataclass, field
@@ -560,9 +561,7 @@ class ModelRegistry:
             # Map to [0, 1) range
             normalized = (hash_val % 10000) / 10000.0
         else:
-            import random
-
-            normalized = random.random()
+            normalized = secrets.SystemRandom().random()
 
         if normalized < config.traffic_split:
             return config.model_b_version

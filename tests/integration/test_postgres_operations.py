@@ -7,11 +7,13 @@ when available, otherwise connects to the configured test database.
 from __future__ import annotations
 
 import os
+import socket
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import AsyncGenerator
+from urllib.parse import urlparse
 
 import pytest
 import pytest_asyncio
@@ -29,9 +31,24 @@ TEST_DB_URL = os.getenv(
 )
 
 
+def _test_database_available(database_url: str) -> bool:
+    """Return whether the configured test PostgreSQL socket is reachable."""
+    parsed = urlparse(database_url)
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+    try:
+        with socket.create_connection((host, port), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+
 @pytest_asyncio.fixture
 async def pg_handler() -> AsyncGenerator[PostgresHandler, None]:
     """Create a fresh PostgresHandler with clean tables for each test."""
+    if not _test_database_available(TEST_DB_URL):
+        pytest.skip(f"PostgreSQL test database is not reachable: {TEST_DB_URL}")
+
     handler = PostgresHandler(connection_url=TEST_DB_URL, pool_size=5, max_overflow=5, echo=False)
     # Create tables
     await handler.initialize()
@@ -39,12 +56,14 @@ async def pg_handler() -> AsyncGenerator[PostgresHandler, None]:
     async with handler._engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
             await conn.execute(table.delete())
-    yield handler
-    # Cleanup after test
-    async with handler._engine.begin() as conn:
-        for table in reversed(Base.metadata.sorted_tables):
-            await conn.execute(table.delete())
-    await handler.close()
+    try:
+        yield handler
+    finally:
+        # Cleanup after test
+        async with handler._engine.begin() as conn:
+            for table in reversed(Base.metadata.sorted_tables):
+                await conn.execute(table.delete())
+        await handler.close()
 
 
 def _make_transaction_data(suffix: str = "001") -> dict:

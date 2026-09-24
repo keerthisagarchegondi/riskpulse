@@ -10,6 +10,7 @@ This module supports the executive Power BI dashboards with:
 from __future__ import annotations
 
 import csv
+import importlib
 import json
 import os
 import re
@@ -24,14 +25,30 @@ try:
 except ImportError:  # pragma: no cover - pandas is a project dependency
     pd = None  # type: ignore[assignment]
 
-try:
-    import snowflake.connector
-    from snowflake.connector import DictCursor
-except ImportError:  # pragma: no cover - connector is optional for artifact generation
-    snowflake = None  # type: ignore[assignment]
+_SNOWFLAKE_UNLOADED = object()
+snowflake: Any = _SNOWFLAKE_UNLOADED
+DictCursor: Any = None
 
-    class DictCursor:  # type: ignore[no-redef]
-        pass
+
+def _load_snowflake_connector() -> Any:
+    """Import snowflake-connector-python only when live extraction is requested."""
+    global snowflake, DictCursor
+
+    if snowflake is None:
+        raise PowerBIConnectionError("snowflake-connector-python is not installed.")
+    if snowflake is not _SNOWFLAKE_UNLOADED:
+        return snowflake
+
+    try:
+        connector_module = importlib.import_module("snowflake.connector")
+        snowflake_module = importlib.import_module("snowflake")
+    except ImportError as exc:  # pragma: no cover - optional dependency path
+        snowflake = None
+        raise PowerBIConnectionError("snowflake-connector-python is not installed.") from exc
+
+    snowflake = snowflake_module
+    DictCursor = connector_module.DictCursor
+    return snowflake
 
 
 class PowerBIConnectionError(RuntimeError):
@@ -478,9 +495,8 @@ class PowerBISnowflakeConnector:
 
     def connect(self) -> None:
         """Open a Snowflake connection."""
-        if snowflake is None:
-            raise PowerBIConnectionError("snowflake-connector-python is not installed.")
-        self._connection = snowflake.connector.connect(
+        connector = _load_snowflake_connector()
+        self._connection = connector.connector.connect(
             **self.config.connection_parameters(),
             client_session_keep_alive=True,
         )

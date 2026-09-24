@@ -781,7 +781,7 @@ def create_postgres_handler(
     port: int = 5432,
     database: str = "riskpulse",
     user: str = "riskpulse",
-    password: str = "",
+    password: str | None = None,
     pool_size: int = 20,
     max_overflow: int = 10,
     pool_timeout: int = 30,
@@ -789,7 +789,8 @@ def create_postgres_handler(
     echo: bool = False,
 ) -> PostgresHandler:
     """Create a PostgresHandler instance from individual connection parameters."""
-    connection_url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}"
+    resolved_password = "" if password is None else password
+    connection_url = f"postgresql+asyncpg://{user}:{resolved_password}@{host}:{port}/{database}"
     return PostgresHandler(
         connection_url=connection_url,
         pool_size=pool_size,
