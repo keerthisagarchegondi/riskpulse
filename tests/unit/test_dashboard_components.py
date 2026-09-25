@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from dashboards.streamlit.app import _configured_users, _get_engine
 from dashboards.streamlit.auth.roles import (
     DashboardRole,
     can_access_page,
@@ -35,6 +36,34 @@ from dashboards.streamlit.pages.model_performance import (
     calculate_population_stability_index,
 )
 from src.utils.local_dashboard_store import record_local_score, record_local_transaction
+
+
+def test_managed_dashboard_requires_explicit_admin_password(monkeypatch) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "production")
+    monkeypatch.delenv("DASHBOARD_ADMIN_USER", raising=False)
+    monkeypatch.delenv("DASHBOARD_ADMIN_PASSWORD", raising=False)
+
+    with pytest.raises(RuntimeError, match="DASHBOARD_ADMIN_PASSWORD"):
+        _configured_users()
+
+    monkeypatch.setenv("DASHBOARD_ADMIN_PASSWORD", "a-unique-dashboard-password")
+    users = _configured_users()
+    assert "admin" in users
+    assert "analyst" not in users
+
+
+def test_dashboard_database_url_preserves_special_password_characters(monkeypatch) -> None:
+    monkeypatch.setenv("RISKPULSE_DB_PASSWORD", "local:@/password")
+    _get_engine.clear()
+
+    try:
+        engine = _get_engine()
+        assert engine.url.password == "local:@/password"
+        assert engine.url.host == "localhost"
+    finally:
+        _get_engine.clear()
+        if "engine" in locals():
+            engine.dispose()
 
 
 def _model_scores() -> pd.DataFrame:

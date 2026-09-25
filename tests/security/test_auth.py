@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, status
 from fastapi.testclient import TestClient
 
 from src.api.app import _cors_options, create_app
-from src.api.middleware.auth import require_permission, reset_key_manager
+from src.api.middleware.auth import get_key_manager, require_permission, reset_key_manager
 from src.api.middleware.rate_limiter import InMemoryRateLimiter, RateLimitMiddleware
 from src.utils.config import get_settings
 from src.utils.security import (
@@ -196,7 +196,10 @@ def test_in_memory_rate_limiter_enforces_per_identity_limit() -> None:
 
 
 @pytest.mark.security
-def test_rate_limit_middleware_returns_retry_headers() -> None:
+def test_rate_limit_middleware_returns_retry_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RISKPULSE_API__RATE_LIMIT_PER_MINUTE", "1")
+    monkeypatch.setenv("RISKPULSE_API__RATE_LIMIT__BURST_SIZE", "0")
+    get_settings.cache_clear()
     app = FastAPI()
     app.add_middleware(RateLimitMiddleware)
 
@@ -204,19 +207,47 @@ def test_rate_limit_middleware_returns_retry_headers() -> None:
     async def limited():
         return {"ok": True}
 
-    with TestClient(app) as test_client:
-        middleware = next(
-            middleware
-            for middleware in test_client.app.user_middleware
-            if middleware.cls is RateLimitMiddleware
-        )
-        # Force a tiny limit for this endpoint while preserving real middleware code.
-        middleware.kwargs.clear()
-        response_1 = test_client.get("/limited")
-        response_2 = test_client.get("/limited")
+    try:
+        with TestClient(app) as test_client:
+            response_1 = test_client.get("/limited")
+            response_2 = test_client.get("/limited")
+    finally:
+        get_settings.cache_clear()
 
     assert response_1.status_code == status.HTTP_200_OK
-    assert response_2.status_code in {status.HTTP_200_OK, status.HTTP_429_TOO_MANY_REQUESTS}
+    assert response_2.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+    assert int(response_2.headers["Retry-After"]) > 0
+    assert response_2.headers["X-RateLimit-Remaining"] == "0"
+
+
+@pytest.mark.security
+def test_rate_limit_middleware_honors_api_key_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RISKPULSE_API__RATE_LIMIT__BURST_SIZE", "0")
+    get_settings.cache_clear()
+    manager = get_key_manager()
+    manager._keys[manager._hash_key("rp-custom-limit")] = {
+        "name": "custom-limit",
+        "permissions": ["read"],
+        "rate_limit": 1,
+        "auth_type": "api_key",
+    }
+    app = FastAPI()
+    app.add_middleware(RateLimitMiddleware)
+
+    @app.get("/limited")
+    async def limited():
+        return {"ok": True}
+
+    try:
+        with TestClient(app) as test_client:
+            first = test_client.get("/limited", headers={"X-API-Key": "rp-custom-limit"})
+            second = test_client.get("/limited", headers={"X-API-Key": "rp-custom-limit"})
+    finally:
+        get_settings.cache_clear()
+
+    assert first.status_code == status.HTTP_200_OK
+    assert second.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+    assert second.headers["X-RateLimit-Limit"] == "1"
 
 
 @pytest.mark.security

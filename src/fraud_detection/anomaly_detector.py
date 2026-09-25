@@ -174,7 +174,6 @@ class AnomalyDetector:
         X_scaled = self._scaler.transform(X_input)
 
         raw_score = self._model.decision_function(X_scaled)[0]
-        prediction = self._model.predict(X_scaled)[0]
 
         # Normalize score to [-1, 1] range
         anomaly_score = float(np.clip(raw_score, -1.0, 1.0))
@@ -182,7 +181,7 @@ class AnomalyDetector:
         if self._threshold_override is not None:
             is_anomaly = anomaly_score < self._threshold_override
         else:
-            is_anomaly = prediction == -1
+            is_anomaly = raw_score < 0.0
 
         confidence = self._compute_confidence(anomaly_score)
         contributing = self._identify_contributing_features(feature_vector, X_scaled[0])
@@ -218,7 +217,6 @@ class AnomalyDetector:
         X_scaled = self._scaler.transform(features)
 
         raw_scores = self._model.decision_function(X_scaled)
-        predictions = self._model.predict(X_scaled)
 
         results = []
         for i in range(len(X)):
@@ -226,7 +224,7 @@ class AnomalyDetector:
             if self._threshold_override is not None:
                 is_anomaly = score < self._threshold_override
             else:
-                is_anomaly = predictions[i] == -1
+                is_anomaly = raw_scores[i] < 0.0
 
             txn_id = (
                 str(X.iloc[i].get("transaction_id", f"txn_{i}"))

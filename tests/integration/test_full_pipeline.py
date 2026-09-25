@@ -78,7 +78,6 @@ LOCATIONS_DOMESTIC = [
 LOCATIONS_HIGH_RISK = [
     ("RU", "Moscow", 55.7558, 37.6173),
     ("NG", "Lagos", 6.5244, 3.3792),
-    ("KP", "Pyongyang", 39.0392, 125.7625),
 ]
 
 
@@ -318,6 +317,15 @@ class TestFullPipelineToAlert:
             assert alert.status == AlertStatus.OPEN
             assert alert.account_id == txn["account_id"]
             assert alert.risk_score >= 0.6
+
+    def test_sanctioned_country_is_blocked_before_scoring(self, pipeline):
+        txn = make_fraud_transaction(geo_country="KP")
+
+        result = pipeline.process_record(txn)
+
+        assert result.success is False
+        assert result.stage_failed == PipelineStage.VALIDATION.value
+        assert result.dlq is True
 
     def test_batch_pipeline_to_scoring(self, pipeline, full_scoring_pipeline):
         """Batch of transactions processes through pipeline and scoring."""

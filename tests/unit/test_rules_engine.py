@@ -22,7 +22,9 @@ import yaml
 from src.validation.rules_engine import (
     EvaluationOutcome,
     RuleAction,
+    RuleAuditTrail,
     RuleEngineResult,
+    RuleEvaluationRecord,
     RulesEngine,
     RuleSeverity,
     VelocityTracker,
@@ -789,6 +791,35 @@ class TestAuditTrail:
         assert engine.audit_trail.total_records > 0
         engine.audit_trail.clear()
         assert engine.audit_trail.total_records == 0
+
+    def test_eviction_removes_old_lookup_entries_and_stats(self):
+        trail = RuleAuditTrail(max_records=2)
+        evaluations = [
+            RuleEvaluationRecord(
+                rule_id=rule_id,
+                rule_name=rule_id,
+                rule_version="1",
+                outcome=outcome,
+                action=None,
+                severity=None,
+                transaction_id=transaction_id,
+                account_id="account",
+            )
+            for rule_id, outcome, transaction_id in [
+                ("old-rule", EvaluationOutcome.TRIGGERED, "old-transaction"),
+                ("current-rule", EvaluationOutcome.PASSED, "current-transaction"),
+                ("current-rule", EvaluationOutcome.PASSED, "current-transaction"),
+            ]
+        ]
+
+        trail.record_batch(evaluations)
+
+        assert trail.total_records == 2
+        assert trail.get_by_transaction("old-transaction") == []
+        assert trail.get_by_rule("old-rule") == []
+        assert len(trail.get_by_rule("current-rule")) == 2
+        assert trail.get_stats()["trigger_rate"] == 0.0
+        assert trail.get_stats()["unique_transactions"] == 1
 
 
 # --- Test: Rule Engine Result ---

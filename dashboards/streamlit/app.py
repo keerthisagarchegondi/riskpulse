@@ -19,7 +19,7 @@ from typing import Callable
 
 import streamlit as st
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, URL
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 # ---------------------------------------------------------------------------
@@ -91,18 +91,32 @@ def _hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
-_USERS: dict[str, str] = {
-    os.environ.get("DASHBOARD_ADMIN_USER", "admin"): _hash_password(
-        os.environ.get("DASHBOARD_ADMIN_PASSWORD", "riskpulse2024!")
-    ),
-    os.environ.get("DASHBOARD_ANALYST_USER", "analyst"): _hash_password(
-        os.environ.get("DASHBOARD_ANALYST_PASSWORD", "analyst2024!")
-    ),
-}
-if os.environ.get("DASHBOARD_VIEWER_USER"):
-    _USERS[os.environ["DASHBOARD_VIEWER_USER"]] = _hash_password(
-        os.environ.get("DASHBOARD_VIEWER_PASSWORD", "viewer2024!")
-    )
+def _configured_users() -> dict[str, str]:
+    managed = os.environ.get("RISKPULSE_ENV", "dev").strip().lower() in {
+        "prod", "production", "staging"
+    }
+    defaults = {
+        "ADMIN": ("admin", "riskpulse2024!"),
+        "ANALYST": ("analyst", "analyst2024!"),
+        "VIEWER": ("viewer", "viewer2024!"),
+    }
+    users: dict[str, str] = {}
+    for role, (default_user, default_password) in defaults.items():
+        username = os.environ.get(f"DASHBOARD_{role}_USER", default_user if role != "VIEWER" else "")
+        password = os.environ.get(f"DASHBOARD_{role}_PASSWORD")
+        if not username or not username.strip():
+            if managed and role == "ADMIN":
+                raise RuntimeError("Set DASHBOARD_ADMIN_USER before starting the dashboard")
+            continue
+        if managed and (not password or password == default_password):
+            if role == "ADMIN":
+                raise RuntimeError("Set a non-default DASHBOARD_ADMIN_PASSWORD before starting the dashboard")
+            continue
+        users[username] = _hash_password(password or default_password)
+    return users
+
+
+_USERS = _configured_users()
 
 
 def _check_credentials(username: str, password: str) -> bool:
@@ -153,7 +167,14 @@ def _get_engine() -> Engine:
     name = os.environ.get("RISKPULSE_DB_NAME", "riskpulse")
     user = os.environ.get("RISKPULSE_DB_USER", "riskpulse")
     password = os.environ.get("RISKPULSE_DB_PASSWORD", "riskpulse")
-    url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{name}"
+    url = URL.create(
+        "postgresql+psycopg2",
+        username=user,
+        password=password,
+        host=host,
+        port=int(port),
+        database=name,
+    )
     engine = create_engine(
         url,
         pool_size=5,

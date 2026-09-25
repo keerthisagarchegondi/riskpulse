@@ -87,6 +87,10 @@ _DATE_FORMATS = (
     "%Y%m%d",
 )
 
+_ASCII_CONTROL_TRANSLATION = {
+    codepoint: None for codepoint in (*range(32), 127) if codepoint not in (9, 10)
+}
+
 
 # --- Metrics ---
 
@@ -392,14 +396,14 @@ class DataCleaner:
             if not isinstance(value, str):
                 continue
             normalized = unicodedata.normalize("NFC", value)
-            # Remove null bytes
-            normalized = normalized.replace("\x00", "")
-            # Remove other control characters except newline/tab
-            normalized = "".join(
-                c
-                for c in normalized
-                if c in ("\n", "\t") or not unicodedata.category(c).startswith("C")
-            )
+            if normalized.isascii():
+                normalized = normalized.translate(_ASCII_CONTROL_TRANSLATION)
+            else:
+                normalized = "".join(
+                    c
+                    for c in normalized
+                    if c in ("\n", "\t") or not unicodedata.category(c).startswith("C")
+                )
             if normalized != value:
                 record[key] = normalized
                 changes.append(f"encoding_fixed:{key}")
@@ -492,6 +496,13 @@ class DataCleaner:
                 return datetime.fromtimestamp(ts, tz=timezone.utc)
             except (OSError, ValueError, OverflowError):
                 return None
+
+        if value[4:5] == "-":
+            try:
+                parsed = datetime.fromisoformat(value)
+                return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+            except ValueError:
+                pass
 
         for fmt in _DATE_FORMATS:
             try:

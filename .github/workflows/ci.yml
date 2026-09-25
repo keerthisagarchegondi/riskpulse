@@ -125,7 +125,7 @@ jobs:
           RISKPULSE_DB_PASSWORD: riskpulse_dev_password
           RISKPULSE_REDIS_HOST: localhost
           RISKPULSE_REDIS_PORT: "16379"
-        run: pytest tests/integration -m integration
+        run: pytest tests/integration --show-capture=no
 
       - name: Performance smoke benchmarks
         env:

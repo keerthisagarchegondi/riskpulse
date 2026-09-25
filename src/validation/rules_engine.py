@@ -267,29 +267,46 @@ class RuleAuditTrail:
     """
 
     def __init__(self, max_records: int = 100000) -> None:
+        if max_records < 1:
+            raise ValueError("max_records must be positive")
         self._max_records = max_records
         self._lock = Lock()
         self._records: deque[RuleEvaluationRecord] = deque(maxlen=max_records)
-        self._by_transaction: dict[str, list[RuleEvaluationRecord]] = defaultdict(list)
-        self._by_rule: dict[str, list[RuleEvaluationRecord]] = defaultdict(list)
+        self._by_transaction: dict[str, deque[RuleEvaluationRecord]] = defaultdict(deque)
+        self._by_rule: dict[str, deque[RuleEvaluationRecord]] = defaultdict(deque)
         self._stats: dict[str, int] = defaultdict(int)
+
+    def _record_unlocked(self, evaluation: RuleEvaluationRecord) -> None:
+        if len(self._records) == self._max_records:
+            expired = self._records[0]
+            for index, key in (
+                (self._by_transaction, expired.transaction_id),
+                (self._by_rule, expired.rule_id),
+            ):
+                entries = index[key]
+                entries.popleft()
+                if not entries:
+                    del index[key]
+            old_stat = f"{expired.rule_id}:{expired.outcome.value}"
+            self._stats[old_stat] -= 1
+            if not self._stats[old_stat]:
+                del self._stats[old_stat]
+
+        self._records.append(evaluation)
+        self._by_transaction[evaluation.transaction_id].append(evaluation)
+        self._by_rule[evaluation.rule_id].append(evaluation)
+        self._stats[f"{evaluation.rule_id}:{evaluation.outcome.value}"] += 1
 
     def record(self, evaluation: RuleEvaluationRecord) -> None:
         """Record a rule evaluation in the audit trail."""
         with self._lock:
-            self._records.append(evaluation)
-            self._by_transaction[evaluation.transaction_id].append(evaluation)
-            self._by_rule[evaluation.rule_id].append(evaluation)
-            self._stats[f"{evaluation.rule_id}:{evaluation.outcome.value}"] += 1
+            self._record_unlocked(evaluation)
 
     def record_batch(self, evaluations: list[RuleEvaluationRecord]) -> None:
         """Record multiple evaluations efficiently."""
         with self._lock:
             for evaluation in evaluations:
-                self._records.append(evaluation)
-                self._by_transaction[evaluation.transaction_id].append(evaluation)
-                self._by_rule[evaluation.rule_id].append(evaluation)
-                self._stats[f"{evaluation.rule_id}:{evaluation.outcome.value}"] += 1
+                self._record_unlocked(evaluation)
 
     def get_by_transaction(self, transaction_id: str) -> list[dict[str, Any]]:
         """Get all evaluations for a specific transaction."""
@@ -300,8 +317,8 @@ class RuleAuditTrail:
     def get_by_rule(self, rule_id: str, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent evaluations for a specific rule."""
         with self._lock:
-            records = self._by_rule.get(rule_id, [])
-            return [r.to_dict() for r in records[-limit:]]
+            records = self._by_rule.get(rule_id, deque())
+            return [r.to_dict() for r in list(records)[-limit:]]
 
     def get_recent(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get most recent evaluations."""
@@ -638,14 +655,15 @@ class RulesEngine:
         if self._enable_audit:
             self.audit_trail.record_batch(evaluations)
 
-        logger.debug(
-            "rules_evaluated",
-            transaction_id=transaction_id,
-            total_evaluated=result.total_rules_evaluated,
-            total_triggered=result.total_rules_triggered,
-            action=result.overall_action.value,
-            latency_ms=round(result.latency_ms, 3),
-        )
+        if result.total_rules_triggered:
+            logger.debug(
+                "rules_evaluated",
+                transaction_id=transaction_id,
+                total_evaluated=result.total_rules_evaluated,
+                total_triggered=result.total_rules_triggered,
+                action=result.overall_action.value,
+                latency_ms=round(result.latency_ms, 3),
+            )
 
         return result
 

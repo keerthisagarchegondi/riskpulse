@@ -7,14 +7,17 @@ Falls back to in-memory rate limiting when Redis is unavailable.
 from __future__ import annotations
 
 import hashlib
+import math
 import time
+import uuid
 from typing import Any
 
 import structlog
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
+from src.api.middleware.auth import get_key_manager
 from src.utils.config import get_settings
 from src.utils.constants import DEFAULT_BURST_SIZE, DEFAULT_RATE_LIMIT
 
@@ -127,6 +130,7 @@ class RedisRateLimiter:
         now = time.time()
         window_start = now - self._window_seconds
         redis_key = f"ratelimit:{key}"
+        member = uuid.uuid4().hex
 
         try:
             pipe = self._redis.pipeline()
@@ -135,9 +139,10 @@ class RedisRateLimiter:
             # Count current window requests
             pipe.zcard(redis_key)
             # Add current request
-            pipe.zadd(redis_key, {str(now): now})
+            pipe.zadd(redis_key, {member: now})
             # Set TTL on the key
             pipe.expire(redis_key, self._window_seconds + 1)
+            pipe.zrange(redis_key, 0, 0, withscores=True)
             results = await pipe.execute()
 
             current_count = results[1]
@@ -145,9 +150,10 @@ class RedisRateLimiter:
 
             if current_count >= rate_limit:
                 # Remove the entry we just added since request is denied
-                await self._redis.zrem(redis_key, str(now))
-                retry_after = self._window_seconds - int(now - window_start)
-                return False, 0, max(1, retry_after)
+                await self._redis.zrem(redis_key, member)
+                oldest = results[4][0][1] if results[4] else now
+                retry_after = max(1, math.ceil(oldest + self._window_seconds - now))
+                return False, 0, retry_after
 
             return True, remaining, 0
         except Exception as exc:
@@ -231,11 +237,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 key=key,
                 path=request.url.path,
             )
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Rate limit exceeded. Please retry later.",
+                content={"detail": "Rate limit exceeded. Please retry later."},
                 headers={
-                    "X-RateLimit-Limit": str(self._rate_limit),
+                    "X-RateLimit-Limit": str(custom_rate or self._rate_limit),
                     "X-RateLimit-Remaining": "0",
                     "X-RateLimit-Reset": str(retry_after),
                     "Retry-After": str(retry_after),
@@ -277,4 +283,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if hasattr(request.state, "api_key_rate_limit"):
             limit = request.state.api_key_rate_limit
             return int(limit) if limit is not None else None
+        api_key = request.headers.get("X-API-Key")
+        if api_key:
+            metadata = get_key_manager().validate_key(api_key)
+            if metadata is not None and metadata.get("rate_limit") is not None:
+                return int(metadata["rate_limit"])
         return None
