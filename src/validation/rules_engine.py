@@ -311,13 +311,13 @@ class RuleAuditTrail:
     def get_by_transaction(self, transaction_id: str) -> list[dict[str, Any]]:
         """Get all evaluations for a specific transaction."""
         with self._lock:
-            records = self._by_transaction.get(transaction_id, [])
+            records: deque[RuleEvaluationRecord] = self._by_transaction.get(transaction_id, deque())
             return [r.to_dict() for r in records]
 
     def get_by_rule(self, rule_id: str, limit: int = 100) -> list[dict[str, Any]]:
         """Get recent evaluations for a specific rule."""
         with self._lock:
-            records = self._by_rule.get(rule_id, deque())
+            records: deque[RuleEvaluationRecord] = self._by_rule.get(rule_id, deque())
             return [r.to_dict() for r in list(records)[-limit:]]
 
     def get_recent(self, limit: int = 100) -> list[dict[str, Any]]:

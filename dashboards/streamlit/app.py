@@ -19,7 +19,7 @@ from typing import Callable
 
 import streamlit as st
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine, URL
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 # ---------------------------------------------------------------------------
@@ -93,7 +93,9 @@ def _hash_password(password: str) -> str:
 
 def _configured_users() -> dict[str, str]:
     managed = os.environ.get("RISKPULSE_ENV", "dev").strip().lower() in {
-        "prod", "production", "staging"
+        "prod",
+        "production",
+        "staging",
     }
     defaults = {
         "ADMIN": ("admin", "riskpulse2024!"),
@@ -102,7 +104,9 @@ def _configured_users() -> dict[str, str]:
     }
     users: dict[str, str] = {}
     for role, (default_user, default_password) in defaults.items():
-        username = os.environ.get(f"DASHBOARD_{role}_USER", default_user if role != "VIEWER" else "")
+        username = os.environ.get(
+            f"DASHBOARD_{role}_USER", default_user if role != "VIEWER" else ""
+        )
         password = os.environ.get(f"DASHBOARD_{role}_PASSWORD")
         if not username or not username.strip():
             if managed and role == "ADMIN":
@@ -110,7 +114,9 @@ def _configured_users() -> dict[str, str]:
             continue
         if managed and (not password or password == default_password):
             if role == "ADMIN":
-                raise RuntimeError("Set a non-default DASHBOARD_ADMIN_PASSWORD before starting the dashboard")
+                raise RuntimeError(
+                    "Set a non-default DASHBOARD_ADMIN_PASSWORD before starting the dashboard"
+                )
             continue
         users[username] = _hash_password(password or default_password)
     return users

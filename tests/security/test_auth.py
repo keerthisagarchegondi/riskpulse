@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from time import time
+from unittest.mock import AsyncMock, Mock
 
 import jwt
 import pytest
@@ -11,7 +13,11 @@ from fastapi.testclient import TestClient
 
 from src.api.app import _cors_options, create_app
 from src.api.middleware.auth import get_key_manager, require_permission, reset_key_manager
-from src.api.middleware.rate_limiter import InMemoryRateLimiter, RateLimitMiddleware
+from src.api.middleware.rate_limiter import (
+    InMemoryRateLimiter,
+    RateLimitMiddleware,
+    RedisRateLimiter,
+)
 from src.utils.config import get_settings
 from src.utils.security import (
     JWT_ALGORITHM,
@@ -248,6 +254,23 @@ def test_rate_limit_middleware_honors_api_key_limit(monkeypatch: pytest.MonkeyPa
     assert first.status_code == status.HTTP_200_OK
     assert second.status_code == status.HTTP_429_TOO_MANY_REQUESTS
     assert second.headers["X-RateLimit-Limit"] == "1"
+
+
+@pytest.mark.security
+async def test_redis_rate_limiter_reports_remaining_window() -> None:
+    redis_client = Mock()
+    pipeline = redis_client.pipeline.return_value
+    pipeline.execute = AsyncMock(return_value=[0, 1, 1, True, [(b"old", time() - 10)]])
+    redis_client.zrem = AsyncMock()
+
+    allowed, remaining, retry_after = await RedisRateLimiter(
+        redis_client, default_rate=1, window_seconds=60
+    ).is_allowed("custom")
+
+    assert (allowed, remaining) == (False, 0)
+    assert 49 <= retry_after <= 51
+    member = next(iter(pipeline.zadd.call_args.args[1]))
+    redis_client.zrem.assert_awaited_once_with("ratelimit:custom", member)
 
 
 @pytest.mark.security
