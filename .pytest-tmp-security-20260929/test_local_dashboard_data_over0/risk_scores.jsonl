@@ -1,0 +1,1 @@
+{"alert_recommended": true, "latency_ms": 1.2, "model_version": "local-rules", "overall_score": 0.96, "risk_classification": "critical", "risk_score": 0.96, "score_id": "2de16de6-1d17-491e-a6d4-f9bd7f7108b8", "scoring_timestamp": "2026-09-29T14:53:10.415296+00:00", "transaction_id": "txn-local-2"}

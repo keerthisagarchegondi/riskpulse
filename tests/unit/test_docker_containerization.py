@@ -68,6 +68,14 @@ def test_production_compose_has_resource_limits_restart_policies_and_local_logs(
     assert "riskpulse-local-storage" in compose["volumes"]
 
 
+def test_published_ports_default_to_loopback() -> None:
+    for filename in ("docker-compose.yml", "docker-compose.prod.yml"):
+        compose = yaml.safe_load(_read(filename))
+        for service in compose["services"].values():
+            for port in service.get("ports", []):
+                assert port.startswith("${RISKPULSE_BIND_HOST:-127.0.0.1}:")
+
+
 def test_makefile_has_docker_operation_targets() -> None:
     content = _read("Makefile")
 

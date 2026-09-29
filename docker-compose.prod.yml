@@ -48,7 +48,7 @@ services:
       RISKPULSE_SERVICE: api
       UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
     ports:
-      - "${RISKPULSE_API_PORT:-8000}:8000"
+      - "${RISKPULSE_BIND_HOST:-127.0.0.1}:${RISKPULSE_API_PORT:-8000}:8000"
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -127,7 +127,7 @@ services:
       <<: *app-env
       RISKPULSE_SERVICE: streamlit
     ports:
-      - "${RISKPULSE_STREAMLIT_PORT:-8501}:8501"
+      - "${RISKPULSE_BIND_HOST:-127.0.0.1}:${RISKPULSE_STREAMLIT_PORT:-8501}:8501"
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -171,7 +171,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY:?AIRFLOW__WEBSERVER__SECRET_KEY is required for production compose}
     ports:
-      - "${RISKPULSE_AIRFLOW_PORT:-8080}:8080"
+      - "${RISKPULSE_BIND_HOST:-127.0.0.1}:${RISKPULSE_AIRFLOW_PORT:-8080}:8080"
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
