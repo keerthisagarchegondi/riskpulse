@@ -12,9 +12,13 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import math
 import os
 import sys
+import time
+from collections import deque
 from pathlib import Path
+from threading import Lock
 from typing import Callable
 
 import streamlit as st
@@ -125,6 +129,42 @@ def _configured_users() -> dict[str, str]:
 _USERS = _configured_users()
 
 
+class _LoginLimiter:
+    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
+        self._clock = clock
+        self._lock = Lock()
+        self._all_attempts: deque[float] = deque()
+        self._user_attempts: dict[str, deque[float]] = {}
+
+    def retry_after(self, username: str) -> int:
+        now = self._clock()
+        with self._lock:
+            while self._all_attempts and self._all_attempts[0] <= now - 60:
+                self._all_attempts.popleft()
+            attempts = (
+                self._user_attempts.setdefault(username, deque()) if username in _USERS else None
+            )
+            if attempts is not None:
+                while attempts and attempts[0] <= now - 60:
+                    attempts.popleft()
+            blocked_until = max(
+                self._all_attempts[0] + 60 if len(self._all_attempts) >= 30 else now,
+                attempts[0] + 60 if attempts is not None and len(attempts) >= 5 else now,
+            )
+            if blocked_until > now:
+                return math.ceil(blocked_until - now)
+            self._all_attempts.append(now)
+            if attempts is not None:
+                attempts.append(now)
+            return 0
+
+
+@st.cache_resource(show_spinner=False)
+def _login_limiter() -> _LoginLimiter:
+    # ponytail: process-wide; use a shared store if the dashboard runs on multiple replicas.
+    return _LoginLimiter()
+
+
 def _check_credentials(username: str, password: str) -> bool:
     expected_hash = _USERS.get(username)
     if expected_hash is None:
@@ -152,13 +192,16 @@ def _login_form() -> bool:
         submitted = st.form_submit_button("Sign In", width="stretch")
 
     if submitted:
-        if _check_credentials(username, password):
+        retry_after = _login_limiter().retry_after(username)
+        if retry_after:
+            st.error("Invalid credentials or too many sign-in attempts. Try again shortly.")
+        elif _check_credentials(username, password):
             st.session_state["authenticated"] = True
             st.session_state["username"] = username
             st.session_state["role"] = role_for_user(username).value
             st.rerun()
         else:
-            st.error("Invalid username or password.")
+            st.error("Invalid credentials or too many sign-in attempts. Try again shortly.")
     return False
 
 

@@ -25,8 +25,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, cast
 
-import joblib
 import numpy as np
+
+from src.fraud_detection.artifact_security import load_model_artifact, sign_model_artifact
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +259,7 @@ class ModelRegistry:
                 )
 
             artifact_path = Path(artifact_path)
+            sign_model_artifact(artifact_path / "model.joblib")
             artifact_hash = self._compute_artifact_hash(artifact_path)
 
             metadata = ModelMetadata(
@@ -904,7 +906,7 @@ class ModelServer:
         model_file = path / "model.joblib"
         if not model_file.exists():
             raise FileNotFoundError(f"Model file not found: {model_file}")
-        return joblib.load(model_file)
+        return load_model_artifact(model_file)
 
     def load_for_ab_test(self, test_name: str) -> bool:
         """Pre-load models required for an A/B test.

@@ -303,6 +303,14 @@ class TestAnomalyDetectorPersistence:
 
         assert abs(orig_result.anomaly_score - loaded_result.anomaly_score) < 1e-10
 
+    def test_signed_load_rejects_modified_metadata(self, trained_detector, tmp_path, monkeypatch):
+        monkeypatch.setenv("RISKPULSE_MODEL_SIGNING_KEY", "d" * 64)
+        save_dir = trained_detector.save(tmp_path / "model")
+        (save_dir / "metadata.joblib").write_bytes(b"untrusted pickle")
+
+        with pytest.raises(ValueError, match="Invalid model artifact signature: metadata.joblib"):
+            AnomalyDetector.load(save_dir)
+
     def test_load_missing_file_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError):
             AnomalyDetector.load(tmp_path / "nonexistent")

@@ -15,6 +15,8 @@ import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 
+from src.fraud_detection.artifact_security import load_model_artifact, sign_model_artifact
+
 logger = logging.getLogger(__name__)
 
 ANOMALY_FEATURES = [
@@ -302,6 +304,8 @@ class AnomalyDetector:
             checksum=self._compute_checksum(model_path),
         )
         joblib.dump(metadata, metadata_path)
+        for artifact_path in (model_path, scaler_path, metadata_path):
+            sign_model_artifact(artifact_path)
 
         logger.info("Model saved to %s (version=%s)", save_dir, self._model_version)
         return save_dir
@@ -325,7 +329,7 @@ class AnomalyDetector:
             if not p.exists():
                 raise FileNotFoundError(f"Missing model artifact: {p}")
 
-        metadata: ModelMetadata = joblib.load(metadata_path)
+        metadata: ModelMetadata = load_model_artifact(metadata_path)
 
         # Verify model integrity
         actual_checksum = cls._compute_checksum_static(model_path)
@@ -342,8 +346,8 @@ class AnomalyDetector:
             random_state=metadata.random_state,
             feature_names=metadata.feature_names,
         )
-        detector._model = joblib.load(model_path)
-        detector._scaler = joblib.load(scaler_path)
+        detector._model = load_model_artifact(model_path)
+        detector._scaler = load_model_artifact(scaler_path)
         detector._is_fitted = True
         detector._model_version = metadata.model_version
         detector._training_samples = metadata.training_samples

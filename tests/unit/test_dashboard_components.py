@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from dashboards.streamlit.app import _configured_users, _get_engine
+from dashboards.streamlit.app import _configured_users, _get_engine, _login_limiter, _LoginLimiter
 from dashboards.streamlit.auth.roles import (
     DashboardRole,
     can_access_page,
@@ -50,6 +50,23 @@ def test_managed_dashboard_requires_explicit_admin_password(monkeypatch) -> None
     users = _configured_users()
     assert "admin" in users
     assert "analyst" not in users
+
+
+def test_login_attempts_are_limited_across_sessions() -> None:
+    now = [100.0]
+    limiter = _LoginLimiter(clock=lambda: now[0])
+    assert _login_limiter() is _login_limiter()
+
+    for _ in range(5):
+        assert limiter.retry_after("admin") == 0
+    assert limiter.retry_after("admin") == 60
+
+    for _ in range(25):
+        assert limiter.retry_after("unknown") == 0
+    assert limiter.retry_after("another-name") == 60
+
+    now[0] += 60
+    assert limiter.retry_after("admin") == 0
 
 
 def test_dashboard_database_url_preserves_special_password_characters(monkeypatch) -> None:

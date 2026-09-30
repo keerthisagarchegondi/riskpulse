@@ -18,6 +18,7 @@ import joblib
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
+from src.fraud_detection.artifact_security import load_model_artifact, sign_model_artifact
 from src.fraud_detection.feature_store import (
     FEATURE_CATALOG,
     FeatureStore,
@@ -141,22 +142,22 @@ class RiskScorer:
         if not model_file.exists():
             raise FileNotFoundError(f"Model file not found: {model_file}")
 
-        model = joblib.load(model_file)
+        model = load_model_artifact(model_file)
 
         scaler = None
         scaler_file = path / "scaler.joblib"
         if scaler_file.exists():
-            scaler = joblib.load(scaler_file)
+            scaler = load_model_artifact(scaler_file)
 
         calibrator = None
         calibrator_file = path / "calibrator.joblib"
         if calibrator_file.exists():
-            calibrator = joblib.load(calibrator_file)
+            calibrator = load_model_artifact(calibrator_file)
 
         metadata_file = path / "metadata.joblib"
         metadata = {}
         if metadata_file.exists():
-            metadata = joblib.load(metadata_file)
+            metadata = load_model_artifact(metadata_file)
 
         feature_names = metadata.get("feature_names", FEATURE_CATALOG)
         model_version = metadata.get("model_version", self._compute_version(model_file))
@@ -350,6 +351,8 @@ class RiskScorer:
             **(extra_metadata or {}),
         }
         joblib.dump(metadata, path / "metadata.joblib")
+        for artifact_file in path.glob("*.joblib"):
+            sign_model_artifact(artifact_file)
 
         logger.info("Saved risk scoring model to %s (version=%s)", path, version)
         return path
