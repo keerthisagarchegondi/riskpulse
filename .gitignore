@@ -64,6 +64,7 @@ Thumbs.db
 # ML Models (large files)
 ml/models/**/*.pkl
 ml/models/**/*.joblib
+ml/models/**/*.joblib.sig
 ml/models/**/*.h5
 !ml/models/**/*.yaml
 

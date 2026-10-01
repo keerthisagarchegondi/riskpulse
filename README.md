@@ -6,7 +6,7 @@ The repository now runs without AWS, Snowflake, CloudWatch, ECR, ECS, Terraform,
 
 ## Prerequisites
 
-- Python 3.11
+- Python 3.12 recommended (3.11+ supported)
 - Git
 - Docker Desktop with Docker Compose
 - Make, optional on Windows
@@ -25,14 +25,14 @@ Create a virtual environment.
 Windows PowerShell:
 
 ```powershell
-py -3.11 -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
 Linux or macOS:
 
 ```bash
-python3.11 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 ```
 
@@ -44,17 +44,13 @@ python -m pip install -e ".[dev]"
 pre-commit install
 ```
 
-Create the local environment file:
+Prepare the local environment (creates `.env` if absent, generates a model signing key if blank, and preserves an existing key):
 
 ```bash
-cp .env.example .env
+python scripts/setup_local.py
 ```
 
-Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
+Do not commit `.env`. Docker Compose reads its signing key and passes the same value to API, worker, dashboard, and Airflow containers.
 
 The defaults in `.env.example` are local-safe. They use:
 
@@ -68,46 +64,54 @@ The defaults in `.env.example` are local-safe. They use:
 
 ## Run Locally
 
-Start local infrastructure and services:
+Start the complete stack from the repository root. Docker Desktop must be running:
 
 ```bash
-docker compose up -d
+docker compose --env-file .env up -d --build
+docker compose --env-file .env ps
 ```
 
-Or use Make:
+This starts PostgreSQL, Kafka, Redis, API, worker, Streamlit, and Airflow. On a new PostgreSQL volume, Docker runs `database/migrations/*.sql` automatically. Wait until the services show healthy before continuing; Airflow can take longer on its first start. Do not also run `make run` or `make run-streamlit` on the same ports.
 
-```bash
-make docker-up
+Seed the local database. In PowerShell:
+
+```powershell
+Get-Content database/seeds/seed_rules.sql -Raw | docker compose --env-file .env exec -T postgres psql -U riskpulse -d riskpulse -v ON_ERROR_STOP=1
+Get-Content database/seeds/seed_test_data.sql -Raw | docker compose --env-file .env exec -T postgres psql -U riskpulse -d riskpulse -v ON_ERROR_STOP=1
 ```
 
-Run database migrations:
+On Linux or macOS:
 
 ```bash
-make db-migrate
+docker compose --env-file .env exec -T postgres psql -U riskpulse -d riskpulse -v ON_ERROR_STOP=1 < database/seeds/seed_rules.sql
+docker compose --env-file .env exec -T postgres psql -U riskpulse -d riskpulse -v ON_ERROR_STOP=1 < database/seeds/seed_test_data.sql
 ```
 
-Seed development data when needed:
+Verify the API, dashboard, Airflow, and a sample transaction:
 
 ```bash
-make db-seed
+python scripts/smoke_test.py --base-url http://127.0.0.1:8000 --streamlit-url http://127.0.0.1:8501 --airflow-url http://127.0.0.1:8080 --use-dev-key --submit-test-transaction
 ```
 
-Run the API:
+Check the local data count:
 
 ```bash
-make run
+docker compose --env-file .env exec postgres psql -U riskpulse -d riskpulse -c "SELECT COUNT(*) FROM transactions;"
 ```
 
-Run the worker:
+Stop the stack without deleting its data:
 
 ```bash
-make run-worker
+docker compose --env-file .env down
 ```
 
-Run the Streamlit dashboard:
+For host-side development instead of the full stack, start only the dependencies and run the Python services in separate terminals with `.env` loaded. Do not start their Docker counterparts at the same time:
 
 ```bash
-make run-streamlit
+docker compose --env-file .env up -d postgres redis zookeeper kafka
+python -m dotenv run -- python -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000 --reload
+python -m dotenv run -- python -m src.ingestion.kafka_consumer
+python -m dotenv run -- python -m streamlit run dashboards/streamlit/app.py --server.address 127.0.0.1 --server.port 8501
 ```
 
 Default endpoints:
@@ -120,12 +124,26 @@ Default endpoints:
 - Redis host port: `16379`
 - Kafka host port: `19092`
 
+Airflow's `standalone` startup creates an admin account and reports its initial password in `docker compose --env-file .env logs airflow`.
+
 Dashboard login defaults:
 
 - Admin: `admin` / `riskpulse2024!`
 - Analyst: `analyst` / `analyst2024!`
 
 Change these with `DASHBOARD_ADMIN_USER`, `DASHBOARD_ADMIN_PASSWORD`, `DASHBOARD_ANALYST_USER`, and `DASHBOARD_ANALYST_PASSWORD`.
+
+## Signed Models
+
+`scripts/setup_local.py` generates a random 64-character `RISKPULSE_MODEL_SIGNING_KEY` in the ignored `.env` file. Keep it private and stable: the same key must be present when saving, registering, and loading a model. Changing or losing it makes previously signed artifacts unloadable. Staging and production refuse model loads without a key or valid signature. Local development still permits unsigned artifacts only when no key is configured.
+
+Existing unsigned model files must not be signed blindly. To recreate the included anomaly detector from this repository's synthetic training source, run this after setup (it replaces the artifacts in `ml/models/isolation_forest`):
+
+```bash
+python -m dotenv run -- python ml/training/train_anomaly_detector.py --n-samples 10000
+```
+
+The training script saves signed `model.joblib`, `scaler.joblib`, and `metadata.joblib` files with matching `.sig` files. Use a trusted training pipeline for any other model. The local Compose stack runs one dashboard instance; deployments with multiple replicas need a shared ingress rate limit in addition to the in-process login limiter.
 
 ## Local Data Flow
 
@@ -235,12 +253,10 @@ Enable these only when you are ready for cloud deployment:
 
 If Docker cannot bind ports, another local process is using the host port. The project defaults avoid common conflicts by using `15432`, `16379`, and `19092`.
 
-If the dashboard says preview data is shown, start PostgreSQL, run migrations, and seed data:
+If the dashboard says preview data is shown, check PostgreSQL health and seed data using the commands above. Migrations run automatically only when the PostgreSQL volume is first created:
 
 ```bash
-docker compose up -d postgres
-make db-migrate
-make db-seed
+docker compose --env-file .env ps postgres
 ```
 
 If editable installation fails because `README.md` is missing, ensure this file is present in the repository root.

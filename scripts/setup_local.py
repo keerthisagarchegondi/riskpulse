@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import secrets
 import shutil
 import subprocess
 import sys
@@ -60,6 +61,7 @@ def main() -> int:
 
     ensure_env()
     env_values = upsert_env_values(LOCAL_DEFAULTS)
+    ensure_model_signing_key()
     ensure_local_dirs(env_values)
     write_powerbi_local_artifacts(env_values)
 
@@ -109,8 +111,26 @@ def upsert_env_values(defaults: dict[str, str]) -> dict[str, str]:
     return resolved
 
 
+def ensure_model_signing_key() -> None:
+    lines = ENV_FILE.read_text(encoding="utf-8").splitlines()
+    name = "RISKPULSE_MODEL_SIGNING_KEY"
+    matches = [index for index, line in enumerate(lines) if line.startswith(f"{name}=")]
+    if len(matches) > 1:
+        raise ValueError(f"{name} must appear only once in .env")
+    if matches:
+        value = lines[matches[0]].split("=", 1)[1].strip()
+        if value:
+            if len(value.encode("utf-8")) < 32:
+                raise ValueError(f"{name} must be at least 32 bytes")
+            return
+        lines[matches[0]] = f"{name}={secrets.token_hex(32)}"
+    else:
+        lines.append(f"{name}={secrets.token_hex(32)}")
+    ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def ensure_local_dirs(env_values: dict[str, str]) -> None:
-    paths = [
+    paths: list[str | Path] = [
         env_values["RISKPULSE_LOCAL_STORAGE_ROOT"],
         env_values["RISKPULSE_LOCAL_WAREHOUSE_ROOT"],
         Path(env_values["RISKPULSE_LOCAL_METRICS_PATH"]).parent,
