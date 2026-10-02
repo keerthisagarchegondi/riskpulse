@@ -131,7 +131,7 @@ Dashboard login defaults:
 - Admin: `admin` / `riskpulse2024!`
 - Analyst: `analyst` / `analyst2024!`
 
-Change these with `DASHBOARD_ADMIN_USER`, `DASHBOARD_ADMIN_PASSWORD`, `DASHBOARD_ANALYST_USER`, and `DASHBOARD_ANALYST_PASSWORD`.
+These defaults are for local development only; change them before exposing the dashboard using `DASHBOARD_ADMIN_USER`, `DASHBOARD_ADMIN_PASSWORD`, `DASHBOARD_ANALYST_USER`, and `DASHBOARD_ANALYST_PASSWORD`.
 
 ## Signed Models
 
