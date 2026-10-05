@@ -17,7 +17,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.api.middleware.auth import verify_api_key
+from src.api.middleware.auth import require_permission, verify_api_key
 from src.utils.constants import API_PREFIX
 from src.utils.local_dashboard_store import record_local_score
 
@@ -369,7 +369,7 @@ async def get_metrics(
 async def update_weights(
     request: UpdateWeightsRequest,
     pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
-    _api_key: str = Depends(verify_api_key),
+    _api_key: dict[str, Any] = Depends(require_permission("admin")),
 ) -> dict[str, Any]:
     new_weights = {
         "rule_score": request.rule_score,

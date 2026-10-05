@@ -15,7 +15,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from src.api.middleware.auth import verify_api_key
+from src.api.middleware.auth import require_permission, verify_api_key
 from src.api.schemas.transaction_schema import (
     BatchSubmitResponse,
     ErrorResponse,
@@ -51,7 +51,7 @@ router = APIRouter(prefix=f"{API_PREFIX}/transactions", tags=["Transactions"])
 async def submit_transaction(
     transaction: TransactionCreate,
     request: Request,
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("write")),
 ) -> TransactionSubmitResponse:
     """Submit a single transaction for processing.
 
@@ -120,7 +120,7 @@ async def submit_transaction(
 async def submit_batch(
     batch: TransactionBatchCreate,
     request: Request,
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("write")),
 ) -> BatchSubmitResponse:
     """Submit a batch of transactions for processing.
 

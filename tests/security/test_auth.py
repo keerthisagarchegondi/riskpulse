@@ -18,6 +18,7 @@ from src.api.middleware.rate_limiter import (
     RateLimitMiddleware,
     RedisRateLimiter,
 )
+from src.api.routes.scoring import get_scoring_pipeline
 from src.utils.config import get_settings
 from src.utils.security import (
     JWT_ALGORITHM,
@@ -79,6 +80,56 @@ def test_transaction_submit_blocks_auth_bypass_attempts(
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert expected_detail in response.text
+
+
+@pytest.mark.security
+def test_read_only_key_cannot_submit_transactions_or_change_weights(
+    client: TestClient, valid_transaction: dict[str, object]
+) -> None:
+    manager = get_key_manager()
+    manager._keys[manager._hash_key("rp-read-only")] = {
+        "name": "readonly",
+        "permissions": ["read"],
+        "rate_limit": None,
+        "auth_type": "api_key",
+    }
+    pipeline = Mock()
+    client.app.dependency_overrides[get_scoring_pipeline] = lambda: pipeline
+    headers = {"X-API-Key": "rp-read-only"}
+    weights = {"rule_score": 0.4, "anomaly_score": 0.3, "ml_score": 0.3}
+
+    assert (
+        client.post("/api/v1/transactions", json=valid_transaction, headers=headers).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/api/v1/transactions/batch",
+            json={"transactions": [valid_transaction]},
+            headers=headers,
+        ).status_code
+        == 403
+    )
+    assert client.put("/api/v1/score/weights", json=weights, headers=headers).status_code == 403
+    pipeline.update_weights.assert_not_called()
+
+    pipeline.weights = weights
+    admin_response = client.put(
+        "/api/v1/score/weights", json=weights, headers={"X-API-Key": DEV_API_KEY}
+    )
+    assert admin_response.status_code == 200
+    pipeline.update_weights.assert_called_once_with(weights)
+
+
+@pytest.mark.security
+def test_api_security_headers_cover_success_and_auth_failure(client: TestClient) -> None:
+    for response in (
+        client.get("/health/live"),
+        client.post("/api/v1/transactions", json={}),
+    ):
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert response.headers["X-Frame-Options"] == "DENY"
+        assert response.headers["Referrer-Policy"] == "no-referrer"
 
 
 @pytest.mark.security

@@ -14,7 +14,8 @@ import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from starlette.middleware.base import RequestResponseEndpoint
 
 from src.api.openapi import install_custom_openapi
 from src.monitoring.cloudwatch_logger import configure_cloudwatch_logging
@@ -148,6 +149,14 @@ def create_app() -> FastAPI:
     from src.api.middleware.rate_limiter import RateLimitMiddleware
 
     app.add_middleware(RateLimitMiddleware, redis_client=getattr(app.state, "redis_client", None))
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
 
     # --- Exception Handlers ---
 
