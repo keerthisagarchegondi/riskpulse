@@ -53,7 +53,7 @@ command_exists() {
 
 is_placeholder_secret() {
   case "${1:-}" in
-    ""|"riskpulse"|"riskpulse_dev_password"|"change-me"|"dev-api-key-riskpulse-2024"|"dev-jwt-secret")
+    ""|"riskpulse"|"riskpulse_dev_password"|"change-me"|"dev-api-key-riskpulse-2024"|"dev-api-key-change-in-production"|"dev-jwt-secret"|"dev-jwt-secret-change-in-production"|"ci-build-placeholder-not-secret")
       return 0
       ;;
     *)

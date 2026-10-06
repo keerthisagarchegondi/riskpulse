@@ -1,5 +1,37 @@
 RiskPulse Production Deployment Guide
 
+Optional Public Compose Ingress (configuration only; not yet deployed)
+- Start from docker-compose.prod.yml plus docker-compose.public.yml. This overlay
+  removes direct API and Streamlit host ports and exposes Nginx on 80/443.
+- Set distinct RISKPULSE_API_DOMAIN and RISKPULSE_DASHBOARD_DOMAIN DNS names.
+  Point both names at the host before enabling public access.
+- Set RISKPULSE_INGRESS_TLS_DIR to a host directory containing fullchain.pem
+  and privkey.pem for both names. The unprivileged Nginx process must be able
+  to read them. Renew certificates before expiry; never commit private keys.
+- Set RISKPULSE_INGRESS_AUTH_FILE to a host htpasswd file with unique dashboard
+  ingress credentials. Keep this separate from DASHBOARD_ADMIN_PASSWORD.
+- Set strong RISKPULSE_DB_PASSWORD, RISKPULSE_API_KEY, RISKPULSE_JWT_SECRET,
+  RISKPULSE_MODEL_SIGNING_KEY (at least 32 random bytes), DASHBOARD_ADMIN_USER,
+  DASHBOARD_ADMIN_PASSWORD, AIRFLOW__DATABASE__SQL_ALCHEMY_CONN, and
+  AIRFLOW__WEBSERVER__SECRET_KEY outside source control. Do not reuse examples.
+- Attach private PostgreSQL, Redis, and Kafka services to the backend network,
+  or configure RISKPULSE_DB_HOST, RISKPULSE_REDIS_HOST, and
+  RISKPULSE_KAFKA_BOOTSTRAP_SERVERS to resolvable private endpoints. Do not
+  publish database, Redis, Kafka, or Airflow ports to the internet.
+- Before startup, validate with:
+  docker compose -f docker-compose.prod.yml -f docker-compose.public.yml config --quiet
+- Then build and start with the same two -f arguments. Verify Nginx syntax with:
+  docker compose -f docker-compose.prod.yml -f docker-compose.public.yml run --rm --no-deps ingress nginx -t
+- Verify HTTPS certificate/hostnames, HTTP-to-HTTPS redirects, unknown-host
+  rejection, dashboard Basic auth, API 401 for missing credentials, rate-limit
+  429, dashboard login, and real PostgreSQL/Redis/Kafka connectivity.
+- The production GitHub workflow currently validates a dry-run plan. It does
+  not deploy this overlay or verify live infrastructure. A real endpoint,
+  certificates, healthy dependencies, and operator approval are still required.
+- A single Nginx ingress has per-instance IP limits. For more than one ingress
+  replica, add a shared external rate-limiting layer. Dashboard login attempts
+  use Redis across Streamlit replicas and fail closed when Redis is unavailable.
+
 Purpose
 This guide describes how to provision, configure, deploy, verify, and roll back
 RiskPulse services in staging and production. It is written for operators with

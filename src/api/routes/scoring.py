@@ -17,7 +17,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.api.middleware.auth import require_permission, verify_api_key
+from src.api.middleware.auth import require_permission
 from src.utils.constants import API_PREFIX
 from src.utils.local_dashboard_store import record_local_score
 
@@ -240,7 +240,7 @@ def _unified_score_to_response(score: Any) -> ScoreResponse:
 async def score_transaction(
     request: ScoreTransactionRequest,
     pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
-    _api_key: str = Depends(verify_api_key),
+    _api_key: dict[str, Any] = Depends(require_permission("write")),
 ) -> ScoreResponse:
     txn_dict = _request_to_transaction_dict(request)
     context = request.context
@@ -275,7 +275,7 @@ async def score_transaction(
 async def score_batch(
     request: BatchScoreRequest,
     pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
-    _api_key: str = Depends(verify_api_key),
+    _api_key: dict[str, Any] = Depends(require_permission("write")),
 ) -> BatchScoreResponse:
     start = time.perf_counter()
 
@@ -317,7 +317,7 @@ async def score_batch(
 async def get_score(
     transaction_id: str,
     pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
-    _api_key: str = Depends(verify_api_key),
+    _api_key: dict[str, Any] = Depends(require_permission("read")),
 ) -> ScoreResponse:
     if pipeline._cache is None:
         raise HTTPException(
@@ -348,7 +348,7 @@ async def get_score(
 )
 async def get_metrics(
     pipeline: "ScoringPipeline" = Depends(get_scoring_pipeline),
-    _api_key: str = Depends(verify_api_key),
+    _api_key: dict[str, Any] = Depends(require_permission("read")),
 ) -> MetricsResponse:
     m = pipeline.metrics
     return MetricsResponse(

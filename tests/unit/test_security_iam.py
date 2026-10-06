@@ -163,11 +163,15 @@ def test_prod_api_keys_refuse_missing_secret_or_environment_key(
         get_settings.cache_clear()
 
 
+@pytest.mark.parametrize(
+    "api_key", ["dev-api-key-riskpulse-2024", "dev-api-key-change-in-production"]
+)
 def test_prod_api_keys_refuse_development_placeholder(
     monkeypatch: pytest.MonkeyPatch,
+    api_key: str,
 ) -> None:
     monkeypatch.setenv("RISKPULSE_ENV", "prod")
-    monkeypatch.setenv("RISKPULSE_API_KEY", "dev-api-key-riskpulse-2024")
+    monkeypatch.setenv("RISKPULSE_API_KEY", api_key)
     get_settings.cache_clear()
 
     try:
@@ -175,6 +179,39 @@ def test_prod_api_keys_refuse_development_placeholder(
 
         with pytest.raises(SecretsManagerError, match="placeholder"):
             manager.get_api_keys()
+    finally:
+        get_settings.cache_clear()
+
+
+def test_prod_api_keys_json_refuses_development_placeholder(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.setenv(
+        "RISKPULSE_API_KEYS", json.dumps([{"key": "dev-api-key-change-in-production"}])
+    )
+    get_settings.cache_clear()
+
+    try:
+        manager = SecretsManager(enabled=False)
+        with pytest.raises(SecretsManagerError, match="placeholder"):
+            manager.get_api_keys()
+    finally:
+        get_settings.cache_clear()
+
+
+@pytest.mark.parametrize("jwt_secret", ["dev-jwt-secret-change-in-production", "too-short"])
+def test_prod_jwt_secret_rejects_sample_and_short_values(
+    monkeypatch: pytest.MonkeyPatch, jwt_secret: str
+) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "prod")
+    monkeypatch.setenv("RISKPULSE_JWT_SECRET", jwt_secret)
+    get_settings.cache_clear()
+
+    try:
+        manager = SecretsManager(enabled=False)
+        with pytest.raises(SecretsManagerError, match="Production JWT secret"):
+            manager.get_jwt_secret()
     finally:
         get_settings.cache_clear()
 

@@ -15,7 +15,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from src.api.middleware.auth import require_permission, verify_api_key
+from src.api.middleware.auth import require_permission
 from src.api.schemas.transaction_schema import (
     BatchSubmitResponse,
     ErrorResponse,
@@ -189,7 +189,7 @@ async def submit_batch(
 async def get_transaction(
     transaction_id: uuid.UUID,
     request: Request,
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> TransactionResponse:
     """Retrieve a single transaction by its internal ID."""
     # In production, this queries PostgreSQL
@@ -227,7 +227,7 @@ async def list_transactions(
     end_date: datetime | None = Query(None, description="End date filter (ISO 8601)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Items per page"),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> TransactionListResponse:
     """List transactions with pagination and filtering."""
     try:

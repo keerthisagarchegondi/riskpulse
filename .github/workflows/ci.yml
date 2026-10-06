@@ -38,6 +38,24 @@ env:
   RUN_AWS_CHECKS: "false"
 
 jobs:
+  secret-history:
+    name: Full-History Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Scan every ref with Gitleaks
+        run: |
+          curl -fsSLo gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          curl -fsSLo gitleaks_checksums.txt https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt
+          grep 'gitleaks_8.30.1_linux_x64.tar.gz$' gitleaks_checksums.txt | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --log-opts='--all --full-history' --redact .
+
   lint-test-scan:
     name: Lint, Test, Scan
     runs-on: ubuntu-latest
@@ -136,12 +154,40 @@ jobs:
         run: bandit -r src scripts dashboards ml airflow -c pyproject.toml -ll -f json -o bandit-report.json
 
       - name: Dependency vulnerability scan with safety
-        run: safety check --full-report
+        run: |
+          python -m venv "$RUNNER_TEMP/riskpulse-runtime-scan"
+          "$RUNNER_TEMP/riskpulse-runtime-scan/bin/python" -m pip install --quiet -e .
+          "$RUNNER_TEMP/riskpulse-runtime-scan/bin/python" -m pip freeze --exclude-editable > "$RUNNER_TEMP/riskpulse-runtime-requirements.txt"
+          safety check --file "$RUNNER_TEMP/riskpulse-runtime-requirements.txt" --full-report
 
       - name: Validate compose files
         run: |
           docker compose -f docker-compose.yml config --quiet
           docker compose -f docker-compose.prod.yml config --quiet
+
+      - name: Validate public ingress overlay
+        env:
+          RISKPULSE_API_DOMAIN: api.example.invalid
+          RISKPULSE_DASHBOARD_DOMAIN: dashboard.example.invalid
+          RISKPULSE_API_KEY: ci-only-api-key
+          RISKPULSE_JWT_SECRET: ci-only-jwt-secret-32-byte-placeholder
+          RISKPULSE_MODEL_SIGNING_KEY: ci-only-model-signing-key-32-byte-placeholder
+          DASHBOARD_ADMIN_USER: ci-admin
+          DASHBOARD_ADMIN_PASSWORD: ci-only-dashboard-password
+          RISKPULSE_INGRESS_TLS_DIR: ${{ runner.temp }}/riskpulse-tls
+          RISKPULSE_INGRESS_AUTH_FILE: ${{ runner.temp }}/riskpulse-htpasswd
+        run: |
+          mkdir -p "$RISKPULSE_INGRESS_TLS_DIR"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj '/CN=api.example.invalid' \
+            -keyout "$RISKPULSE_INGRESS_TLS_DIR/privkey.pem" \
+            -out "$RISKPULSE_INGRESS_TLS_DIR/fullchain.pem" >/dev/null 2>&1
+          chmod 644 "$RISKPULSE_INGRESS_TLS_DIR/privkey.pem"
+          printf 'ci:%s\n' "$(openssl passwd -apr1 ci-only-placeholder)" > "$RISKPULSE_INGRESS_AUTH_FILE"
+          docker compose -f docker-compose.prod.yml -f docker-compose.public.yml config --quiet
+          docker compose -f docker-compose.prod.yml -f docker-compose.public.yml config --format json \
+            | python -c 'import json,sys; services=json.load(sys.stdin)["services"]; assert not services["api"].get("ports"); assert not services["streamlit"].get("ports")'
+          docker compose -f docker-compose.prod.yml -f docker-compose.public.yml run --rm --no-deps ingress nginx -t
 
       - name: Build Docker images
         run: docker compose -f docker-compose.yml build api worker streamlit airflow

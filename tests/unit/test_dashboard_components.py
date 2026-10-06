@@ -4,11 +4,19 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import Mock
 
 import pandas as pd
 import pytest
+from redis.exceptions import RedisError
 
-from dashboards.streamlit.app import _configured_users, _get_engine, _login_limiter, _LoginLimiter
+from dashboards.streamlit.app import (
+    _configured_users,
+    _get_engine,
+    _login_limiter,
+    _LoginLimiter,
+    _RedisLoginLimiter,
+)
 from dashboards.streamlit.auth.roles import (
     DashboardRole,
     can_access_page,
@@ -67,6 +75,32 @@ def test_login_attempts_are_limited_across_sessions() -> None:
 
     now[0] += 60
     assert limiter.retry_after("admin") == 0
+
+
+def test_managed_login_uses_shared_redis_and_fails_closed(monkeypatch) -> None:
+    monkeypatch.setenv("RISKPULSE_ENV", "production")
+    client = Mock()
+    client.eval.return_value = 12
+    monkeypatch.setattr("dashboards.streamlit.app.redis.Redis.from_url", lambda *a, **k: client)
+    _login_limiter.clear()
+
+    try:
+        limiter = _login_limiter()
+        assert isinstance(limiter, _RedisLoginLimiter)
+        client.ping.assert_called_once()
+        assert limiter.retry_after("admin") == 12
+        args = client.eval.call_args.args
+        assert args[1] == 2
+        assert "admin" not in args[3]
+
+        assert limiter.retry_after("unknown") == 12
+        assert client.eval.call_args.args[1] == 1
+
+        client.eval.side_effect = RedisError("offline")
+        with pytest.raises(RedisError):
+            limiter.retry_after("admin")
+    finally:
+        _login_limiter.clear()
 
 
 def test_dashboard_database_url_preserves_special_password_characters(monkeypatch) -> None:

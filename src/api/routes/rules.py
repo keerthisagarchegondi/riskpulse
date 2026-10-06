@@ -12,7 +12,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.api.middleware.auth import require_permission, verify_api_key
+from src.api.middleware.auth import require_permission
 from src.utils.constants import API_PREFIX
 from src.validation.rules_engine import (
     RulesEngine,
@@ -182,7 +182,7 @@ async def list_rules(
     category: str | None = Query(default=None, description="Filter by category"),
     enabled_only: bool = Query(default=False, description="Only return enabled rules"),
     engine: RulesEngine = Depends(get_engine),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> RuleListResponse:
     """List all configured business rules."""
     rules = engine.get_rules(category=category, enabled_only=enabled_only)
@@ -201,7 +201,7 @@ async def list_rules(
 )
 async def get_status(
     engine: RulesEngine = Depends(get_engine),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> RuleEngineStatusResponse:
     """Get rules engine operational status."""
     return RuleEngineStatusResponse(
@@ -223,7 +223,7 @@ async def get_status(
 async def get_rule(
     rule_id: str,
     engine: RulesEngine = Depends(get_engine),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> RuleResponse:
     """Get a single rule by ID."""
     rule = engine.get_rule(rule_id)
@@ -379,7 +379,7 @@ async def disable_rule(
 async def evaluate_transaction(
     request: RuleEvaluateRequest,
     engine: RulesEngine = Depends(get_engine),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("write")),
 ) -> RuleEvaluateResponse:
     """Evaluate a transaction against all rules."""
     result = engine.evaluate(request.transaction)
@@ -425,7 +425,7 @@ async def reload_rules(
 )
 async def get_audit_stats(
     engine: RulesEngine = Depends(get_engine),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> AuditStatsResponse:
     """Get audit trail statistics."""
     stats = engine.audit_trail.get_stats()
@@ -441,7 +441,7 @@ async def get_audit_stats(
 async def get_recent_audit(
     limit: int = Query(default=50, ge=1, le=500, description="Maximum records to return"),
     engine: RulesEngine = Depends(get_engine),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> AuditTrailResponse:
     """Get recent audit trail records."""
     records = engine.audit_trail.get_recent(limit=limit)
@@ -457,7 +457,7 @@ async def get_recent_audit(
 async def get_transaction_audit(
     transaction_id: str,
     engine: RulesEngine = Depends(get_engine),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> AuditTrailResponse:
     """Get audit trail for a specific transaction."""
     records = engine.audit_trail.get_by_transaction(transaction_id)
@@ -474,7 +474,7 @@ async def get_rule_audit(
     rule_id: str,
     limit: int = Query(default=100, ge=1, le=500, description="Maximum records to return"),
     engine: RulesEngine = Depends(get_engine),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> AuditTrailResponse:
     """Get audit trail for a specific rule."""
     records = engine.audit_trail.get_by_rule(rule_id, limit=limit)

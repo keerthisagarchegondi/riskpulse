@@ -26,7 +26,10 @@ _DEVELOPMENT_PLACEHOLDERS = {
     "riskpulse_dev_password",
     "change-me",
     "dev-api-key-riskpulse-2024",
+    "dev-api-key-change-in-production",
     "dev-jwt-secret",
+    "dev-jwt-secret-change-in-production",
+    "ci-build-placeholder-not-secret",
 }
 
 
@@ -90,6 +93,12 @@ class SecretsManager:
             keys = self._coerce_api_key_entries(parsed)
             if not keys:
                 raise SecretsManagerError("RISKPULSE_API_KEYS must contain API key entries")
+            if managed_environment and any(
+                str(entry["key"]) in _DEVELOPMENT_PLACEHOLDERS for entry in keys
+            ):
+                raise SecretsManagerError(
+                    "Production API key cannot use a development placeholder value"
+                )
             return keys
 
         single_key = os.environ.get("RISKPULSE_API_KEY", "")
@@ -213,18 +222,24 @@ class SecretsManager:
 
     def get_jwt_secret(self, secret_id: str | None = None) -> str:
         settings = get_settings()
+        managed_environment = self._is_managed_environment(settings.environment)
         configured_id = secret_id or settings.get("security.secrets_manager.jwt_secret_id")
         if configured_id:
             secret = self.get_secret(configured_id)
             value = secret.get("jwt_secret") or secret.get("secret") or secret.get("value")
             if value:
-                return str(value)
+                signing_secret = str(value)
+                if managed_environment and len(signing_secret.encode()) < 32:
+                    raise SecretsManagerError("Production JWT secret must be at least 32 bytes")
+                return signing_secret
 
         env_secret = os.environ.get("RISKPULSE_JWT_SECRET")
         if env_secret and env_secret not in _DEVELOPMENT_PLACEHOLDERS:
+            if managed_environment and len(env_secret.encode()) < 32:
+                raise SecretsManagerError("Production JWT secret must be at least 32 bytes")
             return env_secret
 
-        if self._is_managed_environment(settings.environment):
+        if managed_environment:
             raise SecretsManagerError(
                 "Production JWT secret must be configured through Secrets Manager "
                 "or RISKPULSE_JWT_SECRET; refusing to use development fallback"

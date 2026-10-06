@@ -17,7 +17,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.api.middleware.auth import require_permission, verify_api_key
+from src.api.middleware.auth import require_permission
 from src.utils.constants import API_PREFIX
 
 logger = structlog.get_logger(__name__)
@@ -144,7 +144,7 @@ def _get_model_monitor(request: Request) -> Any | None:
 async def predict_risk_score(
     request_body: RiskScoreRequest,
     request: Request,
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("write")),
 ) -> RiskScoreResponse:
     """Score a single transaction for fraud risk."""
     server = _get_model_server(request)
@@ -220,7 +220,7 @@ async def predict_risk_score(
 async def predict_batch(
     request_body: BatchRiskScoreRequest,
     request: Request,
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("write")),
 ) -> BatchRiskScoreResponse:
     """Batch score multiple transactions."""
     server = _get_model_server(request)
@@ -288,7 +288,7 @@ async def predict_batch(
 )
 async def model_health(
     request: Request,
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> ModelHealthResponse:
     """Return model health and monitoring status."""
     server = _get_model_server(request)
@@ -327,7 +327,7 @@ async def model_health(
 )
 async def model_info(
     request: Request,
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> ModelInfoResponse:
     """Return model serving information."""
     server = _get_model_server(request)
@@ -395,7 +395,7 @@ async def reload_model(
 async def get_monitoring_alerts(
     request: Request,
     limit: int = Query(50, ge=1, le=200),
-    _auth: dict[str, Any] = Depends(verify_api_key),
+    _auth: dict[str, Any] = Depends(require_permission("read")),
 ) -> dict[str, Any]:
     """Get recent monitoring alerts."""
     monitor = _get_model_monitor(request)

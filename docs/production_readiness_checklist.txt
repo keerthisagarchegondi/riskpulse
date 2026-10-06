@@ -104,6 +104,12 @@ Post-Deployment Verification
 - [ ] Admin account can access admin-only dashboard areas.
 
 Security Review
+- [ ] Full-history Gitleaks scan passed with only reviewed exact test fingerprints ignored.
+- [ ] Public ingress serves valid TLS for distinct API and dashboard names.
+- [ ] Direct API and dashboard host ports are absent with the public overlay.
+- [ ] Dashboard ingress auth, Redis login limiting, and API rate limiting verified live.
+- [ ] PostgreSQL, Redis, and Kafka reachable only on private network endpoints.
+- [ ] Production DB role permissions and real secret values verified on deployed services.
 - [ ] No high or critical security findings remain open.
 - [ ] Bandit source scan passed.
 - [ ] Dependency vulnerability scan passed or exceptions approved.

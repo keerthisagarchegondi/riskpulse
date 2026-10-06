@@ -21,7 +21,9 @@ from pathlib import Path
 from threading import Lock
 from typing import Callable
 
+import redis
 import streamlit as st
+from redis.exceptions import RedisError
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
@@ -47,6 +49,7 @@ from dashboards.streamlit.pages import (  # noqa: E402
     real_time_monitor,
     trend_analysis,
 )
+from src.utils.config import get_settings  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -159,9 +162,44 @@ class _LoginLimiter:
             return 0
 
 
+class _RedisLoginLimiter:
+    _SCRIPT = """
+    for i = 1, #KEYS do
+        if tonumber(redis.call('GET', KEYS[i]) or '0') >= tonumber(ARGV[i]) then
+            return math.max(redis.call('TTL', KEYS[i]), 1)
+        end
+    end
+    for i = 1, #KEYS do
+        if redis.call('INCR', KEYS[i]) == 1 then
+            redis.call('EXPIRE', KEYS[i], 60)
+        end
+    end
+    return 0
+    """
+
+    def __init__(self, client: redis.Redis) -> None:
+        self._client = client
+
+    def retry_after(self, username: str) -> int:
+        keys = ["riskpulse:dashboard:login:all"]
+        limits = [30]
+        if username in _USERS:
+            keys.append(
+                f"riskpulse:dashboard:login:user:{hashlib.sha256(username.encode()).hexdigest()}"
+            )
+            limits.append(5)
+        # ponytail: fixed 60-second windows allow a boundary burst; the public ingress adds IP throttling.
+        return int(self._client.eval(self._SCRIPT, len(keys), *keys, *limits))
+
+
 @st.cache_resource(show_spinner=False)
-def _login_limiter() -> _LoginLimiter:
-    # ponytail: process-wide; use a shared store if the dashboard runs on multiple replicas.
+def _login_limiter() -> _LoginLimiter | _RedisLoginLimiter:
+    if os.environ.get("RISKPULSE_ENV", "dev").strip().lower() in {"prod", "production", "staging"}:
+        client = redis.Redis.from_url(
+            get_settings().redis_url, socket_connect_timeout=2, socket_timeout=2
+        )
+        client.ping()
+        return _RedisLoginLimiter(client)
     return _LoginLimiter()
 
 
@@ -192,7 +230,12 @@ def _login_form() -> bool:
         submitted = st.form_submit_button("Sign In", width="stretch")
 
     if submitted:
-        retry_after = _login_limiter().retry_after(username)
+        try:
+            retry_after = _login_limiter().retry_after(username)
+        except RedisError:
+            logger.exception("dashboard_login_limiter_unavailable")
+            st.error("Sign-in is temporarily unavailable. Please try again later.")
+            return False
         if retry_after:
             st.error("Invalid credentials or too many sign-in attempts. Try again shortly.")
         elif _check_credentials(username, password):

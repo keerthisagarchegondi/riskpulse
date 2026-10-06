@@ -1,0 +1,62 @@
+services:
+  api:
+    ports: !override []
+    environment:
+      RISKPULSE_API__CORS_ORIGINS: https://${RISKPULSE_DASHBOARD_DOMAIN:?Set RISKPULSE_DASHBOARD_DOMAIN}
+      RISKPULSE_API_KEY: ${RISKPULSE_API_KEY:?Set a production API key}
+      RISKPULSE_JWT_SECRET: ${RISKPULSE_JWT_SECRET:?Set a production JWT secret}
+      RISKPULSE_MODEL_SIGNING_KEY: ${RISKPULSE_MODEL_SIGNING_KEY:?Set a model signing key}
+
+  streamlit:
+    ports: !override []
+    environment:
+      DASHBOARD_ADMIN_USER: ${DASHBOARD_ADMIN_USER:?Set DASHBOARD_ADMIN_USER}
+      DASHBOARD_ADMIN_PASSWORD: ${DASHBOARD_ADMIN_PASSWORD:?Set DASHBOARD_ADMIN_PASSWORD}
+
+  ingress:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    environment:
+      RISKPULSE_API_DOMAIN: ${RISKPULSE_API_DOMAIN:?Set RISKPULSE_API_DOMAIN}
+      RISKPULSE_DASHBOARD_DOMAIN: ${RISKPULSE_DASHBOARD_DOMAIN:?Set RISKPULSE_DASHBOARD_DOMAIN}
+      NGINX_ENVSUBST_FILTER: ^RISKPULSE_.*_DOMAIN$
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      - type: bind
+        source: ./infrastructure/nginx/public.conf.template
+        target: /etc/nginx/templates/default.conf.template
+        read_only: true
+      - type: bind
+        source: ${RISKPULSE_INGRESS_TLS_DIR:?Set RISKPULSE_INGRESS_TLS_DIR}
+        target: /etc/nginx/tls
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${RISKPULSE_INGRESS_AUTH_FILE:?Set RISKPULSE_INGRESS_AUTH_FILE}
+        target: /etc/nginx/.riskpulse-htpasswd
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      api:
+        condition: service_healthy
+      streamlit:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /etc/nginx/conf.d:size=1m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - public

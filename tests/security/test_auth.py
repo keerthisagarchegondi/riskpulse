@@ -122,6 +122,53 @@ def test_read_only_key_cannot_submit_transactions_or_change_weights(
 
 
 @pytest.mark.security
+def test_api_routes_enforce_read_and_write_scopes(client: TestClient) -> None:
+    manager = get_key_manager()
+    for key, permissions in (("rp-no-scope", []), ("rp-read-only", ["read"])):
+        manager._keys[manager._hash_key(key)] = {
+            "name": key,
+            "permissions": permissions,
+            "rate_limit": None,
+            "auth_type": "api_key",
+        }
+
+    client.app.dependency_overrides[get_scoring_pipeline] = Mock
+    no_scope = {"X-API-Key": "rp-no-scope"}
+    for path in (
+        "/api/v1/transactions",
+        "/api/v1/rules/status",
+        "/api/v1/risk-scores/monitoring/alerts",
+        "/api/v1/score/metrics/summary",
+    ):
+        assert client.get(path, headers=no_scope).status_code == 403
+
+    read_only = {"X-API-Key": "rp-read-only"}
+    assert client.get("/api/v1/risk-scores/monitoring/alerts", headers=read_only).status_code == 200
+    score = {
+        "transaction_id": "txn-1",
+        "customer_id": "customer-1",
+        "transaction_amount": 25,
+        "transaction_type": "purchase",
+        "channel": "online",
+    }
+    assert client.post("/api/v1/score", json=score, headers=read_only).status_code == 403
+    assert (
+        client.post(
+            "/api/v1/score/batch", json={"transactions": [score]}, headers=read_only
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/api/v1/rules/evaluate", json={"transaction": score}, headers=read_only
+        ).status_code
+        == 403
+    )
+    for path in ("/api/v1/risk-scores/predict", "/api/v1/risk-scores/predict/batch"):
+        assert client.post(path, json={}, headers=read_only).status_code == 403
+
+
+@pytest.mark.security
 def test_api_security_headers_cover_success_and_auth_failure(client: TestClient) -> None:
     for response in (
         client.get("/health/live"),
