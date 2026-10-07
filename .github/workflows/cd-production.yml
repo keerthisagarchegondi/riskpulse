@@ -71,20 +71,20 @@ jobs:
           bash scripts/deploy.sh production "${IMAGE_TAG}"
           docker compose --env-file .env.example -f docker-compose.prod.yml config --quiet
 
-      - name: Rollback on failure
-        if: failure()
-        run: bash scripts/rollback.sh production deployment-state
-
-      - name: Notify success
+      - name: Notify plan validation success
         if: success() && vars.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"RiskPulse production deploy succeeded: ${IMAGE_TAG}\"}" \
-            "${{ vars.SLACK_WEBHOOK_URL }}"
+          curl -fsS -X POST -H 'Content-type: application/json' \
+            --data '{"text":"RiskPulse production plan validated; no deployment was performed."}' \
+            "$SLACK_WEBHOOK_URL"
 
-      - name: Notify failure
+      - name: Notify plan validation failure
         if: failure() && vars.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"RiskPulse production deploy failed and rollback was attempted: ${IMAGE_TAG}\"}" \
-            "${{ vars.SLACK_WEBHOOK_URL }}"
+          curl -fsS -X POST -H 'Content-type: application/json' \
+            --data '{"text":"RiskPulse production plan validation failed; no deployment was attempted."}' \
+            "$SLACK_WEBHOOK_URL"

@@ -70,6 +70,25 @@ require_non_placeholder_secret() {
   fi
 }
 
+if [[ "${ENVIRONMENT}" == "production" ]]; then
+  [[ "${RUN_SMOKE}" == "true" ]] || fail "RUN_SMOKE=false cannot certify production deployment"
+  if [[ "${DEPLOYMENT_BACKEND}" == "local" && "${RUN_DOCKER}" != "true" ]]; then
+    fail "RUN_DOCKER=false would skip deployed Compose security checks"
+  fi
+  [[ -n "${PRODUCTION_BASE_URL:-}" ]] || fail "PRODUCTION_BASE_URL is required for live production verification"
+  [[ -n "${PRODUCTION_STREAMLIT_URL:-}" ]] || fail "PRODUCTION_STREAMLIT_URL is required for live production verification"
+  [[ -n "${RISKPULSE_API_KEY:-}${RISKPULSE_BEARER_TOKEN:-}" ]] || fail "Production verification needs a read-scoped API key or bearer token"
+  if [[ "${DEPLOYMENT_BACKEND}" == "local" ]]; then
+    [[ -n "${RISKPULSE_INGRESS_BASIC_USER:-}" && -n "${RISKPULSE_INGRESS_BASIC_PASSWORD:-}" ]] || fail "Compose production verification needs dashboard ingress Basic-auth credentials"
+  fi
+  [[ "${BASE_URL}" == https://* && "${STREAMLIT_URL}" == https://* ]] || fail "Production API and dashboard URLs must use HTTPS"
+  case "${BASE_URL} ${STREAMLIT_URL}" in
+    *localhost*|*127.0.0.1*|*example.com*|*example.invalid*)
+      fail "Production verification requires live endpoints, not loopback or example URLs"
+      ;;
+  esac
+fi
+
 log "RiskPulse deployment verification started for ${ENVIRONMENT}"
 
 log "Checking repository artifacts"
@@ -115,7 +134,14 @@ if [[ "${RUN_DOCKER}" == "true" ]]; then
     docker compose -f docker-compose.yml config --quiet
     log "Validating Docker Compose production config"
     docker compose -f docker-compose.prod.yml config --quiet
+    if [[ "${ENVIRONMENT}" == "production" && "${DEPLOYMENT_BACKEND}" == "local" ]]; then
+      log "Checking deployed API secrets and PostgreSQL role"
+      docker compose -f docker-compose.prod.yml exec -T api python scripts/verify_runtime_security.py
+    fi
   else
+    if [[ "${ENVIRONMENT}" == "production" && "${DEPLOYMENT_BACKEND}" == "local" ]]; then
+      fail "Docker is required to verify the deployed production API container"
+    fi
     warn "Docker is not installed; skipping compose validation"
   fi
 else
@@ -202,7 +228,14 @@ fi
 
 if [[ "${RUN_SMOKE}" == "true" ]]; then
   [[ -n "${BASE_URL}" ]] || fail "PRODUCTION_BASE_URL or RISKPULSE_BASE_URL is required for smoke tests"
-  smoke_args=(scripts/smoke_test.py --base-url "${BASE_URL}" --retries 10 --retry-delay 15 --timeout 10 --report-file "${REPORT_DIR}/smoke-${ENVIRONMENT}.json")
+  smoke_retries=10
+  if [[ "${ALLOW_SYNTHETIC_PROD_WRITES}" == "true" ]]; then
+    smoke_retries=1
+  fi
+  smoke_args=(scripts/smoke_test.py --base-url "${BASE_URL}" --retries "${smoke_retries}" --retry-delay 15 --timeout 10 --report-file "${REPORT_DIR}/smoke-${ENVIRONMENT}.json")
+  if [[ "${ENVIRONMENT}" == "production" ]]; then
+    smoke_args+=(--verify-auth --require-dependencies)
+  fi
   if [[ -n "${STREAMLIT_URL}" ]]; then
     smoke_args+=(--streamlit-url "${STREAMLIT_URL}")
   fi
@@ -210,7 +243,9 @@ if [[ "${RUN_SMOKE}" == "true" ]]; then
     smoke_args+=(--airflow-url "${AIRFLOW_URL}")
   fi
   if [[ "${ALLOW_SYNTHETIC_PROD_WRITES}" == "true" ]]; then
-    smoke_args+=(--submit-test-transaction)
+    smoke_args+=(--submit-test-transaction --verify-processed-transaction)
+  elif [[ "${ENVIRONMENT}" == "production" ]]; then
+    warn "Synthetic transaction processing was not verified; set ALLOW_SYNTHETIC_PROD_WRITES=true with an approved test identity for the full transaction check"
   fi
   log "Running smoke tests"
   "${PYTHON_BIN}" "${smoke_args[@]}"
@@ -218,4 +253,8 @@ else
   warn "RUN_SMOKE=false; endpoint smoke tests skipped"
 fi
 
-log "RiskPulse deployment verification completed for ${ENVIRONMENT}"
+if [[ "${ENVIRONMENT}" == "production" && "${ALLOW_SYNTHETIC_PROD_WRITES}" != "true" ]]; then
+  warn "Live smoke checks passed, but end-to-end transaction processing remains unverified"
+else
+  log "RiskPulse deployment verification completed for ${ENVIRONMENT}"
+fi

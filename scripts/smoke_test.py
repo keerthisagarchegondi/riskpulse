@@ -7,6 +7,7 @@ deployment jobs before project dependencies are installed.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import sys
@@ -17,9 +18,19 @@ from datetime import datetime, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 DEFAULT_API_KEY = "dev-api-key-riskpulse-2024"
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(
+        self, request: Request, fp: Any, code: int, msg: str, headers: Any, newurl: str
+    ) -> None:
+        return None
+
+
+_HTTP_OPENER = build_opener(_NoRedirect())
 
 
 @dataclass
@@ -78,7 +89,7 @@ def _request_json(
 ) -> tuple[int, dict[str, Any] | list[Any] | str]:
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     request = Request(url, data=data, method=method, headers=headers or {})
-    with urlopen(request, timeout=timeout) as response:  # nosec B310
+    with _HTTP_OPENER.open(request, timeout=timeout) as response:  # nosec B310
         body = response.read().decode("utf-8")
         try:
             parsed: dict[str, Any] | list[Any] | str = json.loads(body) if body else {}
@@ -155,6 +166,16 @@ def _run_check(
         )
     except HTTPError as exc:
         elapsed_ms = (time.perf_counter() - started) * 1000.0
+        if exc.code in expected_status:
+            exc.close()
+            return CheckResult(
+                name=name,
+                status="pass",
+                url=url,
+                detail="Expected HTTP rejection",
+                latency_ms=elapsed_ms,
+                response_status=exc.code,
+            )
         detail = exc.read().decode("utf-8", errors="replace")
         return CheckResult(
             name=name,
@@ -183,6 +204,20 @@ def _validate_ready(body: Any) -> str:
     return ""
 
 
+def _validate_dependencies(body: Any) -> str:
+    if not isinstance(body, dict) or not isinstance(body.get("dependencies"), list):
+        return "Dependency health response is invalid"
+    statuses = {
+        item.get("name"): item.get("status")
+        for item in body["dependencies"]
+        if isinstance(item, dict)
+    }
+    unhealthy = [
+        name for name in ("kafka", "postgresql", "redis") if statuses.get(name) != "healthy"
+    ]
+    return f"Required dependencies not healthy: {', '.join(unhealthy)}" if unhealthy else ""
+
+
 def _validate_openapi(body: Any) -> str:
     if not isinstance(body, dict):
         return "OpenAPI response was not a JSON object"
@@ -193,6 +228,43 @@ def _validate_openapi(body: Any) -> str:
         if expected_path not in paths:
             return f"OpenAPI schema missing {expected_path}"
     return ""
+
+
+def _validate_submission(body: Any) -> str:
+    if not isinstance(body, dict) or body.get("status") != "accepted":
+        return "Transaction was not accepted"
+    try:
+        uuid.UUID(str(body["transaction_id"]))
+    except (KeyError, ValueError, TypeError):
+        return "Submission response has no valid transaction ID"
+    return ""
+
+
+def _validate_processed_transaction(body: Any, transaction_id: str) -> str:
+    if not isinstance(body, dict) or str(body.get("transaction_id")) != transaction_id:
+        return "Transaction readback did not match the submitted ID"
+    if body.get("status") not in {"approved", "declined", "flagged"}:
+        return "Transaction has not reached a processed status"
+    return ""
+
+
+def _check_processed_transaction(
+    base_url: str, transaction_id: str, headers: dict[str, str], args: argparse.Namespace
+) -> CheckResult:
+    url = urljoin(base_url, f"api/v1/transactions/{transaction_id}")
+    deadline = time.monotonic() + args.processing_timeout
+    while True:
+        result = _run_check(
+            "transaction_processed",
+            url,
+            expected_status={200},
+            timeout=args.timeout,
+            headers=headers,
+            validator=lambda body: _validate_processed_transaction(body, transaction_id),
+        )
+        if result.passed or time.monotonic() >= deadline:
+            return result
+        time.sleep(min(args.processing_interval, max(0, deadline - time.monotonic())))
 
 
 def _fraud_transaction_payload() -> dict[str, Any]:
@@ -246,6 +318,35 @@ def _build_api_checks(args: argparse.Namespace) -> list[CheckResult]:
             validator=_validate_ready,
         ),
     ]
+    if args.verify_auth:
+        checks.append(
+            _run_check(
+                "api_rejects_unauthenticated_read",
+                urljoin(base_url, "api/v1/transactions"),
+                expected_status={401},
+                timeout=args.timeout,
+            )
+        )
+        if args.api_key or args.bearer_token:
+            checks.append(
+                _run_check(
+                    "api_accepts_authenticated_read",
+                    urljoin(base_url, "api/v1/transactions"),
+                    expected_status={200},
+                    timeout=args.timeout,
+                    headers=headers,
+                )
+            )
+    if args.require_dependencies:
+        checks.append(
+            _run_check(
+                "api_dependency_health",
+                urljoin(base_url, "health"),
+                expected_status={200},
+                timeout=args.timeout,
+                validator=_validate_dependencies,
+            )
+        )
     if not args.skip_openapi:
         checks.append(
             _run_check(
@@ -257,29 +358,57 @@ def _build_api_checks(args: argparse.Namespace) -> list[CheckResult]:
             )
         )
     if args.submit_test_transaction:
-        checks.append(
-            _run_check(
-                "api_synthetic_fraud_transaction",
-                urljoin(base_url, "api/v1/transactions"),
-                expected_status={202},
-                headers=headers,
-                payload=_fraud_transaction_payload(),
-                method="POST",
-                timeout=args.timeout,
-            )
+        submission = _run_check(
+            "api_synthetic_fraud_transaction",
+            urljoin(base_url, "api/v1/transactions"),
+            expected_status={202},
+            headers=headers,
+            payload=_fraud_transaction_payload(),
+            method="POST",
+            timeout=args.timeout,
+            validator=_validate_submission,
         )
+        checks.append(submission)
+        if args.verify_processed_transaction:
+            transaction_id = submission.metadata.get("transaction_id")
+            if submission.passed and transaction_id:
+                checks.append(_check_processed_transaction(base_url, transaction_id, headers, args))
+            else:
+                checks.append(
+                    CheckResult(
+                        name="transaction_processed",
+                        status="fail",
+                        detail="Cannot verify processing because submission did not succeed",
+                    )
+                )
     return checks
 
 
 def _build_optional_service_checks(args: argparse.Namespace) -> list[CheckResult]:
     checks: list[CheckResult] = []
     if args.streamlit_url:
+        url = urljoin(_normalize_base_url(args.streamlit_url), "_stcore/health")
+        headers: dict[str, str] = {}
+        if args.streamlit_basic_user:
+            credentials = f"{args.streamlit_basic_user}:{args.streamlit_basic_password}"
+            encoded = base64.b64encode(credentials.encode("utf-8")).decode("ascii")
+            headers["Authorization"] = f"Basic {encoded}"
+            if args.verify_auth:
+                checks.append(
+                    _run_check(
+                        "streamlit_rejects_unauthenticated_request",
+                        url,
+                        expected_status={401},
+                        timeout=args.timeout,
+                    )
+                )
         checks.append(
             _run_check(
                 "streamlit_health",
-                urljoin(_normalize_base_url(args.streamlit_url), "_stcore/health"),
+                url,
                 expected_status={200},
                 timeout=args.timeout,
+                headers=headers,
             )
         )
     if args.airflow_url:
@@ -356,6 +485,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--api-key", default=os.environ.get("RISKPULSE_API_KEY"))
     parser.add_argument(
+        "--streamlit-basic-user", default=os.environ.get("RISKPULSE_INGRESS_BASIC_USER")
+    )
+    parser.set_defaults(streamlit_basic_password=os.environ.get("RISKPULSE_INGRESS_BASIC_PASSWORD"))
+    parser.add_argument(
         "--bearer-token",
         default=os.environ.get("RISKPULSE_BEARER_TOKEN"),
     )
@@ -365,7 +498,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--monitor-seconds", type=int, default=0)
     parser.add_argument("--monitor-interval", type=float, default=15.0)
     parser.add_argument("--skip-openapi", action="store_true")
+    parser.add_argument("--verify-auth", action="store_true")
+    parser.add_argument("--require-dependencies", action="store_true")
     parser.add_argument("--submit-test-transaction", action="store_true")
+    parser.add_argument("--verify-processed-transaction", action="store_true")
+    parser.add_argument("--processing-timeout", type=float, default=60.0)
+    parser.add_argument("--processing-interval", type=float, default=2.0)
     parser.add_argument(
         "--use-dev-key",
         action="store_true",
@@ -373,7 +511,22 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--report-file", default=os.environ.get("SMOKE_TEST_REPORT"))
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if bool(args.streamlit_basic_user) != bool(args.streamlit_basic_password):
+        parser.error("Both Streamlit Basic auth credentials are required together")
+    if args.streamlit_basic_user:
+        if not args.streamlit_url:
+            parser.error("Streamlit URL is required for Basic auth verification")
+        parsed = urlparse(args.streamlit_url)
+        if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+            parser.error("Streamlit Basic auth requires HTTPS outside loopback")
+    if args.verify_processed_transaction and not args.submit_test_transaction:
+        parser.error("--verify-processed-transaction requires --submit-test-transaction")
+    if args.submit_test_transaction and (args.retries != 1 or args.monitor_seconds > 0):
+        parser.error("Synthetic writes require one attempt and no monitoring loop")
+    if args.processing_timeout < 0 or args.processing_interval <= 0:
+        parser.error("Processing timeout and interval must be non-negative and positive")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:

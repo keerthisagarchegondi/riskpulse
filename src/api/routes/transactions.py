@@ -85,6 +85,17 @@ async def submit_transaction(
             )
         else:
             logger.warning("kafka_producer_unavailable", transaction_id=str(transaction_id))
+            if os.environ.get("RISKPULSE_ENV", "dev").lower() in {
+                "prod",
+                "production",
+                "staging",
+            }:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Transaction processing pipeline is unavailable.",
+                )
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(
             "transaction_publish_failed",
@@ -138,6 +149,16 @@ async def submit_batch(
     )
 
     producer = _get_kafka_producer()
+    managed = os.environ.get("RISKPULSE_ENV", "dev").lower() in {
+        "prod",
+        "production",
+        "staging",
+    }
+    if producer is None and managed:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Transaction processing pipeline is unavailable.",
+        )
     events: list[dict[str, Any]] = []
 
     for idx, transaction in enumerate(batch.transactions):
@@ -164,6 +185,11 @@ async def submit_batch(
             )
         except Exception as exc:
             logger.error("batch_publish_partial_failure", error=str(exc))
+            if managed:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Batch publication could not be confirmed.",
+                ) from exc
 
     for response, transaction in zip(accepted, batch.transactions):
         record_local_transaction(response.transaction_id, transaction)

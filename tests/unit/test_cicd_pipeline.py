@@ -54,7 +54,7 @@ def test_staging_workflow_runs_ci_builds_and_validates_local_deploy() -> None:
     assert "docker push" not in content
 
 
-def test_production_workflow_has_manual_gate_monitoring_and_rollback() -> None:
+def test_production_workflow_has_manual_gate_and_honest_plan_status() -> None:
     workflow = _load_workflow("cd-production.yml")
     content = _read(".github/workflows/cd-production.yml")
 
@@ -65,12 +65,28 @@ def test_production_workflow_has_manual_gate_monitoring_and_rollback() -> None:
     assert "deploy-production" in content
     assert "DEPLOYMENT_BACKEND: local" in content
     assert "Validate local production deployment plan" in content
-    assert "bash scripts/rollback.sh production deployment-state" in content
+    assert "no deployment was performed" in content
+    assert "bash scripts/rollback.sh production deployment-state" not in content
     assert (
         "docker compose --env-file .env.example -f docker-compose.prod.yml config --quiet"
         in content
     )
     assert "aws ecs" not in content
+
+
+def test_production_verification_requires_live_urls_and_runtime_checks() -> None:
+    verifier = _read("scripts/verify_deployment.sh")
+    assert "PRODUCTION_BASE_URL is required for live production verification" in verifier
+    assert "PRODUCTION_STREAMLIT_URL is required for live production verification" in verifier
+    assert "Production verification needs a read-scoped API key" in verifier
+    assert "Compose production verification needs dashboard ingress Basic-auth credentials" in verifier
+    assert "--verify-auth --require-dependencies" in verifier
+    assert "--verify-processed-transaction" in verifier
+    assert "RUN_DOCKER=false would skip deployed Compose security checks" in verifier
+    assert (
+        "docker compose -f docker-compose.prod.yml exec -T api python scripts/verify_runtime_security.py"
+        in verifier
+    )
 
 
 def test_deploy_and_rollback_scripts_default_to_local_compose() -> None:

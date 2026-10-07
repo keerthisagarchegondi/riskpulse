@@ -110,6 +110,10 @@ Security Review
 - [ ] Dashboard ingress auth, Redis login limiting, and API rate limiting verified live.
 - [ ] PostgreSQL, Redis, and Kafka reachable only on private network endpoints.
 - [ ] Production DB role permissions and real secret values verified on deployed services.
+- [ ] Deployed API runtime security check passes without printing secret values.
+- [ ] Live HTTPS smoke checks reject unauthenticated API and dashboard requests.
+- [ ] Approved synthetic transaction reaches a final database status; 202 alone is insufficient.
+- [ ] External probe confirms database, Redis, Kafka, and Airflow ports are blocked.
 - [ ] No high or critical security findings remain open.
 - [ ] Bandit source scan passed.
 - [ ] Dependency vulnerability scan passed or exceptions approved.

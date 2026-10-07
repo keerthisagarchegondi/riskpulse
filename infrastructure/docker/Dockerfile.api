@@ -28,6 +28,7 @@ RUN python -m venv /opt/venv \
         confluent-kafka \
         cryptography \
         fastapi \
+        numpy \
         passlib[bcrypt] \
         pydantic \
         pydantic-settings \
@@ -65,6 +66,7 @@ COPY src/ ./src/
 COPY config/ ./config/
 COPY schemas/ ./schemas/
 COPY scripts/container_healthcheck.py ./scripts/container_healthcheck.py
+COPY scripts/verify_runtime_security.py ./scripts/verify_runtime_security.py
 
 RUN chown -R riskpulse:riskpulse /app
 

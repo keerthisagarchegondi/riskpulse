@@ -22,7 +22,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from src.api.app import create_app
-from src.api.middleware.auth import reset_key_manager
+from src.api.middleware.auth import get_key_manager, reset_key_manager
 from src.api.middleware.rate_limiter import InMemoryRateLimiter
 
 # --- Fixtures ---
@@ -242,6 +242,15 @@ class TestTransactionSubmission:
         # Graceful degradation: accepted but won't be processed immediately
         assert response.status_code == status.HTTP_202_ACCEPTED
 
+    @patch("src.api.routes.transactions._get_kafka_producer", return_value=None)
+    def test_managed_submit_rejects_missing_kafka(
+        self, mock_producer, monkeypatch, client, auth_headers, valid_transaction
+    ):
+        get_key_manager()
+        monkeypatch.setenv("RISKPULSE_ENV", "prod")
+        response = client.post("/api/v1/transactions", json=valid_transaction, headers=auth_headers)
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
     def test_kafka_disabled_graceful(self, monkeypatch, client, auth_headers, valid_transaction):
         """Local-only API runs should accept transactions without Kafka startup delay."""
         monkeypatch.setenv("RISKPULSE_KAFKA_ENABLED", "false")
@@ -283,6 +292,19 @@ class TestBatchSubmission:
         assert data["accepted"] == 2
         assert data["rejected"] == 0
         assert len(data["transactions"]) == 2
+
+    @patch("src.api.routes.transactions._get_kafka_producer", return_value=None)
+    def test_managed_batch_rejects_missing_kafka(
+        self, mock_producer, monkeypatch, client, auth_headers, valid_transaction
+    ):
+        get_key_manager()
+        monkeypatch.setenv("RISKPULSE_ENV", "prod")
+        response = client.post(
+            "/api/v1/transactions/batch",
+            json={"transactions": [valid_transaction]},
+            headers=auth_headers,
+        )
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
     @patch("src.api.routes.transactions._get_kafka_producer")
     def test_submit_batch_max_size(self, mock_producer, client, auth_headers, minimal_transaction):

@@ -25,6 +25,12 @@ def test_all_required_dockerfiles_are_multistage_and_non_root() -> None:
         assert ("USER riskpulse" in content) or ("USER airflow" in content)
 
 
+def test_api_image_includes_runtime_verifier_and_route_dependencies() -> None:
+    content = _read(str(DOCKER_DIR / "Dockerfile.api"))
+    assert "COPY scripts/verify_runtime_security.py" in content
+    assert "        numpy \\" in content
+
+
 def test_dockerignore_excludes_large_and_sensitive_context() -> None:
     content = _read(".dockerignore")
 

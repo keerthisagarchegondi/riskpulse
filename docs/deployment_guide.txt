@@ -25,6 +25,25 @@ Optional Public Compose Ingress (configuration only; not yet deployed)
 - Verify HTTPS certificate/hostnames, HTTP-to-HTTPS redirects, unknown-host
   rejection, dashboard Basic auth, API 401 for missing credentials, rate-limit
   429, dashboard login, and real PostgreSQL/Redis/Kafka connectivity.
+- Set PRODUCTION_BASE_URL and PRODUCTION_STREAMLIT_URL to real HTTPS endpoints.
+  Set RISKPULSE_INGRESS_BASIC_USER and RISKPULSE_INGRESS_BASIC_PASSWORD in the
+  operator environment when the dashboard uses the Nginx Basic-auth overlay.
+  Provide a read-scoped RISKPULSE_API_KEY or bearer token for positive API auth
+  verification. Keep credentials out of CLI arguments and source control.
+- Run bash scripts/verify_deployment.sh production from the deployment host.
+  For a Compose deployment, this runs scripts/verify_runtime_security.py inside
+  the API container to check managed secrets, PostgreSQL connectivity, and
+  least-privilege table access. It also checks API/dashboard auth and Kafka,
+  PostgreSQL, and Redis health through the live API.
+- For an approved synthetic write, set ALLOW_SYNTHETIC_PROD_WRITES=true and
+  supply a read/write RISKPULSE_API_KEY or bearer token. The verifier submits
+  one transaction and waits for a final database status. A 202 response alone
+  does not satisfy this gate. Without the opt-in, the verifier reports that
+  transaction processing was not tested. This check does not prove model-score
+  or fraud-alert persistence; verify those against the deployed database too.
+- From outside the deployment network, separately confirm that PostgreSQL,
+  Redis, Kafka, and Airflow ports are blocked. In-container connectivity cannot
+  prove external firewall isolation.
 - The production GitHub workflow currently validates a dry-run plan. It does
   not deploy this overlay or verify live infrastructure. A real endpoint,
   certificates, healthy dependencies, and operator approval are still required.
