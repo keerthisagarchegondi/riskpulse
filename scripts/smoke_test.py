@@ -1,7 +1,7 @@
 """Production smoke tests for RiskPulse deployments.
 
-This script intentionally uses only Python's standard library so it can run in
-deployment jobs before project dependencies are installed.
+This script uses only Python's standard library, allowing it to run before
+project dependencies are installed in deployment jobs.
 """
 
 from __future__ import annotations
