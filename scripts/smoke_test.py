@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import math
 import os
 import sys
 import time
@@ -524,8 +525,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         parser.error("--verify-processed-transaction requires --submit-test-transaction")
     if args.submit_test_transaction and (args.retries != 1 or args.monitor_seconds > 0):
         parser.error("Synthetic writes require one attempt and no monitoring loop")
-    if args.processing_timeout < 0 or args.processing_interval <= 0:
-        parser.error("Processing timeout and interval must be non-negative and positive")
+    invalid_timing = not math.isfinite(args.processing_timeout) or not math.isfinite(
+        args.processing_interval
+    )
+    if invalid_timing or args.processing_timeout < 0 or args.processing_interval <= 0:
+        parser.error("Processing timeout must be finite and non-negative; interval must be finite and positive")
     return args
 
 
