@@ -131,3 +131,10 @@ def test_api_auth_checks_both_denial_and_authorized_read(monkeypatch: pytest.Mon
 def test_synthetic_write_cannot_repeat_automatically(options: list[str]) -> None:
     with pytest.raises(SystemExit):
         smoke_test.parse_args(options)
+
+
+@pytest.mark.parametrize("retries", ["0", "-1"])
+def test_smoke_checks_cannot_be_skipped_with_invalid_retries(retries: str) -> None:
+    with pytest.raises(SystemExit) as error:
+        smoke_test.parse_args(["--retries", retries])
+    assert error.value.code == 2

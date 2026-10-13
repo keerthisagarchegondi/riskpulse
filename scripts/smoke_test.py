@@ -513,6 +513,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--report-file", default=os.environ.get("SMOKE_TEST_REPORT"))
     args = parser.parse_args(argv)
+    if args.retries < 1:
+        parser.error("--retries must be at least 1")
     if bool(args.streamlit_basic_user) != bool(args.streamlit_basic_password):
         parser.error("Both Streamlit Basic auth credentials are required together")
     if args.streamlit_basic_user:
