@@ -515,6 +515,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.retries < 1:
         parser.error("--retries must be at least 1")
+    if not math.isfinite(args.retry_delay) or args.retry_delay < 0:
+        parser.error("--retry-delay must be finite and non-negative")
     if bool(args.streamlit_basic_user) != bool(args.streamlit_basic_password):
         parser.error("Both Streamlit Basic auth credentials are required together")
     if args.streamlit_basic_user:
@@ -531,7 +533,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         args.processing_interval
     )
     if invalid_timing or args.processing_timeout < 0 or args.processing_interval <= 0:
-        parser.error("Processing timeout must be finite and non-negative; interval must be finite and positive")
+        parser.error(
+            "Processing timeout must be finite and non-negative; interval must be finite and positive"
+        )
     return args
 
 

@@ -138,3 +138,10 @@ def test_smoke_checks_cannot_be_skipped_with_invalid_retries(retries: str) -> No
     with pytest.raises(SystemExit) as error:
         smoke_test.parse_args(["--retries", retries])
     assert error.value.code == 2
+
+
+@pytest.mark.parametrize("delay", ["-1", "nan", "inf"])
+def test_retry_delay_must_be_finite_and_non_negative(delay: str) -> None:
+    with pytest.raises(SystemExit) as error:
+        smoke_test.parse_args(["--retry-delay", delay])
+    assert error.value.code == 2
