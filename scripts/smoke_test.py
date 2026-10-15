@@ -513,6 +513,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--report-file", default=os.environ.get("SMOKE_TEST_REPORT"))
     args = parser.parse_args(argv)
+    if not math.isfinite(args.timeout) or args.timeout <= 0:
+        parser.error("--timeout must be finite and positive")
     if args.retries < 1:
         parser.error("--retries must be at least 1")
     if not math.isfinite(args.retry_delay) or args.retry_delay < 0:
