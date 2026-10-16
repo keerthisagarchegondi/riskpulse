@@ -152,3 +152,19 @@ def test_request_timeout_must_be_finite_and_positive(timeout: str) -> None:
     with pytest.raises(SystemExit) as error:
         smoke_test.parse_args(["--timeout", timeout])
     assert error.value.code == 2
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        ["--monitor-seconds", "-1"],
+        ["--monitor-interval", "0"],
+        ["--monitor-interval", "-1"],
+        ["--monitor-interval", "nan"],
+        ["--monitor-interval", "inf"],
+    ],
+)
+def test_monitor_timing_must_be_valid(options: list[str]) -> None:
+    with pytest.raises(SystemExit) as error:
+        smoke_test.parse_args(options)
+    assert error.value.code == 2
