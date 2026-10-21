@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 import base64
+import json
 from io import BytesIO
+from pathlib import Path
 from urllib.error import HTTPError
 
 import pytest
 
 from scripts import smoke_test
+
+
+def test_write_report_creates_parent_directories(tmp_path: Path) -> None:
+    report_path = tmp_path / "nested" / "smoke.json"
+    smoke_test._write_report(str(report_path), {"status": "pass"})
+    assert json.loads(report_path.read_text(encoding="utf-8")) == {"status": "pass"}
 
 
 def test_expected_auth_rejection_is_a_passing_check(monkeypatch: pytest.MonkeyPatch) -> None:

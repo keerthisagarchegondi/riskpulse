@@ -16,6 +16,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
@@ -460,7 +461,9 @@ def _summarize(results: list[CheckResult], *, started_at: str) -> dict[str, Any]
 def _write_report(path: str | None, summary: dict[str, Any]) -> None:
     if not path:
         return
-    with open(path, "w", encoding="utf-8") as handle:
+    report_path = Path(path)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with report_path.open("w", encoding="utf-8") as handle:
         json.dump(summary, handle, indent=2)
 
 
